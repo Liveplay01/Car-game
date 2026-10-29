@@ -260,7 +260,6 @@ export type PopupKind =
   | { k: 'jackpotPaid'; n: number }
   | { k: 'earned'; n: number }
   | { k: 'cost'; n: number }
-  | { k: 'covered' }
   | { k: 'modulePulse'; color: ColorToken }
   | { k: 'flames'; n: number; chain: number }
   | { k: 'boom' }
@@ -943,10 +942,6 @@ export const HUD = {
         case 'cost':
           label = '−' + moneyText(Fmt.number(k.n));
           color = 'destructive';
-          break;
-        case 'covered':
-          label = S.hud.covered;
-          color = 'muted';
           break;
         case 'flames':
           label = S.mayhem.popup(k.n);
@@ -2096,15 +2091,11 @@ export const ResultBanner = {
       ? [run.line, run.lineColor]
       : r.heist > 0
         ? [S.boss.busted(moneyText(Fmt.number(r.heist))), 'coin']
-        : r.costs > 0
-        ? [S.result.loss(Fmt.number(r.costs), r.outcome === 'escaped'), 'destructive']
-        : r.covered > 0
-          ? [S.result.covered(Fmt.number(r.covered)), 'muted']
-          : summary.mode === 'unlimited'
-            ? [S.modes.carsSent(r.carsSent), 'accent']
-            : summary.mode === 'mayhem'
-              ? [S.mayhem.summary(r.wrecks, r.biggestChain), 'fireOuter']
-              : null;
+        : summary.mode === 'unlimited'
+          ? [S.modes.carsSent(r.carsSent), 'accent']
+          : summary.mode === 'mayhem'
+            ? [S.mayhem.summary(r.wrecks, r.biggestChain), 'fireOuter']
+            : null;
     const close = summary.closeCall;
     // The ring's gold bar already shows the XP; only a level climbed gets words.
     const climbed = summary.elite && summary.elite.climbed > 0 ? summary.elite : null;

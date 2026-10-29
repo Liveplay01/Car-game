@@ -224,6 +224,13 @@ const SCENES = {
     });
   },
 
+  async mafia() {
+    await run('s-mafia', {}, async ({ s, adv }) => {
+      await perform(s, { k: 'showSocial', section: 3 });
+      await adv(4);
+    });
+  },
+
   async museum() {
     await run('s-museum', {}, async ({ s, adv }) => {
       await perform(s, { k: 'showProgress', section: 3 });

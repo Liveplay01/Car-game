@@ -3,7 +3,7 @@ import type { Words } from '../../i18n';
 import { Fmt, money, percent } from '../../format';
 import { baseConfig, detourShareAt, towSpeedupAt } from '../../../core/config';
 
-/** Deutsch, Teil 5: Casino, Straßenbauer, Werbung, Club, Ränge, Freunde, Lobby, Versus, Shell. */
+/** Deutsch, Teil 5: Arcade, Straßenbauer, Werbung, Club, Ränge, Freunde, Lobby, Versus, Shell. */
 export default (S: Strings): Words<Strings> => ({
   casino: {
     game: (g) => ({ crash: 'Crash', slots: 'Slots', upgrade: 'Upgrade', roulette: 'Roulette', scratch: 'Rubbellos' })[g],
@@ -71,7 +71,7 @@ export default (S: Strings): Words<Strings> => ({
     refunded: (m) => `Eine Fahrt wurde abgebrochen · ${m} zurück`,
     cashedOnLeave: (m) => `Beim Verlassen ausgezahlt · +${m}`,
     feat: (f) =>
-      ({ bigWin: 'Dein erster BIG WIN', megaWin: 'Dein erster MEGA WIN', flipChain: `${baseConfig.casinoFlipChain} Münzwürfe in Folge gewonnen`, tycoon: `${money(Fmt.number(baseConfig.casinoTycoon))} im Casino gewonnen` })[f],
+      ({ bigWin: 'Dein erster BIG WIN', megaWin: 'Dein erster MEGA WIN', flipChain: `${baseConfig.casinoFlipChain} Münzwürfe in Folge gewonnen`, tycoon: `${money(Fmt.number(baseConfig.casinoTycoon))} in der Arcade gewonnen` })[f],
     honour: (feat, item) => `${feat} · Skin ${item} freigeschaltet`,
     detail: {
       crash: [
@@ -361,7 +361,7 @@ export default (S: Strings): Words<Strings> => ({
       unlimited: { label: 'Unlimited', empty: 'Stelle einen Unlimited-Rekord auf, um der Erste hier zu sein.' },
       daily: { label: 'Täglich', empty: 'Schaffe die heutige Tagesschicht, um der Erste hier zu sein.' },
       rush: { label: 'Boss-Rush', empty: 'Schaffe einen Boss-Rush, um die erste Zeit zu setzen.' },
-      casino: { label: 'Casino', empty: 'Gewinne im Casino mehr, als du einsetzt, um der Erste hier zu sein.' },
+      casino: { label: 'Arcade', empty: 'Gewinne in der Arcade mehr, als du einsetzt, um der Erste hier zu sein.' },
     },
     level: (n) => `Level ${n}`,
     starLabel: (rank) => `Prestige-Rang ${rank}. So funktioniert Prestige`,
@@ -616,6 +616,8 @@ export default (S: Strings): Words<Strings> => ({
     bootTitle: 'Der Kreisverkehr ist nicht gestartet.',
     bootBody: 'Etwas hat das Spiel am Laden gehindert. Prüfe deine Verbindung und versuche es erneut; dein Fortschritt ist auf diesem Gerät sicher.',
     bootRetry: 'Erneut versuchen',
+    bootOfflineTitle: 'Keine Verbindung.',
+    bootOfflineBody: 'Ohne Internet konnte das Spiel nicht fertig laden. Verbinde dich und versuche es erneut; dein Fortschritt ist auf diesem Gerät sicher.',
     /** The first visit's boot screen (index.html): the game in three steps while it loads. */
     learn: {
       waitTitle: 'Warte auf eine Lücke',

@@ -88,7 +88,7 @@ export const S = {
       ],
     },
     casino: {
-      title: 'Casino',
+      title: 'Arcade',
       line: 'Optional · play money only',
       body: [
         'Crash, Slots, Skin Upgrade and Double or Nothing, played with the money you earn on the road. Nothing here costs real money.',
@@ -119,7 +119,7 @@ export const S = {
       line: 'Lends money, wants it back',
       body: [
         'After your first boss the Family lends you money. Strike the deal on the pointer bar: tap to stop it in the green zone, the middle is Perfect.',
-        'Pay back in time and the next loan gets kinder. Pay late and the Family takes a share of every shift, and the Casino shuts until it is paid.',
+        'Pay back in time and the next loan gets kinder. Pay late and the Family takes a share of every shift, and the Arcade shuts until it is paid.',
       ],
     },
     crew: {
@@ -1003,7 +1003,7 @@ export const S = {
           elite: `Reach Elite ${N}`,
           reborn: `Prestige ${N} ${n === 1 ? 'time' : 'times'}`,
           heatSeeker: `Clear a shift at Heat ${N}`,
-          gambler: `Play ${N} casino rounds`,
+          gambler: `Play ${N} Arcade rounds`,
           tourist: `Pass ${N} tour ${n === 1 ? 'stop' : 'stops'}`,
         } as Record<string, string>
       )[id] ?? '';
@@ -1302,7 +1302,7 @@ export const S = {
     cashedOnLeave: (m: string): string => `Cashed out as you left · +${m}`,
     /** What earned a casino skin (`Casino.honours`): the notice says why, then which. */
     feat: (f: CasinoFeat): string =>
-      ({ bigWin: 'Your first BIG WIN', megaWin: 'Your first MEGA WIN', flipChain: `${baseConfig.casinoFlipChain} coins won in a row`, tycoon: `${money(Fmt.number(baseConfig.casinoTycoon))} won at the casino` })[f],
+      ({ bigWin: 'Your first BIG WIN', megaWin: 'Your first MEGA WIN', flipChain: `${baseConfig.casinoFlipChain} coins won in a row`, tycoon: `${money(Fmt.number(baseConfig.casinoTycoon))} won in the Arcade` })[f],
     honour: (feat: string, item: string): string => `${feat} · ${item} skin unlocked`,
     detail: {
       crash: [
@@ -1609,7 +1609,7 @@ export const S = {
       unlimited: { label: 'Unlimited', empty: 'Set an Unlimited record to be the first one here.' },
       daily: { label: 'Daily', empty: 'Clear today’s Daily Shift to be the first one here.' },
       rush: { label: 'Boss Rush', empty: 'Clear a Boss Rush to set the first time.' },
-      casino: { label: 'Casino', empty: 'Win more at the casino than you stake to be the first one here.' },
+      casino: { label: 'Arcade', empty: 'Win more in the Arcade than you stake to be the first one here.' },
     } as Record<'shift-level' | 'unlimited' | 'daily' | 'rush' | 'casino', { label: string; empty: string }>,
     level: (n: string): string => `Level ${n}`,
     starLabel: (rank: number): string => `Prestige rank ${rank}. How Prestige works`,
@@ -1875,6 +1875,9 @@ export const S = {
     bootTitle: 'The roundabout did not start.',
     bootBody: 'Something kept the game from loading. Check your connection and try again; your progress is safe on this device.',
     bootRetry: 'Try again',
+    /** The same, when the browser says it is offline. */
+    bootOfflineTitle: 'No connection.',
+    bootOfflineBody: 'The game could not finish loading without the internet. Connect and try again; your progress is safe on this device.',
     /** The first visit's boot screen (index.html): the game in three steps while it loads. */
     learn: {
       waitTitle: 'Wait for a gap',
@@ -1919,7 +1922,7 @@ export const S = {
     don: 'The Don',
     pitch: 'Pick a loan, sit down at the table and stop the pointer inside the green zone. The nearer the middle, the kinder the deal. The bigger the loan, the faster the pointer.',
     rules: (rate: number, cap: number, garnish: number): string =>
-      `Pay it back by the day on the letter. Late, the debt grows ${Math.round(rate * 100)}% a day (up to +${Math.round(cap * 100)}%), ${Math.round(garnish * 100)}% of every shift's pay goes to the Family, no transporter, criminal or boss pays out, the Casino is shut and your name wears the Mafia badge on the boards. Pay it off and all of that is gone. Each loan repaid in time makes the next one cheaper and the green zone wider.`,
+      `Pay it back by the day on the letter. Late, the debt grows ${Math.round(rate * 100)}% a day (up to +${Math.round(cap * 100)}%), ${Math.round(garnish * 100)}% of every shift's pay goes to the Family, no transporter, criminal or boss pays out, the Arcade is shut and your name wears the Mafia badge on the boards. Pay it off and all of that is gone. Each loan repaid in time makes the next one cheaper and the green zone wider.`,
     grade: (g: 'perfect' | 'good' | 'miss'): string => ({ perfect: 'PERFECT', good: 'GOOD', miss: 'MISSED' })[g],
     gradeText: (g: 'perfect' | 'good' | 'miss'): string => ({ perfect: 'Right on the money. The Don smiles.', good: 'A fair handshake.', miss: 'The Don shrugs. The plain offer stands.' })[g],
     set: 'Sit down',
@@ -1952,7 +1955,7 @@ export const S = {
     waiting: 'The Don is watching',
     atStake: 'If you are late',
     inForce: 'In force until you pay',
-    consequences: (garnish: number): string[] => ['Casino shut', 'No transporters, criminals or bosses', `${Math.round(garnish * 100)}% of every shift's pay`, 'Mafia badge on the boards'],
+    consequences: (garnish: number): string[] => ['Arcade shut', 'No transporters, criminals or bosses', `${Math.round(garnish * 100)}% of every shift's pay`, 'Mafia badge on the boards'],
     overdue: 'OVERDUE',
     overdueText: 'The Family is collecting. Every shift pays them first.',
     paidStamp: 'PAID',
@@ -1969,16 +1972,16 @@ export const S = {
         taken: `Pleasure doing business. ${owed} by ${date}, not a day later. Do not make me come looking for you.`,
         half: 'Half your time is gone. The Family remembers every debt, and every friend who paid early.',
         day: 'One day left. Be a friend and settle up before it gets personal.',
-        late: 'Time is up. Your name is on the list. The road pays us first now, and the Casino is closed to you.',
+        late: 'Time is up. Your name is on the list. The road pays us first now, and the Arcade is closed to you.',
         later: 'Every day the number grows. Pay, and we are friends again.',
       })[kind],
     notices: {
-      late: 'THE FAMILY IS WAITING · your loan is late · the Casino is shut',
+      late: 'THE FAMILY IS WAITING · your loan is late · the Arcade is shut',
       grace: 'THE FAMILY GIVES YOU ONE MORE DAY · the loan fell due while you were away',
       writtenOff: 'THE FAMILY WRITES YOU OFF · the debt is gone, their doors stay shut for 14 days',
     },
     garnished: (cut: string, cleared: boolean): string => (cleared ? `THE FAMILY TOOK ${money(cut)} · debt paid, you are free` : `THE FAMILY TOOK ${money(cut)} of the pay`),
-    casinoShut: 'The Casino is closed while the Family waits for its money.',
+    casinoShut: 'The Arcade is closed while the Family waits for its money.',
   },
   shop: {
     open: 'Open',
@@ -2030,7 +2033,7 @@ export const S = {
       if (item.source.kind === 'unlimited') return `Send ${Fmt.number(item.source.cars)} cars in one Unlimited run.`;
       if (item.source.kind === 'tour') return `A stop of the ${S.tours.name(item.source.tour as TourId)} tour. It comes back every year.`;
       if (item.source.kind === 'auction') return 'Only ever a lot at the Auction House (Social → Club). A new lot every few days.';
-      if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: only the casino gives it (Shop → Casino). Looks only.`;
+      if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: only the Arcade gives it (Shop → Arcade). Looks only.`;
       if (item.source.kind === 'failures') return 'Find every way to lose a shift (Progress → Museum → Failures). Looks only.';
       if (item.source.kind === 'fund') return 'A thank-you from the City Fund, which the Game fund has replaced. It is not given out any more.';
       if (item.source.kind === 'bugReport')
@@ -2052,7 +2055,7 @@ export const S = {
     watchAd: (left: number): string => `Watch ad · ${left} left`,
     skinsOn: (n: number, max: number): string => `${n} of ${max} car skins on · they mix on the road`,
     skinsFull: (max: number): string => `${max} car skins are on. Take one off first.`,
-    section: (i: number): string => ['Chests', 'Collection', 'Casino'][i],
+    section: (i: number): string => ['Chests', 'Collection', 'Arcade'][i],
     saleHeading: 'For sale',
     earnedHeading: 'Earned, not sold',
     pityTitle: 'Legendary guarantee',
@@ -2498,7 +2501,7 @@ export const S = {
     done: 'Done',
     withTitle: (title: string): string => `+ title “${title}”`,
     eyebrow: 'Feat',
-    body: 'One of the hardest deeds in the game. No chest, no casino and no money can get you this: only the road.',
+    body: 'One of the hardest deeds in the game. No chest, no Arcade and no money can get you this: only the road.',
     rowGoal: 'Goal',
     rowNow: 'You',
     rowTitle: 'Title',
@@ -2750,9 +2753,6 @@ export const S = {
     newBest: 'NEW BEST',
     /** The spoken result (the live region): the score in words. */
     points: (n: string): string => `${n} points`,
-    fullCoverage: 'FULL COVERAGE',
-    loss: (amount: string, escaped: boolean): string => (escaped ? 'LOSS ' : 'CRASH COST ') + '−' + money(amount),
-    covered: (amount: string): string => `FULL COVERAGE · ${money(amount)} paid by insurance`,
     nextLevel: (l: number): string => `Tap for level ${l}`,
     retryLevel: (l: number): string => `Tap to try level ${l} again`,
     /** Only what happened: no "0 busted" in the levels before the first criminal. */
@@ -2780,7 +2780,6 @@ export const S = {
     dispatch: 'DISPATCH',
     danger: 'DANGER',
     boom: 'BOOM!',
-    covered: 'COVERED',
     combo: (n: number): string => `COMBO ${n}`,
     cars: (n: number): string => (n === 1 ? '1 car' : `${n} cars`),
     wanted: (seconds: number): string => `WANTED ${Math.ceil(Math.max(0, seconds))}`,

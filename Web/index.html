@@ -31,12 +31,12 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32-v2.png" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png" />
     <!--
-      The boot screen: the player's car circles the ring while the game loads, and main.ts takes it
-      away once the game is on screen. If that never happens (a broken download, an old browser, a
-      crash on start), it turns into a message in the game's own look after 20 s, without any
-      script (the CSP allows none inline); main.ts shows it at once when the start throws. Afterwards
-      it stays hidden: the shell brings it back with a reload if the game stops mid-play.
-      The same ring as public/404.html: only the ring, no arms.
+      The boot screen: the descent's first frame (dark sky, clouds) until the script runs; then main.ts clears it off the real
+      game, which comes down from the clouds onto the player's map (Leo, 29.10.2026). If the script never
+      runs (a broken download, an old browser, a crash on start), it turns into a message in the game's
+      own look after 20 s, without any script (the CSP allows none inline); main.ts shows it at once when
+      the start throws. Afterwards it stays hidden: the shell brings it back with a reload if the game
+      stops mid-play.
     -->
     <style>
       .boot {
@@ -56,34 +56,28 @@
         transition: opacity 400ms cubic-bezier(0.23, 1, 0.32, 1);
       }
       .boot.gone { opacity: 0; pointer-events: none; }
+      /* Once the game draws (main.ts sets `live`), the screen clears off the scene, which comes down from the clouds
+         in the same colour; a failed start lands too and the message rises over the map. */
+      .boot.live { background-color: transparent; }
+      /* The descent's first frame, drawn in by vite.config.ts (`bootSky`), so the page never opens on plain black. */
+      .boot-sky { position: fixed; inset: 0; z-index: -1; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+      /* The canvas draws the same frame underneath, so the swap is instant: a cross-fade would show the clouds twice. */
+      .boot.live .boot-sky { display: none; }
+      .boot.learn .boot-sky { opacity: 0; transition: opacity 400ms cubic-bezier(0.23, 1, 0.32, 1); }
+      .boot.live:not(.failed) .boot-fail { animation: none; }
+      .boot.live.failed .boot-fail { max-height: none; margin-block: auto; visibility: visible; animation: learn-rise 400ms cubic-bezier(0.23, 1, 0.32, 1) both; }
       .boot[hidden] { display: none; }
-      .boot > svg { width: 152px; height: 152px; flex: none; margin-top: auto; }
-      /* Counter-clockwise like the game's ring; it parks after eight laps, when the message comes. */
-      .boot-car {
-        transform-box: view-box;
-        transform-origin: 100px 100px;
-        animation: boot-orbit 2.5s linear 8, boot-stop 1.8s cubic-bezier(0.23, 1, 0.32, 1) 20s forwards;
-      }
-      /* The game's ring signal: ticks on the island's rim light up as the car passes the road beside them (the delays are set per tick in the markup). */
-      .boot-sig { fill: none; stroke: #ffffff; stroke-width: 2.5; opacity: 0.16; animation: boot-sig 2.5s linear 8; animation-delay: var(--d); }
-      /* On failure the car drives on to a blockade and stops in front of it. */
-      .boot-block { opacity: 0; animation: boot-fade 300ms ease-out 19.7s forwards; }
-      /* Folded away while loading, so the ring sits centred (auto margins, which never cut off the top
-         on a short screen); it unfolds under the ring, which glides up. */
+      /* Folded away while loading (auto margins centre it, and never cut off the top on a short screen). */
       .boot-fail {
         flex: none;
         max-width: 34ch;
         max-height: 0;
-        margin-top: 0;
-        margin-bottom: auto;
+        margin-block: auto;
         overflow: hidden;
         opacity: 0;
         visibility: hidden;
         animation: boot-show 400ms cubic-bezier(0.23, 1, 0.32, 1) 20s forwards;
       }
-      .boot.failed .boot-car { animation: boot-stop 1.8s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
-      .boot.failed .boot-sig { animation: none; }
-      .boot.failed .boot-block { animation-delay: 0s; }
       .boot.failed .boot-fail { animation-delay: 0s; }
       .boot h1 { margin: 0 0 12px; font: 700 28px/1.15 ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif; letter-spacing: -0.01em; text-wrap: balance; }
       .boot p { margin: 0 0 24px; color: #99a2af; text-wrap: pretty; }
@@ -102,15 +96,10 @@
         text-decoration: none;
       }
       .boot a:focus-visible { outline: 2px solid #ffb703; outline-offset: 3px; }
-      @keyframes boot-orbit { to { transform: rotate(-360deg); } }
-      @keyframes boot-stop { from { transform: rotate(var(--from, 0deg)); } to { transform: rotate(var(--to, -135deg)); } }
-      @keyframes boot-sig { 0% { opacity: 1; } 30%, 100% { opacity: 0.16; } }
-      @keyframes boot-fade { to { opacity: 1; } }
-      @keyframes boot-show { from { visibility: visible; } to { max-height: 32rem; margin-top: 32px; opacity: 1; visibility: visible; } }
-      /* The very first visit (main.ts sets `learn`): in place of the circling car, the game in three steps while it
+      @keyframes boot-show { from { visibility: visible; transform: translateY(8px); } to { max-height: 32rem; opacity: 1; visibility: visible; transform: none; } }
+      /* The very first visit (main.ts sets `learn`): in place of the plain dark, the game in three steps while it
          loads (Leo, 22.10.2026). One loop of 10.8 s, three phases of 3.6 s: wait for a gap, tap, merge into a combo. */
       .boot.learn:not(.failed) { padding: calc(16px + env(safe-area-inset-top, 0px)) 24px calc(24px + env(safe-area-inset-bottom, 0px)); }
-      .boot.learn:not(.failed) > svg { display: none; }
       .boot-learn { display: none; flex: 1; flex-direction: column; width: 100%; max-width: 420px; min-height: 0; }
       .boot.learn:not(.failed) .boot-learn { display: flex; }
       .boot-learn > div:nth-child(2) > svg { width: 100%; max-width: 280px; max-height: 46vh; }
@@ -159,45 +148,19 @@
       .learn-late button:focus-visible { outline: 2px solid #ffb703; outline-offset: 3px; }
       @keyframes learn-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
       @media (prefers-reduced-motion: reduce) {
-        .boot-car, .boot-sig { animation: none; }
-        .boot-fail { animation-duration: 1ms; }
+        .boot-sky { display: none; }
+        .boot-fail, .boot.live.failed .boot-fail { animation-duration: 1ms; }
         .boot-learn * { animation: none !important; }
       }
     </style>
   </head>
   <body>
-    <div id="app" class="app" data-screen="ready" data-tabbar="shown">
+    <div id="app" class="app" data-screen="ready" data-tabbar="hidden">
       <canvas id="scene" class="scene" aria-label="Roundabout. Tap anywhere to send the front car." role="img"></canvas>
       <nav id="tabbar" class="tabbar" aria-label="Main"></nav>
       <div id="layers"></div>
     </div>
     <div id="boot" class="boot" role="status">
-      <svg viewBox="18 18 164 164" aria-hidden="true">
-        <circle cx="100" cy="100" r="62" fill="none" stroke="#171b21" stroke-width="34" />
-        <circle cx="100" cy="100" r="62" fill="none" stroke="#ffffff" stroke-opacity="0.14" stroke-width="1.5" stroke-dasharray="6 8" />
-        <circle cx="100" cy="100" r="44" fill="#10141a" stroke="#ffb703" stroke-opacity="0.28" stroke-width="2" />
-        <path class="boot-sig" d="M97.0 70.1 A30 30 0 0 1 103.0 70.1" style="--d: 0.000s" />
-        <path class="boot-sig" d="M112.3 72.7 A30 30 0 0 1 117.5 75.6" style="--d: 2.292s" />
-        <path class="boot-sig" d="M124.4 82.5 A30 30 0 0 1 127.3 87.7" style="--d: 2.083s" />
-        <path class="boot-sig" d="M129.9 97.0 A30 30 0 0 1 129.9 103.0" style="--d: 1.875s" />
-        <path class="boot-sig" d="M127.3 112.3 A30 30 0 0 1 124.4 117.5" style="--d: 1.667s" />
-        <path class="boot-sig" d="M117.5 124.4 A30 30 0 0 1 112.3 127.3" style="--d: 1.458s" />
-        <path class="boot-sig" d="M103.0 129.9 A30 30 0 0 1 97.0 129.9" style="--d: 1.250s" />
-        <path class="boot-sig" d="M87.7 127.3 A30 30 0 0 1 82.5 124.4" style="--d: 1.042s" />
-        <path class="boot-sig" d="M75.6 117.5 A30 30 0 0 1 72.7 112.3" style="--d: 0.833s" />
-        <path class="boot-sig" d="M70.1 103.0 A30 30 0 0 1 70.1 97.0" style="--d: 0.625s" />
-        <path class="boot-sig" d="M72.7 87.7 A30 30 0 0 1 75.6 82.5" style="--d: 0.417s" />
-        <path class="boot-sig" d="M82.5 75.6 A30 30 0 0 1 87.7 72.7" style="--d: 0.208s" />
-        <g class="boot-block" transform="rotate(205 100 100)">
-          <rect x="97" y="21" width="6" height="34" rx="1.5" fill="#e5484d" />
-          <rect x="97" y="26" width="6" height="5" fill="#ffffff" />
-          <rect x="97" y="38" width="6" height="5" fill="#ffffff" />
-        </g>
-        <g class="boot-car">
-          <rect x="89" y="32.5" width="22" height="12" rx="3.5" fill="#ffb703" />
-          <rect x="93" y="34.5" width="5" height="8" rx="1.5" fill="#0e1013" fill-opacity="0.55" />
-        </g>
-      </svg>
       <div class="boot-learn">
         <div style="display:flex;align-items:center;gap:8px;min-height:44px">
         <div style="flex:1;height:6px;border-radius:3px;background:rgba(118,118,128,0.24);overflow:hidden"><div style="height:100%;border-radius:3px;background:#ffb703;transform-origin:left center;transform:scaleX(0);animation:learn-seg1 10.8s linear infinite"></div></div>
@@ -311,7 +274,7 @@
         <a href="">Try again</a>
       </div>
     </div>
-    <noscript><style>.boot-car, .boot-sig { animation: none; } .boot-fail { animation-delay: 0s; }</style></noscript>
+    <noscript><style>.boot-fail { animation-delay: 0s; }</style></noscript>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

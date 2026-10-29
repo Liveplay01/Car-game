@@ -75,7 +75,7 @@ export default (S: Strings): Words<Strings> => ({
           elite: `达到精英 ${N}`,
           reborn: `声望 ${N} 次`,
           heatSeeker: `在热度 ${N} 下完成一个班次`,
-          gambler: `玩 ${N} 局赌场`,
+          gambler: `玩 ${N} 局游戏厅`,
           tourist: `通过 ${N} 个巡游站点`,
         } as Record<string, string>
       )[id] ?? ''

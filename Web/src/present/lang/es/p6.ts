@@ -17,7 +17,7 @@ export default (S: Strings): Words<Strings> => ({
     don: 'El Don',
     pitch: 'Elige un préstamo, siéntate a la mesa y detén la aguja en la zona verde. Cuanto más cerca del centro, mejor será el trato. A mayor préstamo, más rápida la aguja.',
     rules: (rate, cap, garnish) =>
-      `Devuélvelo antes del día fijado en la carta. Con retraso, la deuda crece un ${Math.round(rate * 100)} % diario (hasta +${Math.round(cap * 100)} %), el ${Math.round(garnish * 100)} % de cada turno va a la Familia, no aparecen furgones, criminales ni jefes, el casino cierra y tu nombre luce la insignia de la Mafia. Paga todo y desaparecerá. Cada préstamo saldado a tiempo abarata el siguiente y amplía la zona verde.`,
+      `Devuélvelo antes del día fijado en la carta. Con retraso, la deuda crece un ${Math.round(rate * 100)} % diario (hasta +${Math.round(cap * 100)} %), el ${Math.round(garnish * 100)} % de cada turno va a la Familia, no aparecen furgones, criminales ni jefes, la Arcade cierra y tu nombre luce la insignia de la Mafia. Paga todo y desaparecerá. Cada préstamo saldado a tiempo abarata el siguiente y amplía la zona verde.`,
     grade: (g) => ({ perfect: 'PERFECTO', good: 'BUENO', miss: 'FALLADO' })[g],
     gradeText: (g) => ({ perfect: 'En el punto exacto. El Don sonríe.', good: 'Un apretón de manos justo.', miss: 'El Don se encoge de hombros. Solo la oferta básica sigue en pie.' })[g],
     set: 'Tomar asiento',
@@ -50,7 +50,7 @@ export default (S: Strings): Words<Strings> => ({
     waiting: 'El Don observa',
     atStake: 'Si te retrasas',
     inForce: 'En vigor hasta que pagues',
-    consequences: (garnish) => ['Casino cerrado', 'Sin furgones, criminales ni jefes', `${Math.round(garnish * 100)} % de cada turno para la Familia`, 'Insignia de la Mafia en clasificaciones'],
+    consequences: (garnish) => ['Arcade cerrada', 'Sin furgones, criminales ni jefes', `${Math.round(garnish * 100)} % de cada turno para la Familia`, 'Insignia de la Mafia en clasificaciones'],
     overdue: 'VENCIDO',
     overdueText: 'La Familia cobra primero. Cada turno les paga a ellos.',
     paidStamp: 'PAGADO',
@@ -67,16 +67,16 @@ export default (S: Strings): Words<Strings> => ({
         taken: `Ha sido un placer. ${owed} antes del ${date}, ni un día más. No me hagas ir a buscarte.`,
         half: 'Ha pasado la mitad del tiempo. La Familia no olvida deudas ni amigos puntuales.',
         day: 'Queda un día. Sé buen amigo y salda la cuenta antes de que se vuelva personal.',
-        late: 'Se acabó el tiempo. Tu nombre está en la lista. La carretera nos paga primero y el casino está cerrado para ti.',
+        late: 'Se acabó el tiempo. Tu nombre está en la lista. La carretera nos paga primero y la Arcade está cerrada para ti.',
         later: 'La cifra crece cada día. Paga y volveremos a ser amigos.',
       })[kind],
     notices: {
-      late: 'LA FAMILIA ESPERA · tu préstamo está vencido · el casino está cerrado',
+      late: 'LA FAMILIA ESPERA · tu préstamo está vencido · la Arcade está cerrada',
       grace: 'LA FAMILIA TE DA UN DÍA MÁS · el préstamo venció mientras estabas fuera',
       writtenOff: 'LA FAMILIA DA LA DEUDA POR PERDIDA · la deuda desaparece, pero sus puertas cierran 14 días',
     },
     garnished: (cut, cleared) => (cleared ? `LA FAMILIA COBRÓ ${money(cut)} · deuda saldada, eres libre` : `LA FAMILIA RETUVO ${money(cut)} del pago`),
-    casinoShut: 'El casino está cerrado mientras la Familia espera su dinero.',
+    casinoShut: 'La Arcade está cerrada mientras la Familia espera su dinero.',
   },
 
   shop: {
@@ -127,7 +127,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.source.kind === 'tour') return `Parada del tour «${S.tours.name(item.source.tour as 'halloween' | 'winter')}». Vuelve cada año.`;
       if (item.source.kind === 'auction') return 'Solo como lote en la casa de subastas (Social → Club). Nuevos lotes periódicos.';
       if (item.source.kind === 'failures') return 'Encuentra todas las formas de perder un turno (Progreso → Museo → Fracasos). Solo estética.';
-      if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: solo lo da el casino (Tienda → Casino). Solo estética.`;
+      if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: solo lo da la Arcade (Tienda → Arcade). Solo estética.`;
       if (item.source.kind === 'fund') return 'Agradecimiento del antiguo fondo municipal. Ya no se otorga.';
       if (item.source.kind === 'bugReport')
         return item.source.reports === 1
@@ -147,7 +147,7 @@ export default (S: Strings): Words<Strings> => ({
     watchAd: (left) => `Ver anuncio · ${left} restantes`,
     skinsOn: (n, max) => `${n} de ${max} aspectos de coche activos · se mezclan en la carretera`,
     skinsFull: (max) => `${max} aspectos activos. Quita uno primero.`,
-    section: (i) => ['Cofres', 'Colección', 'Casino'][i],
+    section: (i) => ['Cofres', 'Colección', 'Arcade'][i],
     saleHeading: 'En venta',
     earnedHeading: 'Ganado, no comprado',
     pityTitle: 'Legendario garantizado',
@@ -379,7 +379,7 @@ export default (S: Strings): Words<Strings> => ({
     done: 'Completado',
     withTitle: (title) => `+ Título «${title}»`,
     eyebrow: 'Hazaña',
-    body: 'Una de las proezas más difíciles del juego. Ningún cofre, casino ni dinero pueden otorgártela: solo la carretera.',
+    body: 'Una de las proezas más difíciles del juego. Ningún cofre, Arcade ni dinero pueden otorgártela: solo la carretera.',
     rowGoal: 'Objetivo',
     rowNow: 'Tú',
     rowTitle: 'Título',
@@ -617,9 +617,6 @@ export default (S: Strings): Words<Strings> => ({
     levelComplete: (l) => `NIVEL ${l} SUPERADO`,
     newBest: 'NUEVO RÉCORD',
     points: (n) => `${n} puntos`,
-    fullCoverage: 'COBERTURA COMPLETA',
-    loss: (amount, escaped) => (escaped ? 'PÉRDIDA ' : 'COSTE DEL CHOQUE ') + '−' + money(amount),
-    covered: (amount) => `COBERTURA COMPLETA · ${money(amount)} pagados por el seguro`,
     nextLevel: (l) => `Toca para el nivel ${l}`,
     retryLevel: (l) => `Toca para reintentar el nivel ${l}`,
     stats(combo, tightFits, busted, transporters, time) {
@@ -645,7 +642,6 @@ export default (S: Strings): Words<Strings> => ({
     dispatch: 'AVISO',
     danger: 'PELIGRO',
     boom: '¡BUM!',
-    covered: 'CUBIERTO',
     combo: (n) => `COMBO ${n}`,
     cars: (n) => (n === 1 ? '1 coche' : `${n} coches`),
     wanted: (seconds) => `BUSCADO ${Math.ceil(Math.max(0, seconds))}`,

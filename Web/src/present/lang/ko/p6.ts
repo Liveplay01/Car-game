@@ -17,7 +17,7 @@ export default (S: Strings): Words<Strings> => ({
     don: '돈',
     pitch: '대출을 고르고 테이블에 앉아 초록 구간에서 포인터를 멈추세요. 한가운데에 가까울수록 조건이 좋아져요. 대출이 클수록 포인터는 빨라져요.',
     rules: (rate, cap, garnish) =>
-      `편지에 적힌 날까지 갚으세요. 늦으면 빚이 하루 ${Math.round(rate * 100)}%씩 늘어나고(최대 +${Math.round(cap * 100)}%), 매 시프트 보수의 ${Math.round(garnish * 100)}%가 패밀리에게 가고, 수송차, 범죄자, 보스는 보수가 나오지 않고, 카지노는 닫히고, 랭킹의 이름에 마피아 배지가 붙어요. 전부 갚으면 모두 사라져요. 기한 안에 갚은 대출마다 다음 대출이 유리해지고 초록 구간이 넓어져요.`,
+      `편지에 적힌 날까지 갚으세요. 늦으면 빚이 하루 ${Math.round(rate * 100)}%씩 늘어나고(최대 +${Math.round(cap * 100)}%), 매 시프트 보수의 ${Math.round(garnish * 100)}%가 패밀리에게 가고, 수송차, 범죄자, 보스는 보수가 나오지 않고, 아케이드는 닫히고, 랭킹의 이름에 마피아 배지가 붙어요. 전부 갚으면 모두 사라져요. 기한 안에 갚은 대출마다 다음 대출이 유리해지고 초록 구간이 넓어져요.`,
     grade: (g) => ({ perfect: '퍼펙트', good: '굿', miss: '실패' })[g],
     gradeText: (g) => ({ perfect: '딱 맞았어. 돈이 미소 짓는다.', good: '괜찮은 악수야.', miss: '돈이 어깨를 으쓱한다. 기본 제안은 그대로야.' })[g],
     set: '자리에 앉기',
@@ -50,7 +50,7 @@ export default (S: Strings): Words<Strings> => ({
     waiting: '돈이 지켜보고 있어요',
     atStake: '늦으면',
     inForce: '갚을 때까지 유지돼요',
-    consequences: (garnish) => ['카지노 폐쇄', '수송차, 범죄자, 보스 없음', `매 시프트 보수의 ${Math.round(garnish * 100)}%`, '랭킹에 마피아 배지'],
+    consequences: (garnish) => ['아케이드 폐쇄', '수송차, 범죄자, 보스 없음', `매 시프트 보수의 ${Math.round(garnish * 100)}%`, '랭킹에 마피아 배지'],
     overdue: '연체',
     overdueText: '패밀리가 추심해요. 모든 시프트가 그들에게 먼저 지급돼요.',
     paidStamp: '상환 완료',
@@ -67,16 +67,16 @@ export default (S: Strings): Words<Strings> => ({
         taken: `즐거웠어. ${owed}을(를) ${date}까지, 하루도 늦지 마. 찾아가게 만들지 마.`,
         half: '기한의 절반이 지났어. 패밀리는 빚을 잊지 않아. 일찍 갚은 친구도 잊지 않고.',
         day: '하루 남았어. 친구답게, 일이 커지기 전에 정리해 줘.',
-        late: '시간이 다 됐어. 네 이름이 명단에 올랐어. 이제 도로는 우리에게 먼저 내고, 카지노는 너에게 닫혔어.',
+        late: '시간이 다 됐어. 네 이름이 명단에 올랐어. 이제 도로는 우리에게 먼저 내고, 아케이드는 너에게 닫혔어.',
         later: '날마다 숫자가 늘어나. 갚으면 다시 친구야.',
       })[kind],
     notices: {
-      late: '패밀리가 기다려요 · 대출이 연체됐어요 · 카지노 폐쇄',
+      late: '패밀리가 기다려요 · 대출이 연체됐어요 · 아케이드 폐쇄',
       grace: '패밀리가 하루 더 기다려 줘요 · 자리를 비운 사이에 기한이 됐어요',
       writtenOff: '패밀리가 나를 포기했어요 · 빚은 사라졌지만 14일간 문이 닫혀요',
     },
     garnished: (cut, cleared) => (cleared ? `패밀리가 ${money(cut)} 가져갔어요 · 상환 완료, 자유예요` : `패밀리가 보수에서 ${money(cut)} 가져갔어요`),
-    casinoShut: '패밀리가 돈을 기다리는 동안 카지노는 닫혀 있어요.',
+    casinoShut: '패밀리가 돈을 기다리는 동안 아케이드는 닫혀 있어요.',
   },
 
   shop: {
@@ -127,7 +127,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.source.kind === 'tour') return `투어 “${S.tours.name(item.source.tour as 'halloween' | 'winter')}”의 정거장 하나. 해마다 돌아와요.`;
       if (item.source.kind === 'auction') return '경매장(소셜 → 클럽)의 로트로만. 며칠마다 새 로트가 나와요.';
       if (item.source.kind === 'failures') return '시프트에서 지는 모든 방식을 찾으세요(진행 → 박물관 → 실패). 겉모습만.';
-      if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: 카지노만 줘요(상점 → 카지노). 겉모습만.`;
+      if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: 아케이드만 줘요(상점 → 아케이드). 겉모습만.`;
       if (item.source.kind === 'fund') return '게임 펀드가 대신하게 된 시티 펀드의 감사 선물이에요. 더는 지급되지 않아요.';
       if (item.source.kind === 'bugReport')
         return item.source.reports === 1
@@ -147,7 +147,7 @@ export default (S: Strings): Words<Strings> => ({
     watchAd: (left) => `광고 보기 · ${left}번 남음`,
     skinsOn: (n, max) => `차 스킨 ${max}개 중 ${n}개 켜짐 · 도로에서 섞여 나와요`,
     skinsFull: (max) => `차 스킨 ${max}개가 켜져 있어요. 먼저 하나를 끄세요.`,
-    section: (i) => ['상자', '컬렉션', '카지노'][i],
+    section: (i) => ['상자', '컬렉션', '아케이드'][i],
     saleHeading: '판매 중',
     earnedHeading: '파는 것이 아니라 얻는 것',
     pityTitle: '레전더리 보장',
@@ -379,7 +379,7 @@ export default (S: Strings): Words<Strings> => ({
     done: '완료',
     withTitle: (title) => `+ 칭호 “${title}”`,
     eyebrow: '위업',
-    body: '게임에서 가장 어려운 업적 중 하나예요. 상자도, 카지노도, 돈도 이걸 줄 수 없어요. 오직 도로만 줄 수 있어요.',
+    body: '게임에서 가장 어려운 업적 중 하나예요. 상자도, 아케이드도, 돈도 이걸 줄 수 없어요. 오직 도로만 줄 수 있어요.',
     rowGoal: '목표',
     rowNow: '나',
     rowTitle: '칭호',
@@ -617,9 +617,6 @@ export default (S: Strings): Words<Strings> => ({
     levelComplete: (l) => `레벨 ${l} 클리어`,
     newBest: '새 최고 기록',
     points: (n) => `${n}점`,
-    fullCoverage: '전액 보장',
-    loss: (amount, escaped) => (escaped ? '손실 ' : '충돌 비용 ') + '−' + money(amount),
-    covered: (amount) => `전액 보장 · 보험이 ${money(amount)} 지급`,
     nextLevel: (l) => `탭해서 레벨 ${l}로`,
     retryLevel: (l) => `탭해서 레벨 ${l} 다시 도전`,
     stats(combo, tightFits, busted, transporters, time) {
@@ -645,7 +642,6 @@ export default (S: Strings): Words<Strings> => ({
     dispatch: '출동',
     danger: '위험',
     boom: '쾅!',
-    covered: '보장',
     combo: (n) => `콤보 ${n}`,
     cars: (n) => `${n}대`,
     wanted: (seconds) => `수배 ${Math.ceil(Math.max(0, seconds))}`,

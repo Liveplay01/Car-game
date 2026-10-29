@@ -59,6 +59,16 @@ async function start(page: Page, query: string, boards: Boards = () => [], api: 
   await page.goto(`/?demo&${query}`);
   // The probe comes right after the game, behind one more import: wait for both.
   await page.waitForFunction(() => (window as unknown as { __probe?: object }).__probe !== undefined);
+  // The way in comes down from the clouds first (`BootDescent`); the probe lands it at once.
+  await page.waitForFunction(
+    () => {
+      const w = window as unknown as { __probe: Probe; __game: { game: { booting: boolean } } };
+      w.__probe.wait(0);
+      return !w.__game.game.booting;
+    },
+    null,
+    { polling: 100 },
+  );
   return { sent, errors };
 }
 
@@ -99,10 +109,10 @@ test('the casino skins drive on the road without errors', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test('Ranks: the Casino board shows once the Casino is reached, with its money', async ({ page }) => {
+test('Ranks: the Arcade board shows once the Arcade is reached, with its money', async ({ page }) => {
   const { errors } = await start(page, 'level=12', (board) => (board === 'casino' ? [{ name: 'High Roller', score: 2_500_000 }] : []));
   const tabs = await openRanks(page);
-  await tap(tabs.getByRole('button', { name: 'Casino' }));
+  await tap(tabs.getByRole('button', { name: 'Arcade' }));
   const row = page.locator('.board-row', { hasText: 'High Roller' });
   await expect(row).toBeVisible();
   await expect(row.locator('.board-value')).toHaveText(/2,500,000/);
@@ -123,10 +133,10 @@ test('Ranks: My crew only is a switch under the boards, and an empty crew board 
   expect(errors).toEqual([]);
 });
 
-test('Ranks: the Casino board can be read before the Casino is reached', async ({ page }) => {
+test('Ranks: the Arcade board can be read before the Arcade is reached', async ({ page }) => {
   await start(page, 'level=5');
   const tabs = await openRanks(page);
-  await expect(tabs.getByRole('button')).toHaveText(['Shift level', 'Unlimited', 'Daily', 'Casino']);
+  await expect(tabs.getByRole('button')).toHaveText(['Shift level', 'Unlimited', 'Daily', 'Arcade']);
 });
 
 test('Ranks: the casino profit goes to the Casino board on the next save', async ({ page }) => {

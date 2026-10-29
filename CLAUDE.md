@@ -69,7 +69,7 @@ App-Store-Arbeit mehr vorschlagen.
 - **Animierte Icons (Leo, 20.10.2026):** Jedes DOM-Icon aus `ui/animatedIcons.ts` (`animatedIcon('<id>')`), nie nackte Pfade oder Emoji. Fehlendes nach `Web/ICONS.md` zeichnen. → [DECISIONS.md](DECISIONS.md)
 - **Fahrzeugfarben sind Spielinformation** und für die UI tabu; Fahrzeugtypen sind über
   Form, Farbe und Symbol erkennbar.
-- **Casino statt Store (Leo, 28.09.2026):** Der Shop hat Chests · Collection · Casino (Crash, Slots,
+- **Casino statt Store (Leo, 28.09.2026):** Seit 29.10.2026 heißt es **sichtbar „Arcade“** (alle 8 Sprachen, Patch Notes, Ranglistentitel „Arcade profit“), damit es nicht wie ein echtes Casino wirkt; Code, IDs, Speicherfelder, Analytics und Dokumente sagen weiter `casino`/Casino. Der Shop hat Chests · Collection · Casino (Crash, Slots,
   Skin-Upgrade, Doppelt oder nichts; `core/casino.ts`). Der Store ist entfernt. **Solange das Casino
   existiert, gibt es keine kaufbare Währung und keine Truhen gegen Echtgeld.** Chancen bleiben sichtbar
   und ehrlich (LOOT.md, Casino); `npm run sim:casino` prüft die Rückzahlquoten.

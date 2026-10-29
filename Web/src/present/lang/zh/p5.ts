@@ -3,7 +3,7 @@ import type { Words } from '../../i18n';
 import { Fmt, money, percent } from '../../format';
 import { baseConfig, detourShareAt, towSpeedupAt } from '../../../core/config';
 
-/** 简体中文 第5部分：赌场、街道建造、广告、俱乐部、排行、好友、大厅、对战、外壳。 */
+/** 简体中文 第5部分：游戏厅、街道建造、广告、俱乐部、排行、好友、大厅、对战、外壳。 */
 export default (S: Strings): Words<Strings> => ({
   casino: {
     game: (g) => ({ crash: '崩盘', slots: '老虎机', upgrade: '升级', roulette: '轮盘', scratch: '刮刮卡' })[g],
@@ -71,7 +71,7 @@ export default (S: Strings): Words<Strings> => ({
     refunded: (m) => `一次行驶被中断 · 退还 ${m}`,
     cashedOnLeave: (m) => `离开时已兑现 · +${m}`,
     feat: (f) =>
-      ({ bigWin: '你的第一次大奖', megaWin: '你的第一次超级大奖', flipChain: `硬币连赢 ${baseConfig.casinoFlipChain} 次`, tycoon: `在赌场赢得 ${money(Fmt.number(baseConfig.casinoTycoon))}` })[f],
+      ({ bigWin: '你的第一次大奖', megaWin: '你的第一次超级大奖', flipChain: `硬币连赢 ${baseConfig.casinoFlipChain} 次`, tycoon: `在游戏厅赢得 ${money(Fmt.number(baseConfig.casinoTycoon))}` })[f],
     honour: (feat, item) => `${feat} · 解锁${item}皮肤`,
     detail: {
       crash: [
@@ -361,7 +361,7 @@ export default (S: Strings): Words<Strings> => ({
       unlimited: { label: '无限', empty: '创下一个无限模式纪录，来这里当第一名。' },
       daily: { label: '每日', empty: '完成今天的每日班次，来这里当第一名。' },
       rush: { label: '首领连战', empty: '通关一次首领连战，留下第一个用时。' },
-      casino: { label: '赌场', empty: '在赌场赢的比押的多，来这里当第一名。' },
+      casino: { label: '游戏厅', empty: '在游戏厅赢的比押的多，来这里当第一名。' },
     },
     level: (n) => `${n} 级`,
     starLabel: (rank) => `声望段位 ${rank}。声望是怎么回事`,
@@ -616,6 +616,8 @@ export default (S: Strings): Words<Strings> => ({
     bootTitle: '环岛没有启动。',
     bootBody: '有什么阻止了游戏加载。请检查网络后再试一次；你的进度在这台设备上是安全的。',
     bootRetry: '再试一次',
+    bootOfflineTitle: '没有网络连接。',
+    bootOfflineBody: '没有网络，游戏无法完成加载。请连接网络后再试一次；你的进度在这台设备上是安全的。',
     /** The first visit's boot screen (index.html): the game in three steps while it loads. */
     learn: {
       waitTitle: '等待空隙',

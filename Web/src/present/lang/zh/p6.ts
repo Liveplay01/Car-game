@@ -17,7 +17,7 @@ export default (S: Strings): Words<Strings> => ({
     don: '教父',
     pitch: '选一笔贷款，坐到桌边，让指针停在绿色区域。越靠近正中间，条件越好。贷款越大，指针越快。',
     rules: (rate, cap, garnish) =>
-      `请在信上写的日期之前还清。逾期的话，债务每天增长 ${Math.round(rate * 100)}%(最多 +${Math.round(cap * 100)}%),每个班次报酬的 ${Math.round(garnish * 100)}% 归家族，运钞车、罪犯和首领不再发奖励，赌场关闭，你的名字在榜单上会带黑手党徽章。还清之后，这一切都会消失。每一笔按时还清的贷款，都会让下一笔更划算，绿色区域也更宽。`,
+      `请在信上写的日期之前还清。逾期的话，债务每天增长 ${Math.round(rate * 100)}%(最多 +${Math.round(cap * 100)}%),每个班次报酬的 ${Math.round(garnish * 100)}% 归家族，运钞车、罪犯和首领不再发奖励，游戏厅关闭，你的名字在榜单上会带黑手党徽章。还清之后，这一切都会消失。每一笔按时还清的贷款，都会让下一笔更划算，绿色区域也更宽。`,
     grade: (g) => ({ perfect: '完美', good: '不错', miss: '失手' })[g],
     gradeText: (g) => ({ perfect: '分毫不差。教父笑了。', good: '一次公平的握手。', miss: '教父耸了耸肩。基本条件依然有效。' })[g],
     set: '入座',
@@ -50,7 +50,7 @@ export default (S: Strings): Words<Strings> => ({
     waiting: '教父在看着',
     atStake: '如果你逾期',
     inForce: '直到还清才会解除',
-    consequences: (garnish) => ['赌场关闭', '没有运钞车、罪犯或首领', `每个班次报酬的 ${Math.round(garnish * 100)}%`, '榜单上带黑手党徽章'],
+    consequences: (garnish) => ['游戏厅关闭', '没有运钞车、罪犯或首领', `每个班次报酬的 ${Math.round(garnish * 100)}%`, '榜单上带黑手党徽章'],
     overdue: '已逾期',
     overdueText: '家族来收账了。每个班次都先付给他们。',
     paidStamp: '已还清',
@@ -67,16 +67,16 @@ export default (S: Strings): Words<Strings> => ({
         taken: `合作愉快。${owed},${date} 之前，一天都别晚。别逼我去找你。`,
         half: '你的时间已经过半。家族不会忘记债务，也不会忘记早早还钱的朋友。',
         day: '只剩一天了。做个朋友，在事情变得难看之前把账结清。',
-        late: '时间到了。你的名字已经上了名单。现在路上的钱先付给我们，赌场对你关门了。',
+        late: '时间到了。你的名字已经上了名单。现在路上的钱先付给我们，游戏厅对你关门了。',
         later: '每天，数字都在涨。还钱，我们就还是朋友。',
       })[kind],
     notices: {
-      late: '家族在等 · 你的贷款已逾期 · 赌场关闭',
+      late: '家族在等 · 你的贷款已逾期 · 游戏厅关闭',
       grace: '家族再宽限你一天 · 你不在时贷款到期了',
       writtenOff: '家族把你勾销了 · 债务没了，但他们的大门 14 天不会为你打开',
     },
     garnished: (cut, cleared) => (cleared ? `家族拿走了 ${money(cut)} · 债务还清，你自由了` : `家族从报酬里拿走了 ${money(cut)}`),
-    casinoShut: '家族在等钱的时候，赌场不开门。',
+    casinoShut: '家族在等钱的时候，游戏厅不开门。',
   },
 
   shop: {
@@ -127,7 +127,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.source.kind === 'tour') return `巡游“${S.tours.name(item.source.tour as 'halloween' | 'winter')}”的一个站点。每年都会回来。`;
       if (item.source.kind === 'auction') return '只作为拍卖行(社交 → 俱乐部)的拍品出现。每隔几天换一件新拍品。';
       if (item.source.kind === 'failures') return '找齐输掉班次的每一种方式(进度 → 博物馆 → 失败)。只改变外观。';
-      if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}:只有赌场会授予(商店 → 赌场)。只改变外观。`;
+      if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}:只有游戏厅会授予(商店 → 游戏厅)。只改变外观。`;
       if (item.source.kind === 'fund') return '来自城市基金的感谢礼，它已被游戏基金取代。不再发放。';
       if (item.source.kind === 'bugReport')
         return item.source.reports === 1
@@ -147,7 +147,7 @@ export default (S: Strings): Words<Strings> => ({
     watchAd: (left) => `看广告 · 还剩 ${left} 次`,
     skinsOn: (n, max) => `${max} 款车皮肤中开启 ${n} 款 · 它们会在路上混出现`,
     skinsFull: (max) => `已开启 ${max} 款车皮肤。请先关掉一款。`,
-    section: (i) => ['宝箱', '收藏', '赌场'][i],
+    section: (i) => ['宝箱', '收藏', '游戏厅'][i],
     saleHeading: '在售',
     earnedHeading: '靠挣得，而非出售',
     pityTitle: '传奇保底',
@@ -379,7 +379,7 @@ export default (S: Strings): Words<Strings> => ({
     done: '已完成',
     withTitle: (title) => `+ 称号“${title}”`,
     eyebrow: '壮举',
-    body: '游戏里最难的壮举之一。宝箱、赌场和金钱都给不了你这个，只有道路可以。',
+    body: '游戏里最难的壮举之一。宝箱、游戏厅和金钱都给不了你这个，只有道路可以。',
     rowGoal: '目标',
     rowNow: '你',
     rowTitle: '称号',
@@ -617,9 +617,6 @@ export default (S: Strings): Words<Strings> => ({
     levelComplete: (l) => `${l} 级通关`,
     newBest: '新纪录',
     points: (n) => `${n} 分`,
-    fullCoverage: '全额承保',
-    loss: (amount, escaped) => (escaped ? '损失 ' : '撞车费用 ') + '−' + money(amount),
-    covered: (amount) => `全额承保 · 保险赔付 ${money(amount)}`,
     nextLevel: (l) => `点按进入 ${l} 级`,
     retryLevel: (l) => `点按重试 ${l} 级`,
     stats(combo, tightFits, busted, transporters, time) {
@@ -645,7 +642,6 @@ export default (S: Strings): Words<Strings> => ({
     dispatch: '出警',
     danger: '危险',
     boom: '轰！',
-    covered: '已承保',
     combo: (n) => `连击 ${n}`,
     cars: (n) => `${n} 辆车`,
     wanted: (seconds) => `通缉 ${Math.ceil(Math.max(0, seconds))}`,

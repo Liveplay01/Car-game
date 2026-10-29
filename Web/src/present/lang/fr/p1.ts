@@ -59,7 +59,7 @@ export default (_s: Strings): Words<Strings> => ({
       ],
     },
     casino: {
-      title: 'Casino',
+      title: 'Arcade',
       line: 'Facultatif · argent de jeu uniquement',
       body: [
         'Crash, Machines à sous, Amélioration de skin et Quitte ou double, avec l’argent gagné sur la route. Rien ne coûte d’argent réel.',
@@ -81,7 +81,7 @@ export default (_s: Strings): Words<Strings> => ({
       line: 'Prête de l’argent, mais reprend tout',
       body: [
         'Après votre premier boss, la Famille vous prête des fonds. Concluez l’accord sur la jauge : touchez pour l’arrêter en zone verte, le centre étant Parfait.',
-        'Remboursez à temps et le prochain prêt sera plus avantageux. En cas de retard, la Famille prélève une part de chaque service et le casino reste fermé jusqu’au solde.',
+        'Remboursez à temps et le prochain prêt sera plus avantageux. En cas de retard, la Famille prélève une part de chaque service et l’Arcade reste fermée jusqu’au solde.',
       ],
     },
     crew: {

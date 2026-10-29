@@ -5,6 +5,9 @@ import { join } from 'node:path';
 import { changelogFile } from './src/present/patchNotes.ts';
 import { siteFiles } from './src/present/siteData.ts';
 import { LEGAL_DOCS, type LegalDoc, GAME_NAME, missingLegal } from './src/present/legal.ts';
+import { skyLayers } from './src/present/sky.ts';
+import { DescentTuning } from './src/present/bootDescent.ts';
+import { css } from './src/present/theme.ts';
 
 /** The sound effects, the music stems, the drift car's and the traffic's loops, so the game sounds right offline too. */
 function audioFiles(): string[] {
@@ -272,9 +275,32 @@ function siteDataApi(): Plugin {
   };
 }
 
+/**
+ * The sky of the way in, drawn into `#boot` at the descent's first height (`present/sky.ts`): the page opens on
+ * the same clouds the canvas draws in its first frame, before any script runs, and the canvas takes over in place.
+ */
+function bootSky(): Plugin {
+  const n = (x: number): string => String(+x.toFixed(4));
+  const circle = (c: { x: number; y: number }, r: number): string => `M${n(c.x - r)} ${n(c.y)}a${n(r)} ${n(r)} 0 1 0 ${n(2 * r)} 0a${n(r)} ${n(r)} 0 1 0 ${n(-2 * r)} 0`;
+  const svg = (): string => {
+    // One path per layer: overlapping puffs merge at one opacity, as the canvas fills its dots.
+    const paths = skyLayers(DescentTuning.height, 0).map((l) => `<path fill="${css(l.token, l.opacity)}" d="${l.centres.map((c, i) => circle(c, l.radii[i])).join('')}"/>`);
+    return `<svg class="boot-sky" viewBox="-0.5 -0.5 1 1" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${paths.join('')}</svg>`;
+  };
+  return {
+    name: 'car-game-boot-sky',
+    transformIndexHtml(html) {
+      const tag = '<div id="boot" class="boot" role="status">';
+      if (!html.includes(tag)) throw new Error(`index.html: ${tag} not found for the boot sky`);
+      return html.replace(tag, `${tag}
+      ${svg()}`);
+    },
+  };
+}
+
 export default defineConfig({
   // The legal pages first: the service worker precaches everything the bundle holds by then.
-  plugins: [legalPages(), changelogApi(), siteDataApi(), serviceWorker()],
+  plugins: [bootSky(), legalPages(), changelogApi(), siteDataApi(), serviceWorker()],
   build: {
     target: 'es2022',
     assetsInlineLimit: 0,

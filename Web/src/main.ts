@@ -41,15 +41,19 @@ const layers = document.getElementById('layers')!;
 
 // The boot screen (index.html) turns into its "did not start" message at once if the start throws.
 const boot = document.getElementById('boot');
+let broken = false;
 const bootFailed = (): void => {
-  const car = boot?.querySelector<SVGGElement>('.boot-car');
-  if (!boot || !car || boot.classList.contains('failed')) return;
-  // Drive on from where the car is, a lap further if it is already past the blockade.
-  const { b, a } = new DOMMatrix(getComputedStyle(car).transform);
-  const done = (-Math.atan2(b, a) * 180) / Math.PI;
-  const from = done < 0 ? done + 360 : done;
-  car.style.setProperty('--from', `${-from}deg`);
-  car.style.setProperty('--to', from < 120 ? '-135deg' : '-495deg');
+  if (!boot || broken) return;
+  broken = true;
+  if (!navigator.onLine && failTitle && failBody) {
+    failTitle.textContent = S.shell.bootOfflineTitle;
+    failBody.textContent = S.shell.bootOfflineBody;
+  }
+  // Already over the real map: it still comes down, and the message rises over a skeleton of the chrome.
+  if (boot.classList.contains('live')) {
+    void shell.game.bootFail().then(() => boot.classList.add('failed'));
+    return;
+  }
   boot.classList.add('failed');
 };
 // A browser refusing something on the way (autoplay, a permission, an aborted fetch) is no failed start.
@@ -133,8 +137,8 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has('demo')) {
 // before the game reads it.
 if (inPortal) await startCrazyGames();
 
-// `npm run dev` only, to look at the boot screen: `?boot=wait` keeps it (its message comes after
-// 20 s, as on a start that hangs), `?boot=fail` shows the message at once, `?boot=learn` keeps the first visit's one.
+// `npm run dev` only, to look at the boot screen: `?boot=wait` keeps it (hovering over the map, as on a start that
+// hangs), `?boot=fail` lands on the failed start, `?boot=learn` keeps the first visit's lesson.
 const bootDemo = import.meta.env.DEV ? new URLSearchParams(location.search).get('boot') : null;
 
 // The very first visit (no save at all) learns the one move while the game loads (Leo, 22.10.2026).
@@ -161,14 +165,17 @@ if (boot && learn && firstVisit) {
   boot.classList.add('learn');
 }
 
-// The heading face (Overpass, `ui/shell.css`) is measured and drawn by the canvas: give it a moment to arrive so the
-// first frame is laid out with it. Slow or offline-first-visit: the game starts with the stand-in and measures again
-// when the font is there (it is bundled, so it does arrive).
+// The heading face (Overpass, `ui/shell.css`) is measured and drawn by the canvas. Nothing waits for it: the way in
+// shows no text, so the game starts with the stand-in and measures again when the font is there (it is bundled).
 document.fonts?.addEventListener('loadingdone', forgetMeasures);
-await Promise.race([document.fonts?.load('italic 900 30px "Overpass Variable"'), new Promise((resolve) => window.setTimeout(resolve, 1500))]).catch(() => undefined);
+document.fonts?.load('italic 900 30px "Overpass Variable"').catch(() => undefined);
 
 startTuning();
 const shell = new Shell(app, canvas, layers);
+// The boot screen clears off the scene, which comes down from the clouds onto the player's map (Leo, 29.10.2026).
+// In the frame the canvas first draws (its loop asked first), so the sky in index.html and the canvas's own never
+// show together or not at all. The first visit's lesson stays in front; the scene hovers behind it.
+if (!firstVisit) requestAnimationFrame(() => boot?.classList.add('live'));
 // Ads and visit statistics load while the boot screen stands too, so nothing arrives once the game shows (Leo, 22.10.2026).
 startAds();
 startAnalytics();
@@ -187,8 +194,9 @@ gameLoaded();
 window.removeEventListener('error', bootErrored);
 window.removeEventListener('unhandledrejection', bootRejected);
 if (bootDemo === 'fail') bootFailed();
+else if (bootDemo !== 'wait') shell.game.bootLand();
 // Hidden, not removed: should the game stop later, the shell shows it again with a reload (`Shell.stalled`).
-if (boot && (bootDemo === null || bootDemo === 'learn')) {
+if (boot && !broken && (bootDemo === null || bootDemo === 'learn')) {
   boot.classList.add('gone');
   window.setTimeout(() => (boot.hidden = true), 450);
 }

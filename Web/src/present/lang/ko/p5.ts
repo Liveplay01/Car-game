@@ -3,7 +3,7 @@ import type { Words } from '../../i18n';
 import { Fmt, money, percent } from '../../format';
 import { baseConfig, detourShareAt, towSpeedupAt } from '../../../core/config';
 
-/** 한국어 파트 5: 카지노, 스트리트 빌더, 광고, 클럽, 랭크, 친구, 로비, 대전, 셸. */
+/** 한국어 파트 5: 아케이드, 스트리트 빌더, 광고, 클럽, 랭크, 친구, 로비, 대전, 셸. */
 export default (S: Strings): Words<Strings> => ({
   casino: {
     game: (g) => ({ crash: '크래시', slots: '슬롯', upgrade: '업그레이드', roulette: '룰렛', scratch: '스크래치' })[g],
@@ -71,7 +71,7 @@ export default (S: Strings): Words<Strings> => ({
     refunded: (m) => `주행이 중단됐어요 · ${m} 환불`,
     cashedOnLeave: (m) => `나가면서 정산 · +${m}`,
     feat: (f) =>
-      ({ bigWin: '첫 빅 윈', megaWin: '첫 메가 윈', flipChain: `동전 던지기 ${baseConfig.casinoFlipChain}연승`, tycoon: `카지노에서 ${money(Fmt.number(baseConfig.casinoTycoon))} 획득` })[f],
+      ({ bigWin: '첫 빅 윈', megaWin: '첫 메가 윈', flipChain: `동전 던지기 ${baseConfig.casinoFlipChain}연승`, tycoon: `아케이드에서 ${money(Fmt.number(baseConfig.casinoTycoon))} 획득` })[f],
     honour: (feat, item) => `${feat} · ${item} 스킨 해금`,
     detail: {
       crash: [
@@ -361,7 +361,7 @@ export default (S: Strings): Words<Strings> => ({
       unlimited: { label: '언리미티드', empty: '언리미티드 기록을 세워서 여기서 첫 번째가 되세요.' },
       daily: { label: '일일', empty: '오늘의 일일 시프트를 클리어해서 여기서 첫 번째가 되세요.' },
       rush: { label: '보스 러시', empty: '보스 러시를 클리어해서 첫 기록을 세우세요.' },
-      casino: { label: '카지노', empty: '카지노에서 건 돈보다 더 따서 여기서 첫 번째가 되세요.' },
+      casino: { label: '아케이드', empty: '아케이드에서 건 돈보다 더 따서 여기서 첫 번째가 되세요.' },
     },
     level: (n) => `레벨 ${n}`,
     starLabel: (rank) => `프레스티지 랭크 ${rank}. 프레스티지 설명`,
@@ -616,6 +616,8 @@ export default (S: Strings): Words<Strings> => ({
     bootTitle: '로터리가 시작되지 않았어요.',
     bootBody: '게임을 불러오지 못했어요. 연결을 확인하고 다시 시도하세요. 진행 상황은 이 기기에서 안전해요.',
     bootRetry: '다시 시도',
+    bootOfflineTitle: '연결이 없어요.',
+    bootOfflineBody: '인터넷이 없어 게임을 끝까지 불러오지 못했어요. 연결한 뒤 다시 시도하세요. 진행 상황은 이 기기에서 안전해요.',
     /** The first visit's boot screen (index.html): the game in three steps while it loads. */
     learn: {
       waitTitle: '빈틈을 기다려요',

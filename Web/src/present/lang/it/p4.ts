@@ -75,7 +75,7 @@ export default (S: Strings): Words<Strings> => ({
           elite: `Raggiungi Élite ${N}`,
           reborn: `Fai Prestigio ${N} volte`,
           heatSeeker: `Supera un turno a Intensità ${N}`,
-          gambler: `Gioca ${N} round al casinò`,
+          gambler: `Gioca ${N} round all’Arcade`,
           tourist: `Supera ${N} ${n === 1 ? 'tappa di tour' : 'tappe di tour'}`,
         } as Record<string, string>
       )[id] ?? ''

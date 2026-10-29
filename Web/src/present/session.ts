@@ -42,7 +42,8 @@ import { NoticeQueue, TipQueue, type Tip } from './notices';
 import { bookShift } from './booking';
 import { type Screen, type Tab, type SwipeMode, SWIPE_MODES, type ScreenAction, type ProgressSection, type ShopSection, type SocialSection, PROGRESS, SOCIAL, TAB_BAR, BUILD_PAGES, barTab, screenTab, showsTabBar, BuildLayout } from './flow';
 import { SocialPage, SocialState } from './social';
-import { CameraRig, perspectiveOf, addRecede } from './perspective';
+import { CameraRig, perspectiveOf, addRecede, perspectiveCamera } from './perspective';
+import { BootDescent } from './bootDescent';
 import { CameraFx, CameraFxTuning, tensionOf, zoomAbout } from './cameraFx';
 import { PhotoCard } from './photo';
 import { TransitionTracker, ModePan } from './transitions';
@@ -286,6 +287,7 @@ export class GameSession {
   private rim = new RingSignals();
   private cityPulse = new CityPulse();
   private cameraRig = new CameraRig();
+  private boot: BootDescent | null = null;
   private recede = 0;
   isInterrupted = false;
   countIn = 0;
@@ -1133,7 +1135,7 @@ export class GameSession {
     // A challenge or trial never carries traffic over: it starts fresh, the same for everyone.
     if (continuing && !special) this.world = this.world.nextShift(cfg, s);
     else {
-      this.world = new World(cfg, s, { startsOnFirstTap: true });
+      this.world = new World(cfg, s, { startsOnFirstTap: true, arriving: this.booting });
       this.resetScene();
     }
     this.pendingSummary = null;
@@ -1321,7 +1323,32 @@ export class GameSession {
    * phone a first tap that lands in a menu loses the player): until then the screen is the game and nothing else.
    */
   get showsChrome(): boolean {
-    return showsTabBar(this.screen) && this.save.tutorialDone;
+    return !this.booting && showsTabBar(this.screen) && this.save.tutorialDone;
+  }
+
+  // MARK: Loading
+
+  /** The way in while the game loads (`BootDescent`): from above the clouds onto this map, no cars, no UI. */
+  descend(): void {
+    this.boot = new BootDescent(this.reduceMotion);
+    this.world = new World(this.world.config, this.world.seed, { startsOnFirstTap: true, arriving: true });
+  }
+
+  /** Loaded: the eye comes down, then the UI fades in and the cars roll onto the ring. */
+  bootLand(): void {
+    this.boot?.land();
+  }
+
+  /** Not loaded: the eye still comes down, onto a skeleton of the chrome. Resolves once it is down. */
+  bootFail(): Promise<void> {
+    if (!this.boot) return Promise.resolve();
+    this.boot.fail();
+    return this.boot.landed;
+  }
+
+  /** Still on the way in: the world holds, taps do nothing, no chrome. */
+  get booting(): boolean {
+    return this.boot !== null && !this.boot.revealed;
   }
 
   // MARK: Casino (present/casinoFlow.ts)
@@ -1563,14 +1590,16 @@ export class GameSession {
       revive.age += realDelta;
       if (revive.age >= this.config.reviveBreath + this.config.reviveWindow) this.declineRevive();
     }
-    const runs = !this.isInterrupted && this.countIn === 0 && !(this.revive && this.revive.age >= this.config.reviveBreath);
+    this.boot?.step(realDelta);
+    const booting = this.booting;
+    const runs = !booting && !this.isInterrupted && this.countIn === 0 && !(this.revive && this.revive.age >= this.config.reviveBreath);
     if (runs) {
       this.accumulator += simDelta;
       this.sceneTime += simDelta;
-    }
+    } else if (booting) this.sceneTime += simDelta;
     this.keepDailyInStep();
     this.keepMafiaInStep();
-    for (const a of actions) this.handle(a, simDelta);
+    if (!booting) for (const a of actions) this.handle(a, simDelta);
     this.frameDelta = realDelta;
     this.easeTopHover(realDelta);
     this.easeIntro(realDelta);
@@ -2886,7 +2915,6 @@ export class GameSession {
           }
           if (e.penalty > 0) this.addPopup({ k: 'penalty', n: e.penalty }, e.point);
           if (e.cost > 0) this.addPopup({ k: 'cost', n: e.cost }, add(e.point, v(0, 18)));
-          else if (e.covered > 0) this.addPopup({ k: 'covered' }, add(e.point, v(0, 18)));
           break;
         case 'comboChanged':
           if (e.isTierUp) {
@@ -3602,16 +3630,19 @@ export class GameSession {
       this.addRim(list, world, rm);
       if (!thin) HUD.bloom(list, lit);
     }
-    this.effects.addWrecks(list, world, alpha, !rm);
-    SceneBuilder.addShadows(list, world, alpha);
-    SceneBuilder.addVehicles(list, world, alpha, career.carSkins, career.policeSkin, rm ? null : world.time, rm ? null : world.time, this.lamps, null, this.regular);
-    SceneBuilder.addTowTrucks(list, world);
-    this.driftFx.addAir(list);
-    if (night) {
-      NightLayer.addVehicleLights(list, world, alpha, this.lamps, rm ? null : world.time);
+    // While loading the map is empty: the cars only roll in once the game is there (`BootDescent`).
+    if (!this.booting) {
+      this.effects.addWrecks(list, world, alpha, !rm);
+      SceneBuilder.addShadows(list, world, alpha);
+      SceneBuilder.addVehicles(list, world, alpha, career.carSkins, career.policeSkin, rm ? null : world.time, rm ? null : world.time, this.lamps, null, this.regular);
+      SceneBuilder.addTowTrucks(list, world);
+      this.driftFx.addAir(list);
+      if (night) {
+        NightLayer.addVehicleLights(list, world, alpha, this.lamps, rm ? null : world.time);
+      }
+      SceneBuilder.addBossPlates(list, world, alpha);
+      if (this.save.settings.vehicleLabels) SceneBuilder.addLabels(list, world, alpha);
     }
-    SceneBuilder.addBossPlates(list, world, alpha);
-    if (this.save.settings.vehicleLabels) SceneBuilder.addLabels(list, world, alpha);
     this.effects.addAir(list);
     this.explosions.addAir(list);
     if (holiday === 'newYear' && !rm) Holidays.addFireworks(list, world, this.sceneTime, thin ? 10 : 18);
@@ -3667,7 +3698,14 @@ export class GameSession {
     const rm = this.reduceMotion;
     const alpha = Math.min(1, this.accumulator / STEP);
     // The bar's height even where it is hidden (a shift, the first one): the street view does not jump when it comes and goes.
-    const cam = this.cameraRig.camera(perspectiveOf(this.screen), world.layout, viewport, this.lastInset, delta, rm);
+    const boot = this.boot;
+    const street = perspectiveCamera('street', world.layout, viewport, this.lastInset);
+    if (boot?.done) {
+      // Down on the street: the rig takes over where the way in ended, without a glide of its own.
+      Object.assign(this.cameraRig, { perspective: 'street', ringRadius: world.layout.ringRadius, shown: street, from: null });
+      this.boot = null;
+    }
+    const cam = this.boot ? this.boot.camera(street) : this.cameraRig.camera(perspectiveOf(this.screen), world.layout, viewport, this.lastInset, delta, rm);
     const calm = this.steadyCam;
     const shake = calm ? v(0, 0) : add(add(this.effects.shakeOffset, this.explosions.shakeOffset), this.cameraFx.breathOffset(rm));
     // The words in the island sit on this camera: no shake, punch or pull-back moves them, and their wrapping never changes.
@@ -3789,6 +3827,13 @@ export class GameSession {
     else if (s.k === 'settings') list.s(rect({ x: viewport.x / 2, y: viewport.y / 2 }, viewport), 'background', 0.55);
     this.addIntroDots(list, viewport, inset);
     this.transitions.apply(list, s, overlayStart, rm);
+    if (this.boot) {
+      const fade = this.boot.uiOpacity;
+      if (fade <= 0) list.items.length = overlayStart;
+      else for (let i = overlayStart; i < list.items.length; i++) list.items[i].opacity *= fade;
+      this.boot.add(list, street);
+      return list;
+    }
     if (this.burst) RewardBurst.add(list, this.burst.burst, this.burst.age, rm);
     const notice = this.notices.shown;
     if (notice && !this.isPage('social')) addNotice(list, notice, { at: this.noticeInCard ? 'card' : { bottom: this.lastViewport.y - inset - 21 }, textScale: this.textScale, reduceMotion: rm });

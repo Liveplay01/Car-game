@@ -54,6 +54,17 @@
   #bottom { display: none; top: auto; overflow: hidden; border-top: 8px solid var(--accent); box-shadow: 0 -24px 60px rgba(0,0,0,.5); }
   #cam2 img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .logo { display: block; }
+  /* store layout: themed slides under a tilted phone frame, like Marketing/store-screenshots */
+  #slides { display: none; }
+  .slide { position: absolute; inset: 0; overflow: hidden; }
+  .slide .ring, .slide .ring::after { position: absolute; border-radius: 50%; }
+  .slide .ring { width: 1500px; height: 1500px; border: 64px solid var(--ring2); transform: translate(-50%, -50%); }
+  .slide .ring::after { content: ''; inset: 100px; border: 14px solid var(--ring); }
+  .slide h1 { position: absolute; left: 72px; right: 72px; top: 104px; margin: 0; font-style: italic; font-weight: 850; font-size: 112px; line-height: 1.02; letter-spacing: -.02em; color: var(--ink); }
+  .slide p { position: absolute; left: 72px; right: 72px; margin: 0; font-weight: 500; font-size: 40px; line-height: 1.25; color: var(--sub); }
+  .slide img.icon { position: absolute; left: 50%; top: 1030px; width: 360px; height: 360px; margin-left: -180px; border-radius: 80px; box-shadow: 0 40px 100px rgba(0,0,0,.3); }
+  #root.store #phone { z-index: 100; inset: auto; width: 768px; height: 1365px; border: 16px solid #15171b; border-radius: 92px; background: #15171b;
+    box-shadow: 0 0 0 3px #3a3f47, 0 60px 120px rgba(0,0,0,.45); transform-origin: 50% 100%; will-change: transform; }
   .tap { position: absolute; left: 0; top: 0; width: 200px; height: 200px; margin: -100px 0 0 -100px; opacity: 0; pointer-events: none; }
   .tap i { position: absolute; inset: 0; border-radius: 50%; }
   .tap .dot { inset: 58px; background: rgba(255,255,255,.92); box-shadow: 0 6px 24px rgba(0,0,0,.45); }
@@ -63,6 +74,7 @@
 <body>
 <div id="root">
   <div id="bg" class="layer"><img id="bgimg" /></div>
+  <div id="slides" class="layer"></div>
   <div id="phone" class="layer">
     <div id="cam" class="layer"><img id="a" /><img id="b" /></div>
   </div>
@@ -121,6 +133,28 @@ window.setup = (edl) => {
     const ph = edl.h * (edl.phoneHeight ?? 0.94), pw = ph * 1080 / 1920;
     window.phoneStyle = { inset: 'auto', left: (edl.phoneX ?? (edl.w - pw) / 2) + 'px', top: (edl.h - ph) / 2 + 'px', width: pw + 'px', height: ph + 'px', borderRadius: '44px', boxShadow: '0 40px 120px rgba(0,0,0,.65), 0 0 0 6px rgba(255,255,255,.1)' };
     window.fullStyle = { inset: '0', left: '0', top: '0', width: edl.w + 'px', height: edl.h + 'px', borderRadius: '0', boxShadow: 'none' };
+  }
+  if (edl.layout === 'store') {
+    root.classList.add('store');
+    const THEMES = {
+      amber: { bg: '#ffb703', ink: '#0e1013', sub: 'rgba(14,16,19,.72)', ring: 'rgba(14,16,19,.12)', ring2: 'rgba(14,16,19,.07)' },
+      night: { bg: '#0b0d10', ink: '#f4f6f9', sub: '#99a2af', ring: 'rgba(255,183,3,.9)', ring2: 'rgba(255,183,3,.18)' },
+      mint: { bg: '#00f5d4', ink: '#06201c', sub: 'rgba(6,32,28,.72)', ring: 'rgba(6,32,28,.14)', ring2: 'rgba(6,32,28,.08)' },
+      violet: { bg: '#2a1b52', ink: '#f4f6f9', sub: '#c7b8f0', ring: 'rgba(176,132,255,.9)', ring2: 'rgba(176,132,255,.2)' },
+    };
+    const RING = { c: 'left:50%;top:1060px', l: 'left:-120px;top:1300px', r: 'left:1180px;top:900px' };
+    const holder = document.getElementById('slides');
+    holder.style.display = 'block';
+    edl.slides.forEach((sl, i) => {
+      const th = THEMES[sl.theme];
+      const el = document.createElement('div');
+      el.className = 'slide';
+      el.style.cssText = `background:${th.bg};--ink:${th.ink};--sub:${th.sub};--ring:${th.ring};--ring2:${th.ring2};z-index:${i}`;
+      const two = sl.title.includes('\n');
+      el.innerHTML = `<div class="ring" style="${RING[sl.ring ?? 'c']}"></div><h1>${sl.title.replace(/\n/g, '<br>')}</h1><p style="top:${two ? 360 : 250}px">${sl.sub}</p>${sl.icon ? `<img class="icon" src="${sl.icon}" alt="">` : ''}`;
+      holder.appendChild(el);
+      sl.el = el; sl.h1 = el.querySelector('h1'); sl.p = el.querySelector('p'); sl.ringEl = el.querySelector('.ring');
+    });
   }
   const taps = document.getElementById('taps');
   (edl.taps ?? []).forEach((k) => {
@@ -195,6 +229,32 @@ window.frame = async (t) => {
     if (!full) await decode(document.getElementById('bgimg'), first);
   }
 
+  if (e.layout === 'store') {
+    const sls = e.slides;
+    let k = sls.findIndex((x) => t >= x.t && t < x.t + x.dur);
+    if (k < 0) k = sls.length - 1;
+    const sl = sls[k], prev = sls[k - 1];
+    const lt = t - sl.t;
+    sls.forEach((x, i) => {
+      // a slide shows from its start; once the next one has covered it, it goes
+      const shown = t >= x.t && (i === k || (sls[i + 1] && t < sls[i + 1].t + 0.5));
+      x.el.style.display = shown ? 'block' : 'none';
+      if (!shown) return;
+      const r = i === 0 ? 1 : E.outCubic(clamp((t - x.t) / 0.45));
+      x.el.style.clipPath = r >= 1 ? 'none' : `circle(${r * 1900}px at 50% 72%)`;
+      const a = E.outExpo(clamp((t - x.t - 0.08) / 0.55)), b = E.outExpo(clamp((t - x.t - 0.2) / 0.55));
+      x.h1.style.transform = `translateX(${-70 * (1 - a)}px)`; x.h1.style.opacity = clamp(a * 1.6);
+      x.p.style.transform = `translateX(${-50 * (1 - b)}px)`; x.p.style.opacity = clamp(b * 1.6);
+      x.ringEl.style.transform = `translate(-50%, -50%) rotate(${(t - x.t) * 4}deg) scale(${0.9 + 0.1 * E.outCubic(clamp((t - x.t) / 0.9))})`;
+    });
+    const ph = document.getElementById('phone');
+    const pin = E.outBack(clamp(lt / 0.6), 1.4), from = prev ? prev.tilt ?? 0 : sl.tilt ?? 0;
+    const gone = sl.noPhone ? E.inOut(clamp(lt / 0.5)) : 0;
+    ph.style.left = (140 + (sl.dx ?? 0)) + 'px';
+    ph.style.top = (sl.top ?? 480) + 'px';
+    ph.style.transform = `translateY(${(prev && !sl.noPhone ? 90 * (1 - E.outExpo(clamp(lt / 0.5))) : 0) + gone * 1500}px) rotate(${from + ((sl.tilt ?? 0) - from) * pin}deg)`;
+  }
+
   // titles
   e.titles.forEach((tt, i) => {
     const el = els[i];
@@ -260,7 +320,7 @@ window.frame = async (t) => {
   for (const k of e.flashes ?? []) { const x = (t - k.t) / (k.dur ?? 0.14); if (x >= 0 && x < 1) { const v = (k.a ?? 0.9) * Math.pow(1 - x, 2); if (v > fo) { fo = v; fc = k.c ?? '#fff'; } } }
   fl.style.background = fc;
   fl.style.opacity = fo;
-  document.getElementById('vig').style.opacity = shot.vig ?? 1;
+  document.getElementById('vig').style.opacity = e.layout === 'store' ? 0 : shot.vig ?? 1;
 };
 </script>
 </body>

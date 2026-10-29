@@ -17,7 +17,7 @@ export default (S: Strings): Words<Strings> => ({
     don: 'ドン',
     pitch: '借金を選んでテーブルにつき、緑のゾーンでポインターを止めます。真ん中に近いほど、条件は有利に。借金が大きいほど、ポインターは速くなります。',
     rules: (rate, cap, garnish) =>
-      `手紙に書かれた日までに返済してください。遅れると借金は1日${Math.round(rate * 100)}%ずつ増え(最大+${Math.round(cap * 100)}%)、各シフトの報酬の${Math.round(garnish * 100)}%がファミリーに渡り、輸送車、犯罪者、ボスは報酬が出ず、カジノは閉まり、ランキングの名前にはマフィアのバッジが付きます。完済すれば、すべて消えます。期限内に返した借金のたびに、次の借金は有利になり、緑のゾーンは広がります。`,
+      `手紙に書かれた日までに返済してください。遅れると借金は1日${Math.round(rate * 100)}%ずつ増え(最大+${Math.round(cap * 100)}%)、各シフトの報酬の${Math.round(garnish * 100)}%がファミリーに渡り、輸送車、犯罪者、ボスは報酬が出ず、アーケードは閉まり、ランキングの名前にはマフィアのバッジが付きます。完済すれば、すべて消えます。期限内に返した借金のたびに、次の借金は有利になり、緑のゾーンは広がります。`,
     grade: (g) => ({ perfect: 'パーフェクト', good: 'グッド', miss: 'ミス' })[g],
     gradeText: (g) => ({ perfect: 'ぴったりだ。ドンが微笑んでいる。', good: 'まずまずの握手だ。', miss: 'ドンは肩をすくめる。基本の条件はそのままだ。' })[g],
     set: '席につく',
@@ -50,7 +50,7 @@ export default (S: Strings): Words<Strings> => ({
     waiting: 'ドンが見ている',
     atStake: '遅れると',
     inForce: '返すまで続きます',
-    consequences: (garnish) => ['カジノが閉まる', '輸送車、犯罪者、ボスが出ない', `各シフトの報酬の${Math.round(garnish * 100)}%`, 'ランキングにマフィアのバッジ'],
+    consequences: (garnish) => ['アーケードが閉まる', '輸送車、犯罪者、ボスが出ない', `各シフトの報酬の${Math.round(garnish * 100)}%`, 'ランキングにマフィアのバッジ'],
     overdue: '期限超過',
     overdueText: 'ファミリーが取り立てます。どのシフトも、まず彼らに支払います。',
     paidStamp: '完済',
@@ -67,16 +67,16 @@ export default (S: Strings): Words<Strings> => ({
         taken: `ごちそうさま。${owed}を${date}までに。1日たりとも遅れるな。捜しに行かせるなよ。`,
         half: '期限の半分が過ぎた。ファミリーは借りを忘れない。そして、早く返してくれた友も忘れない。',
         day: 'あと1日だ。友として、話がこじれる前に精算してくれ。',
-        late: '時間切れだ。おまえの名前はリストに載った。道はまず私たちに払い、おまえにカジノは閉まった。',
+        late: '時間切れだ。おまえの名前はリストに載った。道はまず私たちに払い、おまえにアーケードは閉まった。',
         later: '毎日、数字は増えていく。払えば、また友だちだ。',
       })[kind],
     notices: {
-      late: 'ファミリーが待っている · 借金は期限切れ · カジノは閉鎖',
+      late: 'ファミリーが待っている · 借金は期限切れ · アーケードは閉鎖',
       grace: 'ファミリーがもう1日待ってくれる · 留守のあいだに期限が来ました',
       writtenOff: 'ファミリーがあなたを見限った · 借金は消えたが、14日間は扉が閉ざされる',
     },
     garnished: (cut, cleared) => (cleared ? `ファミリーが${money(cut)}を取り立て · 完済、あなたは自由の身` : `ファミリーが報酬から${money(cut)}を取り立て`),
-    casinoShut: 'ファミリーがお金を待っているあいだ、カジノは閉まっています。',
+    casinoShut: 'ファミリーがお金を待っているあいだ、アーケードは閉まっています。',
   },
 
   shop: {
@@ -127,7 +127,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.source.kind === 'tour') return `ツアー「${S.tours.name(item.source.tour as 'halloween' | 'winter')}」のストップのひとつ。毎年めぐってきます。`;
       if (item.source.kind === 'auction') return 'オークションハウス(ソーシャル → クラブ)のロットとしてだけ。数日ごとに新しいロットが出ます。';
       if (item.source.kind === 'failures') return 'シフトの負けかたをすべて見つけよう(進捗 → ミュージアム → 失敗)。見た目だけ。';
-      if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: カジノだけが贈ります(ショップ → カジノ)。見た目だけ。`;
+      if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: アーケードだけが贈ります(ショップ → アーケード)。見た目だけ。`;
       if (item.source.kind === 'fund') return 'ゲームファンドに置き換わった、シティファンドからのお礼です。もう配られません。';
       if (item.source.kind === 'bugReport')
         return item.source.reports === 1
@@ -147,7 +147,7 @@ export default (S: Strings): Words<Strings> => ({
     watchAd: (left) => `広告を見る · 残り${left}回`,
     skinsOn: (n, max) => `車のスキン${max}個中${n}個がオン · 道で混ざって登場`,
     skinsFull: (max) => `車のスキン${max}個がオンです。先に1つ外してください。`,
-    section: (i) => ['宝箱', 'コレクション', 'カジノ'][i],
+    section: (i) => ['宝箱', 'コレクション', 'アーケード'][i],
     saleHeading: '販売中',
     earnedHeading: '売り物ではなく、獲得するもの',
     pityTitle: 'レジェンダリー確定',
@@ -379,7 +379,7 @@ export default (S: Strings): Words<Strings> => ({
     done: '達成',
     withTitle: (title) => `+ 称号「${title}」`,
     eyebrow: '偉業',
-    body: 'ゲームで最も難しい偉業のひとつ。宝箱もカジノもお金も、これは与えてくれません。道だけが与えてくれます。',
+    body: 'ゲームで最も難しい偉業のひとつ。宝箱もアーケードもお金も、これは与えてくれません。道だけが与えてくれます。',
     rowGoal: '目標',
     rowNow: 'あなた',
     rowTitle: '称号',
@@ -617,9 +617,6 @@ export default (S: Strings): Words<Strings> => ({
     levelComplete: (l) => `レベル${l}クリア`,
     newBest: '自己ベスト更新',
     points: (n) => `${n}点`,
-    fullCoverage: '全額補償',
-    loss: (amount, escaped) => (escaped ? '損失 ' : 'クラッシュ費用 ') + '−' + money(amount),
-    covered: (amount) => `全額補償 · 保険が${money(amount)}を支払い`,
     nextLevel: (l) => `タップでレベル${l}へ`,
     retryLevel: (l) => `タップでレベル${l}をもう一度`,
     stats(combo, tightFits, busted, transporters, time) {
@@ -645,7 +642,6 @@ export default (S: Strings): Words<Strings> => ({
     dispatch: '出動',
     danger: '危険',
     boom: 'ドカン！',
-    covered: '補償',
     combo: (n) => `コンボ ${n}`,
     cars: (n) => `${n}台`,
     wanted: (seconds) => `指名手配 ${Math.ceil(Math.max(0, seconds))}`,

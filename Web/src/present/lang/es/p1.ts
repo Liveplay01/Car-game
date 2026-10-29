@@ -59,7 +59,7 @@ export default (_s: Strings): Words<Strings> => ({
       ],
     },
     casino: {
-      title: 'Casino',
+      title: 'Arcade',
       line: 'Opcional · solo dinero del juego',
       body: [
         'Crash, Tragaperras, Mejora de aspecto y Doble o nada, con el dinero que ganas en la carretera. Nada cuesta dinero real.',
@@ -81,7 +81,7 @@ export default (_s: Strings): Words<Strings> => ({
       line: 'Presta dinero, pero lo quiere de vuelta',
       body: [
         'Tras derrotar a tu primer jefe, la Familia te presta dinero. Cierra el trato con la barra indicadora: toca para detenerla en la zona verde, el centro es Perfecto.',
-        'Devuélvelo a tiempo y el próximo préstamo será más ventajoso. Si te retrasas, la Familia se quedará con una parte de cada turno y el casino cerrará hasta saldar la deuda.',
+        'Devuélvelo a tiempo y el próximo préstamo será más ventajoso. Si te retrasas, la Familia se quedará con una parte de cada turno y la Arcade cerrará hasta saldar la deuda.',
       ],
     },
     crew: {

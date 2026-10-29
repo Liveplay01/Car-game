@@ -50,6 +50,10 @@ export function installProbe(shell: Shell): void {
   };
 
   const step = (actions: InputAction[] = []): void => void game.frame(FRAME, actions, view, 0);
+  /** A test starts on the street: the way in (`BootDescent`) comes down at once; `?boot=wait` gives up after 10 s. */
+  const arrive = (): void => {
+    for (let i = 0; game.booting && i < 600; i++) step();
+  };
 
   const wants = (bot: Bot): boolean => {
     const { world } = game;
@@ -63,6 +67,7 @@ export function installProbe(shell: Shell): void {
 
   /** From the waiting screen (or a result) plays one shift with the bot; stops when it ends or `seconds` of play ran out. */
   const play = (bot: Bot = 'careful', seconds = 120, settle = SETTLE_FRAMES) => {
+    arrive();
     if (game.screen.k === 'result') game.perform({ k: 'restart' });
     let seen = false;
     for (let i = 0; i < seconds / FRAME; i++) {
@@ -80,10 +85,12 @@ export function installProbe(shell: Shell): void {
     play,
     /** Runs `seconds` of game time without any input. */
     wait: (seconds) => {
+      arrive();
       for (let i = 0; i < seconds / FRAME; i++) step();
       return state();
     },
     perform: (action) => {
+      arrive();
       game.perform(action);
       step();
       return state();

@@ -108,7 +108,7 @@ export const BOARDS: readonly BoardDef[] = [
   {
     // Leo, 15.10.2026: who has won the most at the casino, all games together, minus what they lost.
     id: 'casino',
-    title: 'Casino profit',
+    title: 'Arcade profit',
     period: () => 'all',
     latest: true,
     parse(body) {

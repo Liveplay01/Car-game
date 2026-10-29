@@ -3,7 +3,7 @@ import type { Words } from '../../i18n';
 import { Fmt, money, percent } from '../../format';
 import { baseConfig, detourShareAt, towSpeedupAt } from '../../../core/config';
 
-/** Español, Parte 5: Casino, Constructor de calles, Publicidad, Club, Rangos, Amigos, Sala, Versus, Shell. */
+/** Español, Parte 5: Arcade, Constructor de calles, Publicidad, Club, Rangos, Amigos, Sala, Versus, Shell. */
 export default (S: Strings): Words<Strings> => ({
   casino: {
     game: (g) => ({ crash: 'Crash', slots: 'Tragaperras', upgrade: 'Mejora', roulette: 'Ruleta', scratch: 'Rasca' })[g],
@@ -71,7 +71,7 @@ export default (S: Strings): Words<Strings> => ({
     refunded: (m) => `Una carrera fue cancelada · ${m} devueltos`,
     cashedOnLeave: (m) => `Cobrado al salir · +${m}`,
     feat: (f) =>
-      ({ bigWin: 'Tu primer BIG WIN', megaWin: 'Tu primer MEGA WIN', flipChain: `${baseConfig.casinoFlipChain} monedas ganadas seguidas`, tycoon: `${money(Fmt.number(baseConfig.casinoTycoon))} ganados en el casino` })[f],
+      ({ bigWin: 'Tu primer BIG WIN', megaWin: 'Tu primer MEGA WIN', flipChain: `${baseConfig.casinoFlipChain} monedas ganadas seguidas`, tycoon: `${money(Fmt.number(baseConfig.casinoTycoon))} ganados en la Arcade` })[f],
     honour: (feat, item) => `${feat} · skin ${item} desbloqueado`,
     detail: {
       crash: [
@@ -361,7 +361,7 @@ export default (S: Strings): Words<Strings> => ({
       unlimited: { label: 'Sin límites', empty: 'Establece un récord en Sin límites para aparecer aquí.' },
       daily: { label: 'Diario', empty: 'Supera el turno diario de hoy para liderar la lista.' },
       rush: { label: 'Asalto de jefes', empty: 'Supera el asalto de jefes para marcar el primer tiempo.' },
-      casino: { label: 'Casino', empty: 'Gana en el casino más de lo que apuestas para ser el primero aquí.' },
+      casino: { label: 'Arcade', empty: 'Gana en la Arcade más de lo que apuestas para ser el primero aquí.' },
     },
     level: (n) => `Nivel ${n}`,
     starLabel: (rank) => `Rango de prestigio ${rank}. Cómo funciona el prestigio`,
@@ -616,6 +616,8 @@ export default (S: Strings): Words<Strings> => ({
     bootTitle: 'La rotonda no arrancó.',
     bootBody: 'Algo impidió que el juego se cargara. Comprueba tu conexión e inténtalo de nuevo; tu progreso está seguro en este dispositivo.',
     bootRetry: 'Intentar de nuevo',
+    bootOfflineTitle: 'Sin conexión.',
+    bootOfflineBody: 'El juego no pudo terminar de cargar sin internet. Conéctate e inténtalo de nuevo; tu progreso está seguro en este dispositivo.',
     /** The first visit's boot screen (index.html): the game in three steps while it loads. */
     learn: {
       waitTitle: 'Espera un hueco',

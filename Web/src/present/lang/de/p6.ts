@@ -17,7 +17,7 @@ export default (S: Strings): Words<Strings> => ({
     don: 'Der Don',
     pitch: 'Wähle einen Kredit, setz dich an den Tisch und stoppe den Zeiger in der grünen Zone. Je näher an der Mitte, desto freundlicher der Deal. Je größer der Kredit, desto schneller der Zeiger.',
     rules: (rate, cap, garnish) =>
-      `Zahle bis zu dem Tag auf dem Brief zurück. Zu spät wächst die Schuld um ${Math.round(rate * 100)} % pro Tag (bis zu +${Math.round(cap * 100)} %), ${Math.round(garnish * 100)} % der Bezahlung jeder Schicht gehen an die Familie, kein Transporter, Verbrecher oder Boss zahlt aus, das Casino ist zu und dein Name trägt in den Listen das Mafia-Abzeichen. Zahle alles ab, und das alles ist weg. Jeder rechtzeitig zurückgezahlte Kredit macht den nächsten günstiger und die grüne Zone breiter.`,
+      `Zahle bis zu dem Tag auf dem Brief zurück. Zu spät wächst die Schuld um ${Math.round(rate * 100)} % pro Tag (bis zu +${Math.round(cap * 100)} %), ${Math.round(garnish * 100)} % der Bezahlung jeder Schicht gehen an die Familie, kein Transporter, Verbrecher oder Boss zahlt aus, die Arcade ist zu und dein Name trägt in den Listen das Mafia-Abzeichen. Zahle alles ab, und das alles ist weg. Jeder rechtzeitig zurückgezahlte Kredit macht den nächsten günstiger und die grüne Zone breiter.`,
     grade: (g) => ({ perfect: 'PERFEKT', good: 'GUT', miss: 'VERPASST' })[g],
     gradeText: (g) => ({ perfect: 'Genau auf den Punkt. Der Don lächelt.', good: 'Ein fairer Handschlag.', miss: 'Der Don zuckt mit den Schultern. Das einfache Angebot steht.' })[g],
     set: 'Hinsetzen',
@@ -50,7 +50,7 @@ export default (S: Strings): Words<Strings> => ({
     waiting: 'Der Don beobachtet',
     atStake: 'Wenn du zu spät bist',
     inForce: 'In Kraft, bis du zahlst',
-    consequences: (garnish) => ['Casino geschlossen', 'Keine Transporter, Verbrecher oder Bosse', `${Math.round(garnish * 100)} % der Bezahlung jeder Schicht`, 'Mafia-Abzeichen in den Listen'],
+    consequences: (garnish) => ['Arcade geschlossen', 'Keine Transporter, Verbrecher oder Bosse', `${Math.round(garnish * 100)} % der Bezahlung jeder Schicht`, 'Mafia-Abzeichen in den Listen'],
     overdue: 'ÜBERFÄLLIG',
     overdueText: 'Die Familie kassiert. Jede Schicht zahlt zuerst sie.',
     paidStamp: 'BEZAHLT',
@@ -67,16 +67,16 @@ export default (S: Strings): Words<Strings> => ({
         taken: `War mir ein Vergnügen. ${owed} bis zum ${date}, keinen Tag später. Zwing mich nicht, dich zu suchen.`,
         half: 'Die Hälfte deiner Zeit ist um. Die Familie vergisst keine Schuld, und keinen Freund, der früh gezahlt hat.',
         day: 'Noch ein Tag. Sei ein Freund und begleiche die Rechnung, bevor es persönlich wird.',
-        late: 'Die Zeit ist um. Dein Name steht auf der Liste. Die Straße zahlt jetzt zuerst uns, und das Casino ist für dich geschlossen.',
+        late: 'Die Zeit ist um. Dein Name steht auf der Liste. Die Straße zahlt jetzt zuerst uns, und die Arcade ist für dich geschlossen.',
         later: 'Jeden Tag wächst die Zahl. Zahle, und wir sind wieder Freunde.',
       })[kind],
     notices: {
-      late: 'DIE FAMILIE WARTET · dein Kredit ist überfällig · das Casino ist zu',
+      late: 'DIE FAMILIE WARTET · dein Kredit ist überfällig · die Arcade ist zu',
       grace: 'DIE FAMILIE GIBT DIR NOCH EINEN TAG · der Kredit wurde fällig, während du weg warst',
       writtenOff: 'DIE FAMILIE SCHREIBT DICH AB · die Schuld ist weg, ihre Türen bleiben 14 Tage zu',
     },
     garnished: (cut, cleared) => (cleared ? `DIE FAMILIE NAHM ${money(cut)} · Schuld bezahlt, du bist frei` : `DIE FAMILIE NAHM ${money(cut)} der Bezahlung`),
-    casinoShut: 'Das Casino ist zu, während die Familie auf ihr Geld wartet.',
+    casinoShut: 'Die Arcade ist zu, während die Familie auf ihr Geld wartet.',
   },
 
   shop: {
@@ -127,7 +127,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.source.kind === 'tour') return `Ein Stopp der Tour „${S.tours.name(item.source.tour as 'halloween' | 'winter')}“. Sie kehrt jedes Jahr wieder.`;
       if (item.source.kind === 'auction') return 'Nur als Los im Auktionshaus (Social → Club). Alle paar Tage ein neues Los.';
       if (item.source.kind === 'failures') return 'Finde jede Art, eine Schicht zu verlieren (Fortschritt → Museum → Scheitern). Nur Aussehen.';
-      if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: Nur das Casino vergibt ihn (Shop → Casino). Nur Aussehen.`;
+      if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: Nur die Arcade vergibt ihn (Shop → Arcade). Nur Aussehen.`;
       if (item.source.kind === 'fund') return 'Ein Dankeschön vom Stadtfonds, den der Spielfonds ersetzt hat. Er wird nicht mehr vergeben.';
       if (item.source.kind === 'bugReport')
         return item.source.reports === 1
@@ -147,7 +147,7 @@ export default (S: Strings): Words<Strings> => ({
     watchAd: (left) => `Werbung ansehen · ${left} übrig`,
     skinsOn: (n, max) => `${n} von ${max} Auto-Skins an · sie mischen sich auf der Straße`,
     skinsFull: (max) => `${max} Auto-Skins sind an. Nimm zuerst einen ab.`,
-    section: (i) => ['Truhen', 'Sammlung', 'Casino'][i],
+    section: (i) => ['Truhen', 'Sammlung', 'Arcade'][i],
     saleHeading: 'Im Verkauf',
     earnedHeading: 'Verdient, nicht verkauft',
     pityTitle: 'Legendär-Garantie',
@@ -396,7 +396,7 @@ export default (S: Strings): Words<Strings> => ({
     done: 'Erledigt',
     withTitle: (title) => `+ Titel „${title}“`,
     eyebrow: 'Großtat',
-    body: 'Eine der schwersten Taten im Spiel. Keine Truhe, kein Casino und kein Geld können dir das geben: nur die Straße.',
+    body: 'Eine der schwersten Taten im Spiel. Keine Truhe, keine Arcade und kein Geld können dir das geben: nur die Straße.',
     rowGoal: 'Ziel',
     rowNow: 'Du',
     rowTitle: 'Titel',
@@ -634,9 +634,6 @@ export default (S: Strings): Words<Strings> => ({
     levelComplete: (l) => `LEVEL ${l} GESCHAFFT`,
     newBest: 'NEUER REKORD',
     points: (n) => `${n} Punkte`,
-    fullCoverage: 'VOLL VERSICHERT',
-    loss: (amount, escaped) => (escaped ? 'VERLUST ' : 'CRASHKOSTEN ') + '−' + money(amount),
-    covered: (amount) => `VOLL VERSICHERT · ${money(amount)} von der Versicherung gezahlt`,
     nextLevel: (l) => `Tippe für Level ${l}`,
     retryLevel: (l) => `Tippe, um Level ${l} erneut zu versuchen`,
     stats(combo, tightFits, busted, transporters, time) {
@@ -662,7 +659,6 @@ export default (S: Strings): Words<Strings> => ({
     dispatch: 'EINSATZ',
     danger: 'GEFAHR',
     boom: 'BUMM!',
-    covered: 'GEDECKT',
     combo: (n) => `COMBO ${n}`,
     cars: (n) => (n === 1 ? '1 Auto' : `${n} Autos`),
     wanted: (seconds) => `GESUCHT ${Math.ceil(Math.max(0, seconds))}`,

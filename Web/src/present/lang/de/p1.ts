@@ -59,7 +59,7 @@ export default (_s: Strings): Words<Strings> => ({
       ],
     },
     casino: {
-      title: 'Casino',
+      title: 'Arcade',
       line: 'Freiwillig · nur Spielgeld',
       body: [
         'Crash, Slots, Skin-Upgrade und Doppelt oder nichts, gespielt mit dem Geld, das du auf der Straße verdienst. Hier kostet nichts echtes Geld.',
@@ -81,7 +81,7 @@ export default (_s: Strings): Words<Strings> => ({
       line: 'Leiht Geld, will es zurück',
       body: [
         'Nach deinem ersten Boss leiht dir die Familie Geld. Besiegle den Deal am Zeigerbalken: Tippe, um ihn in der grünen Zone zu stoppen, die Mitte ist Perfekt.',
-        'Zahle rechtzeitig zurück, und der nächste Kredit wird freundlicher. Zahlst du zu spät, nimmt die Familie einen Anteil jeder Schicht, und das Casino bleibt zu, bis alles bezahlt ist.',
+        'Zahle rechtzeitig zurück, und der nächste Kredit wird freundlicher. Zahlst du zu spät, nimmt die Familie einen Anteil jeder Schicht, und die Arcade bleibt zu, bis alles bezahlt ist.',
       ],
     },
     crew: {

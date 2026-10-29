@@ -59,7 +59,7 @@ export default (_s: Strings): Words<Strings> => ({
       ],
     },
     casino: {
-      title: 'Casinò',
+      title: 'Arcade',
       line: 'Opzionale · solo valuta di gioco',
       body: [
         'Crash, Slot, Potenziamento skin e Raddoppia o niente, giocati con i soldi guadagnati sulla strada. Nulla costa denaro reale.',
@@ -81,7 +81,7 @@ export default (_s: Strings): Words<Strings> => ({
       line: 'Presta denaro, ma vuole tutto indietro',
       body: [
         'Dopo aver sconfitto il tuo primo boss, la Famiglia ti presta denaro. Concludi l’accordo sulla barra: tocca per fermarla nella zona verde, il centro è Perfetto.',
-        'Restituiscilo in tempo e il prossimo prestito sarà più favorevole. Se ritardi, la Famiglia tratterrà una quota di ogni turno e il casinò resterà chiuso fino al saldo.',
+        'Restituiscilo in tempo e il prossimo prestito sarà più favorevole. Se ritardi, la Famiglia tratterrà una quota di ogni turno e l’Arcade resterà chiusa fino al saldo.',
       ],
     },
     crew: {

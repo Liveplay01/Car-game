@@ -3,7 +3,7 @@ import type { Words } from '../../i18n';
 import { Fmt, money, percent } from '../../format';
 import { baseConfig, detourShareAt, towSpeedupAt } from '../../../core/config';
 
-/** Italiano, Parte 5: Casinò, Costruttore stradale, Annunci, Club, Classifiche, Amici, Stanza, Versus, Shell. */
+/** Italiano, Parte 5: Arcade, Costruttore stradale, Annunci, Club, Classifiche, Amici, Stanza, Versus, Shell. */
 export default (S: Strings): Words<Strings> => ({
   casino: {
     game: (g) => ({ crash: 'Crash', slots: 'Slot', upgrade: 'Migliora', roulette: 'Roulette', scratch: 'Gratta e vinci' })[g],
@@ -71,7 +71,7 @@ export default (S: Strings): Words<Strings> => ({
     refunded: (m) => `Corsa interrotta · ${m} rimborsati`,
     cashedOnLeave: (m) => `Incassato all’uscita · +${m}`,
     feat: (f) =>
-      ({ bigWin: 'Il tuo primo BIG WIN', megaWin: 'Il tuo primo MEGA WIN', flipChain: `${baseConfig.casinoFlipChain} monete vinte di fila`, tycoon: `${money(Fmt.number(baseConfig.casinoTycoon))} vinti al casinò` })[f],
+      ({ bigWin: 'Il tuo primo BIG WIN', megaWin: 'Il tuo primo MEGA WIN', flipChain: `${baseConfig.casinoFlipChain} monete vinte di fila`, tycoon: `${money(Fmt.number(baseConfig.casinoTycoon))} vinti all’Arcade` })[f],
     honour: (feat, item) => `${feat} · skin ${item} sbloccata`,
     detail: {
       crash: [
@@ -361,7 +361,7 @@ export default (S: Strings): Words<Strings> => ({
       unlimited: { label: 'Senza limiti', empty: 'Fissa un record in Senza limiti per comparire qui.' },
       daily: { label: 'Giornaliero', empty: 'Supera il turno di oggi per salire in vetta.' },
       rush: { label: 'Assalto ai boss', empty: 'Supera l’assalto ai boss per segnare il primo tempo.' },
-      casino: { label: 'Casinò', empty: 'Vinci al casinò più di quanto punti per comparire qui.' },
+      casino: { label: 'Arcade', empty: 'Vinci all’Arcade più di quanto punti per comparire qui.' },
     },
     level: (n) => `Livello ${n}`,
     starLabel: (rank) => `Grado di prestigio ${rank}. Come funziona il prestigio`,
@@ -616,6 +616,8 @@ export default (S: Strings): Words<Strings> => ({
     bootTitle: 'La rotatoria non è partita.',
     bootBody: 'Qualcosa ha impedito il caricamento del gioco. Controlla la connessione e riprova; i tuoi progressi sono al sicuro su questo dispositivo.',
     bootRetry: 'Riprova',
+    bootOfflineTitle: 'Nessuna connessione.',
+    bootOfflineBody: 'Senza internet il gioco non ha potuto finire di caricarsi. Connettiti e riprova; i tuoi progressi sono al sicuro su questo dispositivo.',
     /** The first visit's boot screen (index.html): the game in three steps while it loads. */
     learn: {
       waitTitle: 'Aspetta un varco',

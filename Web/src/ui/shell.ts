@@ -480,6 +480,8 @@ export class Shell {
       this.readChallengeLink();
       this.readJoinLink();
     });
+    // The way in comes down from the clouds while the game loads (main.ts lands it); before the first sync, so no chrome shows.
+    this.session.descend();
     this.syncChrome(true);
     requestAnimationFrame((t) => this.loop(t));
     this.scheduleAccountPrompt();
@@ -756,6 +758,8 @@ export class Shell {
       nav.append(button);
       this.tabs.set(tab, { button, badge });
     }
+    // A stylesheet that arrives after the first paint (`npm run dev`) would slide the hidden dock away in view of the descent.
+    for (const a of nav.getAnimations()) a.finish();
   }
 
   /**
@@ -1734,7 +1738,7 @@ export class Shell {
     if (body) body.textContent = S.shell.stalledBody;
     if (link) link.textContent = S.shell.reload;
     boot.hidden = false;
-    boot.classList.remove('gone');
+    boot.classList.remove('gone', 'live');
     boot.classList.add('failed');
   }
 

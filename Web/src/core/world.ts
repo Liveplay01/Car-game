@@ -285,9 +285,10 @@ export class World {
   constructor(
     readonly config: Config,
     readonly seed: number,
-    options: { prefill?: boolean; startsOnFirstTap?: boolean; firstVehicleId?: number } = {},
+    options: { prefill?: boolean; startsOnFirstTap?: boolean; firstVehicleId?: number; arriving?: boolean } = {},
   ) {
-    const { prefill = true, startsOnFirstTap = false, firstVehicleId = 1 } = options;
+    const { startsOnFirstTap = false, firstVehicleId = 1, arriving = false } = options;
+    const prefill = (options.prefill ?? true) && !arriving;
     this.layout = new Layout(config);
     this.roadworks = config.cityEvent === 'roadworks' ? this.layout.clearStretch(config.roadworksAt, config.roadworksArc) : null;
     const stop = config.cityEvent === 'schoolRun' ? this.layout.clearStretch(config.busStopAt, config.busLength + 12) : null;
@@ -333,6 +334,8 @@ export class World {
     this.race = firstRace(this);
     this.wedding = firstWedding(this);
     this.drift = firstDrift(this);
+    // After loading (Leo, 29.10.2026): the queue rolls up to the line and the ring fills from the road ends.
+    if (arriving) for (const q of this.seats) q.state = { kind: 'filling', elapsed: 0 };
     for (const q of this.seats) this.refillQueue(q);
     if (prefill) prefillRing(this, Math.max(this.targetDensity, config.minRingBots));
   }

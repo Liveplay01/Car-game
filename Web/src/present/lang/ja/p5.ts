@@ -3,7 +3,7 @@ import type { Words } from '../../i18n';
 import { Fmt, money, percent } from '../../format';
 import { baseConfig, detourShareAt, towSpeedupAt } from '../../../core/config';
 
-/** 日本語 パート5: カジノ、ストリートビルダー、広告、クラブ、ランク、フレンド、ロビー、対戦、シェル。 */
+/** 日本語 パート5: アーケード、ストリートビルダー、広告、クラブ、ランク、フレンド、ロビー、対戦、シェル。 */
 export default (S: Strings): Words<Strings> => ({
   casino: {
     game: (g) => ({ crash: 'クラッシュ', slots: 'スロット', upgrade: 'アップグレード', roulette: 'ルーレット', scratch: 'スクラッチ' })[g],
@@ -71,7 +71,7 @@ export default (S: Strings): Words<Strings> => ({
     refunded: (m) => `ドライブが中断されました · ${m}を返金`,
     cashedOnLeave: (m) => `離脱時に精算 · +${m}`,
     feat: (f) =>
-      ({ bigWin: '初めてのビッグ勝利', megaWin: '初めてのメガ勝利', flipChain: `コイントス${baseConfig.casinoFlipChain}連勝`, tycoon: `カジノで${money(Fmt.number(baseConfig.casinoTycoon))}を獲得` })[f],
+      ({ bigWin: '初めてのビッグ勝利', megaWin: '初めてのメガ勝利', flipChain: `コイントス${baseConfig.casinoFlipChain}連勝`, tycoon: `アーケードで${money(Fmt.number(baseConfig.casinoTycoon))}を獲得` })[f],
     honour: (feat, item) => `${feat} · スキン${item}を解放`,
     detail: {
       crash: [
@@ -361,7 +361,7 @@ export default (S: Strings): Words<Strings> => ({
       unlimited: { label: 'アンリミテッド', empty: 'アンリミテッドの記録を出して、ここの先頭に立とう。' },
       daily: { label: 'デイリー', empty: '今日のデイリーシフトをクリアして、ここの先頭に立とう。' },
       rush: { label: 'ボスラッシュ', empty: 'ボスラッシュをクリアして、最初のタイムを刻もう。' },
-      casino: { label: 'カジノ', empty: 'カジノで賭けた額より多く勝って、ここの先頭に立とう。' },
+      casino: { label: 'アーケード', empty: 'アーケードで賭けた額より多く勝って、ここの先頭に立とう。' },
     },
     level: (n) => `レベル${n}`,
     starLabel: (rank) => `プレステージランク${rank}。プレステージの仕組み`,
@@ -616,6 +616,8 @@ export default (S: Strings): Words<Strings> => ({
     bootTitle: 'ラウンドアバウトが起動しませんでした。',
     bootBody: 'ゲームを読み込めませんでした。接続を確認してもう一度お試しください。進行状況はこの端末で安全です。',
     bootRetry: 'もう一度試す',
+    bootOfflineTitle: '接続がありません。',
+    bootOfflineBody: 'インターネットがないため、ゲームの読み込みを完了できませんでした。接続してもう一度お試しください。進行状況はこの端末で安全です。',
     /** The first visit's boot screen (index.html): the game in three steps while it loads. */
     learn: {
       waitTitle: 'すき間を待とう',

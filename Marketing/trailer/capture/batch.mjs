@@ -46,6 +46,14 @@ SHOTS.push(
   ['f-meadow', 10, 'meadow', 'shift', 'wild', 22],
   ['f-mayhem', 6, 'sakura', 'mayhem', 'wild', 36],
 );
+// Store preview video (Oct 2026), current build
+SHOTS.push(
+  ['v-neon', 25, 'neon', 'shift', 'peak', 16],
+  ['v-hunt', 10, 'meadow', 'shift', 'hunter', 40],
+  ['v-boss', 15, 'sand', 'shift', 'bold', 36],
+  ['v-mayhem', 6, 'canyon', 'mayhem', 'wild', 24],
+  ['v-snow', 24, 'snowfall', 'shift', 'peak', 18, 'snow'],
+);
 const LAND = [
   ['L-crash2', 8, 'meadow', 'shift', 'wild', 22],
   ['L-crash3', 8, 'sand', 'shift', 'wild', 22],
