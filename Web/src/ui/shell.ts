@@ -19,6 +19,7 @@ import { legalDoc } from '../present/legal';
 import { PATCH_NOTES } from '../present/patchNotes';
 import { PhotoView } from './photo';
 import { celebrate, invitedRoom, offerLogin, onAdAudio, reportGameplay, reportProgress, rewardedAd, rewardedAdsReady } from './crazygames';
+import { applixirReady, applixirRewardedAd } from './applixir';
 import { track } from './analytics';
 import { inItch, inPlayStore, inPortal, isInstalled, isIos, isIpad, keepStorage, renewStorage, touchFirst } from '../storage/device';
 import type { Hint } from '../core/career';
@@ -225,8 +226,8 @@ export class Shell {
       sound: (id, pitch, pan) => this.audio.play(id, pitch, pan),
       haptic: (id, softness) => this.haptics.play(id, softness),
       celebrate: () => celebrate(),
-      rewardedAd,
-      adReady: rewardedAdsReady,
+      rewardedAd: (done) => (inPortal ? rewardedAd(done) : applixirRewardedAd(done)),
+      adReady: () => (inPortal ? rewardedAdsReady() : applixirReady()),
       // A free upgrade step and the Skin Upgrade's boost are for the normal site and the Play app, not CrazyGames or itch.io.
       adOffers: !inPortal && !inItch,
       feelsHaptics: this.haptics.supported,
