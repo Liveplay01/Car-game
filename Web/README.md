@@ -464,7 +464,7 @@ The frame's origin is the game's own, so the leaderboard, friends, cloud sync, T
 links work as on the website. `inItch` (`src/storage/device.ts`) leaves out what needs a top-level
 site: ads (and the free upgrade step and boost that only exist with them), the service worker
 (blocked or partitioned in a nested frame), the install tip and row, and the link to CrazyGames.
-nginx gives `?itch` the default policy without AdSense. The save lives in `localStorage` of the
+nginx gives `?itch` its own policy, with no ad hosts. The save lives in `localStorage` of the
 nested frame (partitioned per itch.io; Safari may clear it), which is what cloud sync is for.
 
 ## Google Play
@@ -474,7 +474,7 @@ Android wrapper that opens `https://game.timing.love/?googleplaystore` in Chrome
 No separate build: every deploy reaches the app at once, and it shares save, offline mode and
 service worker with the browser game. `inPlayStore` (`src/storage/device.ts`) recognises the app
 by the query or Chrome's `android-app://` referrer and keeps that for the tab; the app shows no
-install tip or install row and no link to CrazyGames. Ads (AdSense) run as on the website.
+install tip or install row and no link to CrazyGames. Ads (Applixir) run as on the website.
 The query gets the default Content-Security-Policy.
 
 - **Start URL in the wrapper:** `/?googleplaystore`. Display fullscreen, orientation portrait.
@@ -517,16 +517,14 @@ app updates. On Android, TWA wrapper changes (permissions, native integrations, 
 manifest shortcuts copied at build time) still require a new Play Store build. See
 [NEW-PLAYSTORE-BUILD.md](../NEW-PLAYSTORE-BUILD.md) for the build checklist.
 
-## Google AdSense
+## Applixir
 
-`src/ui/ads.ts` adds the AdSense tag once the game is on screen: production build only, and
-never on `?crazygames`. `index.html` carries the `google-adsense-account` meta tag (site
-verification, sends nothing). The default Content-Security-Policy in `nginx.conf` lets the tag,
-the ad frames and the consent message through; the CrazyGames policy stays closed to them.
-`ads.txt` belongs on the root domain (`https://timing.love/ads.txt`, the website's project),
-not in this repo; it covers `game.timing.love`. The site must also be in AdSense → Sites. The consent message (EEA/UK) is set up in
-AdSense under Privacy & messaging. Auto ads (and which formats) are also set there: no anchor
-or full-screen formats on this site, a tap on the scene must never hit an ad.
+`index.html` loads the Applixir SDK (`cdn.applixir.com`) and holds the `#applixir-player` container.
+`src/ui/applixir.ts` starts a rewarded ad with the game's app key. No consent message and no other
+ad network: Applixir is the only ad provider. The default Content-Security-Policy in `nginx.conf`
+lets the SDK, its player and the ad frames through; the CrazyGames policy and the `?itch` policy
+stay closed to them. The CSP's Google ad hosts (imasdk, doubleclick, googlesyndication) are kept
+because Applixir's partners may deliver ads through them.
 
 ### Rewarded ads
 
@@ -538,13 +536,11 @@ the dial; it is used up by one round, won or lost, and the dial shows the chance
 `Casino.upgradeChance` in `core/`. The reward is paid only when the ad was watched to the end.
 
 - **CrazyGames** (`?crazygames`): their rewarded ad, for the chest only. The other two are not offered there.
-- **Normal site and Google Play app** (the app opens the same page): Google's Ad Placement API (H5 Games
-  Ads, `adBreak({ type: 'reward' })` in `ui/ads.ts`). The game asks for an ad ahead of time and shows the
-  offers only once one is ready; sound is off while it plays. Switched on by the build argument
-  `VITE_REWARDED_ADS=1` (Coolify: Build Arg of the game's resource). It needs an AdSense account that is
-  **approved for H5 Games Ads** (separate sign-up). Without the switch no ad plays and the
-  offers pay nothing. Try it with Google's test ads on a production build:
-  `VITE_REWARDED_ADS=1 npm run build && npm run preview`, then open `/?adtest`.
+- **Normal site and Google Play app** (the app opens the same page): Applixir (`ui/applixir.ts`). The
+  offers show only once the SDK is ready (`applixirReady`); sound is off while the ad plays. The reward
+  is paid on `complete` followed by the end of the ad (`allAdsCompleted`, `skipped`, `manuallyEnded`).
+  Without the SDK (blocker, offline) no ad plays and the offers pay nothing. On the live site add
+  `?werbung` to log each Applixir step to the console.
 - Where the chance of an ad is limited (`frequencyCapped`), the game says "try again in a few minutes".
 - **Streak ads and the Doubled pay** (16.10.2026): three more offers, one pill under the top card of the Game tab
   (`present/adPill.ts`, `GameSession.gameAd`), shown only once an ad is ready: the broken Daily streak back (3 days or
@@ -565,9 +561,7 @@ the dial; it is used up by one round, won or lost, and the dial shows the chance
   the run, then a count-in. Once a run, `reviveAdsPerDay` (3) a day (`Careers.adRevivesLeft/rewardAdRevive`). The result
   carries `revived`: no Perfect Run, no Tailwind, no challenge link, and an Unlimited record from it goes to the board with
   `revived: 1` ("kept driving"). Same seed, taps and revive give the same run (`npm test`). Umami `reward = revive`.
-  In the dev server: `?adfake`, then the probe's `play('reckless')` crashes (`npm run e2e`).
-- **Trying the offers without AdSense:** `npm run dev`, then add `?adfake` to the address: a pretend ad of two seconds.
-  It exists only in the dev build.
+  The probe's `play('reckless')` crashes the run (`npm run e2e`).
 
 ## Legal pages
 

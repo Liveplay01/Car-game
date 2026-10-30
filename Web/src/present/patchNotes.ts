@@ -51,6 +51,20 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-30',
+    date: '30 October 2026',
+    title: 'Straight into the game',
+    impact: 'minor',
+    summary: [
+      'The first visit no longer waits for a consent message. The game starts at once.',
+      'Rewarded ads now come from Applixir only.',
+    ],
+    items: [
+      'The first visit used to open a consent message before the first lesson. It is gone: the lesson starts right away.',
+      'Ads are served by Applixir alone. Watching one is still always your tap, and the reward still comes only after the ad ends.',
+    ],
+  },
+  {
     id: '2026-10-29',
     date: '29 October 2026',
     title: 'Easier to read',

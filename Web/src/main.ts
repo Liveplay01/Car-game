@@ -6,7 +6,6 @@ import { startTuning } from './net/tuning';
 import { S } from './present/strings';
 import { currentLanguage } from './present/i18n';
 import { startAnalytics } from './ui/analytics';
-import { consentAnswered } from './ui/consent';
 import { Casino } from './core/casino';
 import { forgetMeasures } from './present/measure';
 import { Careers, newSave } from './core/career';
@@ -151,8 +150,6 @@ const hasSave = (): boolean => {
   }
 };
 const firstVisit = (!inPortal && !hasSave()) || bootDemo === 'learn';
-// The lesson starts only once the consent message is answered (Leo, 29.10.2026).
-const lessonStart = firstVisit ? consentAnswered() : Promise.resolve();
 const learn = boot?.querySelector('.boot-learn');
 if (boot && learn && firstVisit) {
   const L = S.shell.learn;
@@ -164,7 +161,7 @@ if (boot && learn && firstVisit) {
   learn.querySelector('.learn-wait > span')!.textContent = L.loading;
   learn.querySelector('.learn-late p')!.textContent = L.skipNote;
   learn.querySelector('.learn-late button')!.textContent = L.skip;
-  void lessonStart.then(() => boot.classList.add('learn'));
+  boot.classList.add('learn');
 }
 
 // The heading face (Overpass, `ui/shell.css`) is measured and drawn by the canvas. Nothing waits for it: the way in
@@ -188,11 +185,11 @@ const tapped = new Promise<void>((resolve) => {
   if (firstVisit) boot?.querySelector('.learn-late button')?.addEventListener('click', () => resolve(), { once: true });
   else boot?.addEventListener('pointerdown', () => resolve(), { once: true });
 });
-if (firstVisit) void lessonStart.then(() => pause(LEARN_MS)).then(() => boot?.classList.add('late'));
+if (firstVisit) void pause(LEARN_MS).then(() => boot?.classList.add('late'));
 await Promise.race([
-  Promise.all([shell.preload(), firstVisit ? lessonStart.then(() => pause(LEARN_MS)) : null]),
+  Promise.all([shell.preload(), firstVisit ? pause(LEARN_MS) : null]),
   tapped,
-  firstVisit ? lessonStart.then(() => pause(LEARN_MS + BOOT_WAIT_MS)) : pause(BOOT_WAIT_MS),
+  firstVisit ? pause(LEARN_MS + BOOT_WAIT_MS) : pause(BOOT_WAIT_MS),
 ]);
 gameLoaded();
 // The game is on screen: the boot screen fades away, and later errors are the game's own business.

@@ -1,8 +1,8 @@
 /**
  * The legal pages: Privacy Policy and Imprint (Impressum). One source for both places they
  * appear: in the game (Settings → Legal) and as plain pages beside it (`/privacy.html`,
- * `/imprint.html`, written by vite.config.ts), for forms that ask for a link (CrazyGames,
- * Clickio). No DOM here: the build reads this file too.
+ * `/imprint.html`, written by vite.config.ts), for forms that ask for a link (CrazyGames).
+ * No DOM here: the build reads this file too.
  *
  * Whoever runs the game fills in OPERATOR and HOSTING; the build warns while a field is empty.
  * Anything that changes what the game sends where (a new service, ads, analytics) changes
@@ -75,7 +75,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
     sections: [
       {
         paragraphs: [
-          `${GAME_NAME} has no sign-up. Your progress stays on your device. This page explains the few things that do leave it, the anonymous visit statistics, and the ads Google may show on this site.`,
+          `${GAME_NAME} has no sign-up. Your progress stays on your device. This page explains the few things that do leave it, the anonymous visit statistics, and the video ads Applixir may show on this site.`,
           `Last updated: ${LEGAL_UPDATED}.`,
         ],
       },
@@ -186,12 +186,10 @@ export const LEGAL_DOCS: LegalDoc[] = [
         ],
       },
       {
-        heading: 'Consent and advertising (Clickio)',
+        heading: 'Advertising (Applixir)',
         paragraphs: [
-          'On game.timing.love (not on CrazyGames) the first visit opens a consent message from Clickio, our consent management provider, before the game starts. Your browser loads its script from Clickio and sends it your IP address, your browser and device data and the page you are on. Your choice is stored on your device, in the browser\'s local storage, so the message does not ask again. Clickio passes your choice on to the advertising partners it works with, and those may set or read cookies and similar identifiers on your device to show, measure and, with your consent, personalise ads, and to prevent fraud.',
           'The ads are voluntary. The game shows an ad only when you tap "Watch ad" for a reward you can see before you tap: a free chest, a free upgrade step or a boost on the Skin Upgrade. Nothing plays by itself, and nothing in the game depends on watching one. You get the reward only when the ad was watched to the end. Not on CrazyGames.',
           'On game.timing.love and in the Play app, the rewarded ads come from Applixir (AppLixir, our video ad provider). Applixir loads its player from cdn.applixir.com and its ads from its partners, which may receive your IP address and browser data and set or read cookies and similar identifiers.',
-          'If you are in the European Economic Area or the United Kingdom, the consent message asks you first. Without your consent, only ads that need no personal data are possible, or none at all. Legal basis: Art. 6(1)(c) GDPR for recording your choice, Art. 6(1)(a) GDPR and § 25(1) TDDDG for the advertising. You can change your choice at any time by clearing the site data of game.timing.love in your browser; the consent message then asks again.',
         ],
       },
       {
