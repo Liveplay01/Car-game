@@ -21,3 +21,5 @@ Desktop.ini
 
 # Playwright MCP session files
 .playwright-mcp/
+.agents/skills/apple-design/.cursorrules
+/.agents/skills/apple-design

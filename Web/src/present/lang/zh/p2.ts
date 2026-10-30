@@ -246,6 +246,7 @@ export default (S: Strings): Words<Strings> => ({
       }
     },
     bugHunter: (id) => `已解锁${S.shop.item(id).toUpperCase()} · 感谢你捉虫`,
+    playStore: (id) => `已解锁${S.shop.item(id).toUpperCase()} · 欢迎来到 Google Play`,
     chest: (kind) => `来自团队的礼物 · ${S.shop.chest(kind)} · 谢谢你`,
     money: (amount) => `来自团队的礼物 · ${Fmt.number(amount)} 金钱 · 谢谢你`,
     item: (id) => `来自团队的礼物 · 已解锁${S.shop.item(id)}`,

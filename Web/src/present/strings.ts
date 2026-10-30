@@ -618,6 +618,7 @@ export const S = {
     chest: (kind: ChestKind): string => `A GIFT FROM THE TEAM · ${S.shop.chest(kind)} · thank you`,
     money: (amount: number): string => `A GIFT FROM THE TEAM · ${amount.toLocaleString('en-US')} money · thank you`,
     item: (id: string): string => `A GIFT FROM THE TEAM · ${S.shop.item(id)} unlocked`,
+    playStore: (id: string): string => `${S.shop.item(id).toUpperCase()} UNLOCKED · welcome from Google Play`,
     /** Something from the crew (`crew:gift:crew:Name`, `crew:gift:you:Name`, `crew:up:silver`, `crew:goal`, `crew:back`); null for any other reason. */
     crew: (reason: string, what: string): string | null => {
       const [kind, what2, ...rest] = reason.split(':');
@@ -2035,6 +2036,7 @@ export const S = {
       if (item.source.kind === 'auction') return 'Only ever a lot at the Auction House (Social → Club). A new lot every few days.';
       if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: only the Arcade gives it (Shop → Arcade). Looks only.`;
       if (item.source.kind === 'failures') return 'Find every way to lose a shift (Progress → Museum → Failures). Looks only.';
+      if (item.source.kind === 'playStore') return 'Only for those who opened the game from the Google Play app in its first five days, 30 October to 4 November 2026. Looks only.';
       if (item.source.kind === 'fund') return 'A thank-you from the City Fund, which the Game fund has replaced. It is not given out any more.';
       if (item.source.kind === 'bugReport')
         return item.source.reports === 1
@@ -2172,6 +2174,7 @@ export const S = {
         doubleDown: 'Double Down',
         tycoon: 'Tycoon',
         crashTest: 'Crash Test',
+        playLaunch: 'Play Launch',
         lemon: 'Lemon',
         plum: 'Plum',
         fern: 'Fern',

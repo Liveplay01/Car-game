@@ -47,6 +47,7 @@ import {
   legendaryReward,
   prestigeReward,
   unlimitedRewards,
+  PLAY_SKIN,
 } from './loot';
 import { type Challenge, challengesOf, challengeMet, challengeReward, STREAK_MILESTONES } from './daily';
 import type { CasinoPending, CasinoRound } from './casino';
@@ -832,6 +833,13 @@ export const Careers = {
     Careers.discover(c, [museumId({ k: 'fail', kind: cause })]);
     if (!failuresComplete(c.museumSeen) || c.collection.includes(FAIL_SKIN)) return false;
     Careers.collect(c, FAIL_SKIN);
+    return true;
+  },
+
+  /** Opened from the Google Play app within the launch days: the launch skin is theirs at once. True when it was just given. */
+  claimPlayStoreSkin(c: Career, now: number, config: Config = baseConfig): boolean {
+    if (now >= config.playStoreSkinUntil || c.collection.includes(PLAY_SKIN)) return false;
+    Careers.collect(c, PLAY_SKIN);
     return true;
   },
 

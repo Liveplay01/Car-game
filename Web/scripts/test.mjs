@@ -2723,6 +2723,17 @@ test('the casino counts its profit and pays its own skins for its big moments', 
   assert.ok(baseConfig.casinoFlipChain <= baseConfig.doubleMaxChain, 'the coin streak can be reached');
 });
 
+test('the Play Store launch skin is given at once, only until its last day', () => {
+  const c = newCareer();
+  const before = baseConfig.playStoreSkinUntil - 1;
+  assert.ok(Careers.claimPlayStoreSkin(c, before), 'opened from the Play app in time');
+  assert.ok(Careers.owns(c, 'playLaunch') && c.unseen.includes('playLaunch'));
+  assert.ok(!Careers.claimPlayStoreSkin(c, before), 'given once');
+  const late = newCareer();
+  assert.ok(!Careers.claimPlayStoreSkin(late, baseConfig.playStoreSkinUntil), 'too late');
+  assert.ok(!Careers.owns(late, 'playLaunch'));
+});
+
 
 // MARK: Seasons, tours, achievements (07.10.2026)
 

@@ -129,6 +129,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.source.kind === 'failures') return '시프트에서 지는 모든 방식을 찾으세요(진행 → 박물관 → 실패). 겉모습만.';
       if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: 아케이드만 줘요(상점 → 아케이드). 겉모습만.`;
       if (item.source.kind === 'fund') return '게임 펀드가 대신하게 된 시티 펀드의 감사 선물이에요. 더는 지급되지 않아요.';
+      if (item.source.kind === 'playStore') return 'Google Play 앱으로 게임을 연 첫 5일(2026년 10월 30일~11월 4일) 동안만. 겉모습만.';
       if (item.source.kind === 'bugReport')
         return item.source.reports === 1
           ? 'timing.love에서 친구 코드와 함께 버그를 신고하세요. 버그 헌터만 받아요.'

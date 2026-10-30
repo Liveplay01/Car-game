@@ -129,6 +129,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.source.kind === 'failures') return 'Trouvez toutes les façons de perdre un service (Progression → Musée → Échecs). Purement esthétique.';
       if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)} : seule l’Arcade le donne (Boutique → Arcade). Purement esthétique.`;
       if (item.source.kind === 'fund') return 'Ancien remerciement du fonds municipal. Plus attribué.';
+      if (item.source.kind === 'playStore') return 'Réservé à celles et ceux qui ont ouvert le jeu depuis l’appli Google Play durant ses cinq premiers jours, du 30 octobre au 4 novembre 2026. Purement esthétique.';
       if (item.source.kind === 'bugReport')
         return item.source.reports === 1
           ? 'Signalez un bug sur timing.love avec votre code ami. Réservé aux chasseurs de bugs.'

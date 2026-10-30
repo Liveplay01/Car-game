@@ -129,6 +129,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.source.kind === 'failures') return '找齐输掉班次的每一种方式(进度 → 博物馆 → 失败)。只改变外观。';
       if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}:只有游戏厅会授予(商店 → 游戏厅)。只改变外观。`;
       if (item.source.kind === 'fund') return '来自城市基金的感谢礼，它已被游戏基金取代。不再发放。';
+      if (item.source.kind === 'playStore') return '仅限在前五天(2026年10月30日至11月4日)通过 Google Play 应用打开游戏的玩家。只改变外观。';
       if (item.source.kind === 'bugReport')
         return item.source.reports === 1
           ? '在 timing.love 附上你的好友码报告一个问题。只有捉虫猎人能得到它。'

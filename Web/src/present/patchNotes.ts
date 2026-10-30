@@ -56,10 +56,12 @@ export const PATCH_NOTES: PatchNote[] = [
     title: 'Straight into the game',
     impact: 'minor',
     summary: [
+      'New Play Launch skin: open the game from the Google Play app until 4 November.',
       'The first visit no longer waits for a consent message. The game starts at once.',
       'Rewarded ads now come from Applixir only.',
     ],
     items: [
+      'We are on Google Play! To celebrate, the Play Launch skin is yours the moment you open the game from the Google Play app, any time from 30 October to 4 November 2026. It comes straight to your collection, not from a chest, and it is looks only.',
       'The first visit used to open a consent message before the first lesson. It is gone: the lesson starts right away.',
       'Ads are served by Applixir alone. Watching one is still always your tap, and the reward still comes only after the ad ends.',
     ],

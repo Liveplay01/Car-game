@@ -1173,6 +1173,11 @@ export const baseConfig = {
    */
   casinoFlipChain: 5,
   casinoTycoon: 1_000_000,
+  /**
+   * The Play Store launch skin (Leo, 30.10.2026; LOOT.md): handed out on opening the game from the Google Play app
+   * (`inPlayStore`) before this moment, UTC. Five days from the launch: 30.10. to 04.11.2026.
+   */
+  playStoreSkinUntil: Date.UTC(2026, 10, 5),
 
   // Late levels
   lateLevel: 6,

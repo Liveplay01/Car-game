@@ -8,7 +8,7 @@ import { Unlocks } from '../core/unlocks';
 import { Mafia } from '../core/mafia';
 import type { GameEvent, ShiftOutcome, ShiftResult } from '../core/events';
 import type { Upgrade } from '../core/levels';
-import { ALBUM_REWARD, BIG_SCREEN, CHEST_KINDS, chestPrice, chestBundle, cosmetic, rarityRank, tapPower, strongTaps, type ChestKind } from '../core/loot';
+import { ALBUM_REWARD, BIG_SCREEN, PLAY_SKIN, CHEST_KINDS, chestPrice, chestBundle, cosmetic, rarityRank, tapPower, strongTaps, type ChestKind } from '../core/loot';
 import { dailySeed, dailyEvent, dayNumber, challengesOf, challengeProgress, challengeReward } from '../core/daily';
 import { weekNumber, weeklyTrial } from '../core/weekly';
 import { Goals } from '../core/goals';
@@ -593,10 +593,12 @@ export class GameSession {
     const comeback = this.save.tutorialDone && Careers.giveComebackChest(career, this.today, this.config);
     const income = Careers.collectLoginIncome(career, this.today, this.config);
     Careers.collectGift(career, this.today);
+    const launchSkin = inPlayStore && Careers.claimPlayStoreSkin(career, Date.now(), this.config);
     // A loan that fell due while the game was shut: one day of grace, so staying away never costs a loan.
     const graced = Mafia.returned(career, Date.now());
     this.persist();
     if (graced) this.announce(S.mafia.notices.grace);
+    if (launchSkin) this.announce(S.rewards.playStore(PLAY_SKIN));
     if (comeback) {
       this.announce(S.daily.comebackChest(S.shop.chest('premium'), away, playerName));
       this.noteAwayNews(since);

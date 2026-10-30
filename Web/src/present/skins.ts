@@ -165,6 +165,7 @@ export const Skins = {
       doubleDown: 'skinObsidian',
       tycoon: 'skinCarbon',
       crashTest: 'skinLemon',
+      playLaunch: 'skinMint',
     };
     return id ? (map[id] ?? null) : null;
   },
@@ -178,6 +179,7 @@ export const Skins = {
       case 'crashTest':
         return 'skinCarbon';
       case 'doubleDown':
+      case 'playLaunch':
         return 'skinPearl';
       case 'sterling':
       case 'magnate':
@@ -353,6 +355,7 @@ export const Skins = {
       doubleDown: 'halo',
       tycoon: 'laurel',
       crashTest: 'embers',
+      playLaunch: 'rainbow',
     };
     return id ? (map[id] ?? null) : null;
   },
@@ -409,6 +412,7 @@ export const Skins = {
       megaWin: 'hotrod',
       doubleDown: 'coupe',
       tycoon: 'coupe',
+      playLaunch: 'roadster',
     };
     return id ? (map[id] ?? null) : null;
   },
@@ -507,6 +511,7 @@ export const Skins = {
       case 'megaWin':
       case 'doubleDown':
       case 'tycoon':
+      case 'playLaunch':
         return 'shinyGlitter';
       case 'luckyStrike':
         return 'shiny';

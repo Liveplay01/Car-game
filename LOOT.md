@@ -141,6 +141,15 @@ Aussehen, Regal „Honours“, zählt fürs Honours-Album (jeder kann verlieren)
 | --- | --- | --- | --- | --- |
 | Crash Test | `crashTest` | Epic | alle neun Arten zu verlieren gefunden | Gelb mit Carbon-Streifen, Glut |
 
+**Play-Launch-Skin (Leo, 30.10.2026, `Careers.claimPlayStoreSkin`, Quelle `playStore`):** Zum Start im Google Play Store.
+Wer das Spiel von 30.10. bis 04.11.2026 (`playStoreSkinUntil`, 5. 11. 00:00 UTC) über die Play-App öffnet (`inPlayStore`), bekommt
+den Skin sofort beim Öffnen (Meldung mit Grund), nicht aus einer Truhe. Danach nicht mehr zu bekommen: zählt weder fürs
+Honours-Album noch für den Sammler (`isRetired`). Nur Aussehen, Regal „Honours“.
+
+| Skin | ID | Seltenheit | Wofür | Aussehen |
+| --- | --- | --- | --- | --- |
+| Play Launch | `playLaunch` | Legendary | Spiel in den ersten fünf Tagen über die Play-App geöffnet | Mint mit Perlstreifen, Regenbogen, Roadster |
+
 **Casino-Rangliste (Leo, 15.10.2026):** `career.casinoProfit` zählt jede Buchung der Geldspiele (Gewinne minus
 Einsätze, über alle Tage, ab diesem Update). Das Board `casino` im Ranglisten-Dienst zeigt den neuesten Stand,
 auch bei Verlusten; negative Salden erscheinen rot. Der Tab erscheint in Social → Ranks erst, wenn das Casino erreicht ist.

@@ -129,6 +129,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.source.kind === 'failures') return 'シフトの負けかたをすべて見つけよう(進捗 → ミュージアム → 失敗)。見た目だけ。';
       if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: アーケードだけが贈ります(ショップ → アーケード)。見た目だけ。`;
       if (item.source.kind === 'fund') return 'ゲームファンドに置き換わった、シティファンドからのお礼です。もう配られません。';
+      if (item.source.kind === 'playStore') return 'Google Playアプリからゲームを開いた最初の5日間(2026年10月30日〜11月4日)だけ。見た目だけ。';
       if (item.source.kind === 'bugReport')
         return item.source.reports === 1
           ? 'timing.loveでフレンドコードを添えて不具合を報告しよう。もらえるのはバグハンターだけ。'

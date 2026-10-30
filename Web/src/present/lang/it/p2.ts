@@ -246,6 +246,7 @@ export default (S: Strings): Words<Strings> => ({
       }
     },
     bugHunter: (id) => `${S.shop.item(id).toUpperCase()} SBLOCCATO · grazie per la caccia ai bug`,
+    playStore: (id) => `${S.shop.item(id).toUpperCase()} SBLOCCATO · benvenuto da Google Play`,
     chest: (kind) => `UN REGALO DAL TEAM · ${S.shop.chest(kind)} · grazie`,
     money: (amount) => `UN REGALO DAL TEAM · ${Fmt.number(amount)} monete · grazie`,
     item: (id) => `UN REGALO DAL TEAM · ${S.shop.item(id)} sbloccato`,

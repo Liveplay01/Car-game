@@ -129,6 +129,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.source.kind === 'failures') return 'Finde jede Art, eine Schicht zu verlieren (Fortschritt → Museum → Scheitern). Nur Aussehen.';
       if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: Nur die Arcade vergibt ihn (Shop → Arcade). Nur Aussehen.`;
       if (item.source.kind === 'fund') return 'Ein Dankeschön vom Stadtfonds, den der Spielfonds ersetzt hat. Er wird nicht mehr vergeben.';
+      if (item.source.kind === 'playStore') return 'Nur für alle, die das Spiel in den ersten fünf Tagen über die Google-Play-App geöffnet haben, 30. Oktober bis 4. November 2026. Nur Aussehen.';
       if (item.source.kind === 'bugReport')
         return item.source.reports === 1
           ? 'Melde einen Fehler auf timing.love mit deinem Freundescode. Nur Bug-Hunter bekommen ihn.'

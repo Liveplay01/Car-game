@@ -129,6 +129,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.source.kind === 'failures') return 'Trova ogni modo di perdere un turno (Progressi → Museo → Fallimenti). Solo estetica.';
       if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: solo l’Arcade la assegna (Negozio → Arcade). Solo estetica.`;
       if (item.source.kind === 'fund') return 'Ringraziamento del vecchio fondo cittadino. Non più assegnato.';
+      if (item.source.kind === 'playStore') return 'Solo per chi ha aperto il gioco dall’app Google Play nei primi cinque giorni, dal 30 ottobre al 4 novembre 2026. Solo estetica.';
       if (item.source.kind === 'bugReport')
         return item.source.reports === 1
           ? 'Segnala un bug su timing.love con il tuo codice amico. Esclusivo per cacciatori di bug.'

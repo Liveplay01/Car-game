@@ -65,6 +65,8 @@ export type CosmeticSource =
   | { kind: 'casino'; feat: CasinoFeat }
   /** Earned by finding every way to lose a shift (Leo, 15.10.2026; the Museum's Failures shelf, `core/museum.ts`). */
   | { kind: 'failures' }
+  /** Opening the game from the Google Play app during the launch days (Leo, 30.10.2026; `Careers.claimPlayStoreSkin`): given at once, never found in a chest. */
+  | { kind: 'playStore' }
   /**
    * The one honour that is luck (Leo, 01.10.2026): found in this chest with this chance per
    * opening, until it is found. On the Honours shelf, never in a chest's normal pool.
@@ -251,6 +253,8 @@ export const COSMETICS: Cosmetic[] = [
   c('tycoon', 'carSkin', 'legendary', { kind: 'casino', feat: 'tycoon' }),
   // The Museum's Failures shelf (Leo, 15.10.2026): every way to lose a shift, found. Looks only.
   c('crashTest', 'carSkin', 'epic', { kind: 'failures' }),
+  // The Google Play launch (Leo, 30.10.2026): only for those who opened the game from the Play app in the first five days. Looks only.
+  c('playLaunch', 'carSkin', 'legendary', { kind: 'playStore' }),
   // Police skins (Leo, 22.10.2026): one dresses every police car; the white roof and the light bar always stay.
   c('autobahn', 'policeSkin', 'common'),
   c('highwayPatrol', 'policeSkin', 'rare'),
@@ -270,6 +274,9 @@ export const legendaryReward = (shifts: number): Cosmetic | undefined =>
 
 /** The map that shows the player's own picture or video instead of a city. */
 export const BIG_SCREEN = 'bigScreen';
+
+/** The skin the Google Play launch gives away. */
+export const PLAY_SKIN = 'playLaunch';
 
 /** The item a Prestige rank unlocks, if any. */
 export const prestigeReward = (rank: number): Cosmetic | undefined => COSMETICS.find((x) => x.source.kind === 'prestige' && x.source.rank === rank);
@@ -293,10 +300,11 @@ export const isHonour = (item: Cosmetic): boolean =>
   item.source.kind === 'fund' ||
   item.source.kind === 'casino' ||
   item.source.kind === 'failures' ||
+  item.source.kind === 'playStore' ||
   item.source.kind === 'find';
 
-/** Sources nobody can reach any more: the Hall of Fame and the City Fund (replaced by the Game fund). */
-export const isRetired = (item: Cosmetic): boolean => item.source.kind === 'hall' || item.source.kind === 'fund';
+/** Sources nobody can reach any more: the Hall of Fame, the City Fund (replaced by the Game fund) and the Play Store launch skin (its days are over). */
+export const isRetired = (item: Cosmetic): boolean => item.source.kind === 'hall' || item.source.kind === 'fund' || item.source.kind === 'playStore';
 
 /** Every skin that can still be had; what the Collector title asks for. */
 export const collectableSkins = (): Cosmetic[] => COSMETICS.filter((x) => x.kind !== 'vehicleType' && !isRetired(x));
@@ -350,7 +358,7 @@ export function albumItems(album: Album): Cosmetic[] {
     case 'honours':
       // Deeds in the game only: a find is luck, and the bug hunter skins need the website (not offered
       // inside CrazyGames), so an album must not wait on either. Nor on the casino: no one has to gamble.
-      return COSMETICS.filter((x) => isHonour(x) && !['find', 'bugReport', 'tour', 'auction', 'fund', 'casino'].includes(x.source.kind));
+      return COSMETICS.filter((x) => isHonour(x) && !['find', 'bugReport', 'tour', 'auction', 'fund', 'casino', 'playStore'].includes(x.source.kind));
     case 'pass':
       return COSMETICS.filter((x) => x.source.kind === 'pass');
     case 'tours':

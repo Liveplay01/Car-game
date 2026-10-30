@@ -246,6 +246,7 @@ export default (S: Strings): Words<Strings> => ({
       }
     },
     bugHunter: (id) => `¡${S.shop.item(id).toUpperCase()} DESBLOQUEADO! · gracias por cazar errores`,
+    playStore: (id) => `¡${S.shop.item(id).toUpperCase()} DESBLOQUEADO! · bienvenido desde Google Play`,
     chest: (kind) => `UN REGALO DEL EQUIPO · ${S.shop.chest(kind)} · gracias`,
     money: (amount) => `UN REGALO DEL EQUIPO · ${Fmt.number(amount)} monedas · gracias`,
     item: (id) => `UN REGALO DEL EQUIPO · ${S.shop.item(id)} desbloqueado`,
