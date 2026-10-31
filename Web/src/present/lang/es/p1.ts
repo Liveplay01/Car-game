@@ -122,6 +122,7 @@ export default (_s: Strings): Words<Strings> => ({
     lowDetailSub: "Menos efectos y sin vidrio esmerilado, para un dispositivo antiguo. El juego lo activa solo si va a tirones.",
     sound: 'Sonido y vibración',
     performance: 'Rendimiento',
+    volume: 'Volumen',
     soundEffects: 'Efectos de sonido',
     music: 'Música',
     mapSounds: 'Sonidos ambientales',

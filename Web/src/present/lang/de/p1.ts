@@ -122,6 +122,7 @@ export default (_s: Strings): Words<Strings> => ({
     lowDetailSub: "Weniger Effekte und kein Milchglas, für ein älteres Gerät. Das Spiel schaltet es selbst ein, wenn es dauerhaft ruckelt.",
     sound: 'Ton & Haptik',
     performance: 'Leistung',
+    volume: 'Lautstärke',
     soundEffects: 'Soundeffekte',
     music: 'Musik',
     mapSounds: 'Kartengeräusche',

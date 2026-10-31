@@ -244,7 +244,7 @@ test('Crew: the league table, a gift to take, and a gift given out of your own m
 });
 
 test('Keep driving: a crash that ends an Unlimited run is offered back for an ad, and the run goes on', async ({ page }) => {
-  const { errors } = await start(page, 'level=30&adfake');
+  const { errors } = await start(page, 'level=30&adfake&werbung');
   // Not the first day, in Unlimited.
   await page.evaluate(() => {
     const g = (window as unknown as { __game: { game: { save: { firstDay: number; mode: string }; perform(a: { k: string }): void } } }).__game.game;

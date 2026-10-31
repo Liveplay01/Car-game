@@ -161,6 +161,7 @@ export const S = {
     lowDetailSub: 'Fewer effects and no frosted glass, for an older device. The game turns this on by itself if it keeps stuttering.',
     sound: 'Sound & haptics',
     performance: 'Performance',
+    volume: 'Volume',
     soundEffects: 'Sound effects',
     music: 'Music',
     mapSounds: 'Map sounds',

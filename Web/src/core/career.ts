@@ -116,6 +116,8 @@ export interface Settings {
   sound: boolean;
   /** The adaptive music, apart from the effects. */
   music: boolean;
+  /** Master volume of everything the game plays, 0 to 1 (players' wish, Oct 2026). */
+  volume: number;
   /** The sound of the map's weather (rain, thunder), apart from the effects and the music. */
   mapSounds: boolean;
   /** The engines and tyres of the traffic, quietly under everything (Leo, 22.10.2026). */
@@ -547,7 +549,7 @@ export const newSave = (): SaveGame => ({
   highscore: 0,
   highscoreSeed: null,
   shiftsPlayed: 0,
-  settings: { sound: true, music: true, mapSounds: true, engineSounds: false, haptics: true, reduceMotion: 'system', steadyCamera: false, vehicleLabels: false, leftHanded: false, dispatchSize: 2, largeText: false, batterySaver: false, lowDetail: false, motionChosen: false },
+  settings: { sound: true, music: true, volume: 1, mapSounds: true, engineSounds: false, haptics: true, reduceMotion: 'system', steadyCamera: false, vehicleLabels: false, leftHanded: false, dispatchSize: 2, largeText: false, batterySaver: false, lowDetail: false, motionChosen: false },
   career: newCareer(),
   tutorialDone: false,
   hints: [],

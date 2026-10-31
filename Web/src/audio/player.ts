@@ -136,6 +136,8 @@ export class AudioPlayer {
   private stemBuffers = new Map<MusicLayer, AudioBuffer>();
   private volumes = new Map<MusicLayer, number>();
   private loading: Promise<void> | null = null;
+  private master: GainNode | null = null;
+  private level = 1;
   /** The merge melody: music on, the combo the last frame saw, the highest phrase played this run, when the phrase now sounding ends, and the notes still ringing. */
   private melodyOn = false;
   private comboSeen = 0;
@@ -169,7 +171,12 @@ export class AudioPlayer {
     limiter.threshold.value = -6;
     limiter.ratio.value = 8;
     limiter.release.value = 0.12;
-    limiter.connect(ctx.destination);
+    // After the limiter, so the volume never changes how hard the limiter works.
+    const master = ctx.createGain();
+    master.gain.value = this.level ** 2;
+    limiter.connect(master);
+    master.connect(ctx.destination);
+    this.master = master;
     const bus = (volume: number, to: AudioNode): GainNode => {
       const g = ctx.createGain();
       g.gain.value = volume;
@@ -1126,6 +1133,13 @@ export class AudioPlayer {
       music.gains.get(layer)!.gain.setTargetAtTime(next * AudioPlayer.musicMaster, ctx.currentTime, 0.02);
     }
     music.filter.frequency.setTargetAtTime(Music.cutoff(mix.lowPass), ctx.currentTime, 0.015);
+  }
+
+  /** Master volume, 0 to 1; squared, so the slider follows the ear and not the amplitude. */
+  setVolume(level: number): void {
+    if (level === this.level) return;
+    this.level = level;
+    this.master?.gain.setTargetAtTime(level ** 2, this.master.context.currentTime, 0.02);
   }
 
   /** Pauses everything while the page is hidden; resumes on return. */

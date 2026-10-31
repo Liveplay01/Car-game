@@ -21,7 +21,7 @@ import { PhotoView } from './photo';
 import { celebrate, invitedRoom, offerLogin, onAdAudio, reportGameplay, reportProgress, rewardedAd, rewardedAdsReady } from './crazygames';
 import { applixirReady, applixirRewardedAd } from './applixir';
 import { track } from './analytics';
-import { inItch, inPlayStore, inPortal, isInstalled, isIos, isIpad, keepStorage, renewStorage, touchFirst } from '../storage/device';
+import { inItch, inPlayStore, inPortal, isInstalled, isIos, isIpad, keepStorage, renewStorage, testAds, touchFirst } from '../storage/device';
 import type { Hint } from '../core/career';
 import { decodeChallenge, type ChallengeSpec } from '../core/challenge';
 import { knownShortLink, shortLink } from '../net/challengeLink';
@@ -227,9 +227,10 @@ export class Shell {
       haptic: (id, softness) => this.haptics.play(id, softness),
       celebrate: () => celebrate(),
       rewardedAd: (done) => (inPortal ? rewardedAd(done) : applixirRewardedAd(done)),
-      adReady: () => (inPortal ? rewardedAdsReady() : applixirReady()),
+      // Ads are still in testing (Leo, 31.10.2026): they show only on `/?werbung`, nowhere else.
+      adReady: () => testAds && (inPortal ? rewardedAdsReady() : applixirReady()),
       // A free upgrade step and the Skin Upgrade's boost are for the normal site and the Play app, not CrazyGames or itch.io.
-      adOffers: !inPortal && !inItch,
+      adOffers: testAds && !inPortal && !inItch,
       feelsHaptics: this.haptics.supported,
     };
     const quietForAd = (on: boolean): void => this.audio.setSuspended(on || document.hidden);
@@ -836,7 +837,7 @@ export class Shell {
       if (i > 0) modsStr += ',';
       modsStr += modList[i].label;
     }
-    const key = `${screen.k}|${selected}|${onSocial ? s.socialPage.section : -1}|${this.size.x}|${badgeKey}|${s.world.shift.phase}|${s.playingMode}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.save.settings.dispatchSize}|${s.save.settings.largeText}|${s.notesUnread}|${s.showsChrome}|${s.chestOffer}|${s.save.career.chests[0] ?? ''}|${s.world.dispatchesLeft}|${modsStr}`;
+    const key = `${screen.k}|${selected}|${onSocial ? s.socialPage.section : -1}|${this.size.x}|${badgeKey}|${s.world.shift.phase}|${s.playingMode}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.save.settings.dispatchSize}|${s.save.settings.largeText}|${s.notesUnread}|${this.unbacked}|${s.showsChrome}|${s.chestOffer}|${s.save.career.chests[0] ?? ''}|${s.world.dispatchesLeft}|${modsStr}`;
     if (!force && key === this.chromeKey) return;
     this.chromeKey = key;
     this.social.sync(onSocial, s.socialPage.section, SocialPage.column(this.size));
@@ -845,7 +846,7 @@ export class Shell {
     this.app.dataset.hand = s.save.settings.leftHanded ? 'left' : 'right';
     this.app.dataset.dispatch = String(s.save.settings.dispatchSize);
     document.documentElement.classList.toggle('large-text', s.save.settings.largeText);
-    this.settingsBtn.classList.toggle('has-news', s.notesUnread);
+    this.settingsBtn.classList.toggle('has-news', s.notesUnread || this.unbacked);
     const ready = lobby.isReady;
     this.againBtn.classList.toggle('show', lobby.canReady);
     this.againBtn.disabled = lobby.canReady && !lobby.enoughForNext;
@@ -1299,12 +1300,19 @@ export class Shell {
 
   private wasReady = accountReady();
 
+  /** A career with something to lose and no player to carry it to another device or past a cleared cache: a quiet dot, never a pop-up. */
+  private get unbacked(): boolean {
+    const career = this.session.save.career;
+    return accountsEnabled && !inPortal && !accountReady() && (career.level > this.session.config.accountPromptAfterLevel || career.prestige > 0);
+  }
+
   /** Friends, Ranks and the Club follow whether there is a player; nothing to do while that stays the same. */
   private playerChanged(): void {
     const ready = accountReady();
     if (ready === this.wasReady) return;
     this.wasReady = ready;
     this.social.refresh();
+    this.syncChrome(true);
   }
 
   /** Set while the question is on its way; a failed try waits a minute before the next one. */
@@ -1363,6 +1371,7 @@ export class Shell {
         this.resize();
       },
       notesUnread: s.notesUnread,
+      unbacked: this.unbacked,
       dispatch: Careers.reach(s.save.career) >= baseConfig.policeLevel,
       // The notes open over the settings; closing them brings the settings back.
       openNotes: () => {
@@ -1765,6 +1774,7 @@ export class Shell {
     const summary = !match && s.screen.k === 'result' ? s.screen.summary : null;
     this.live.update(summary, () => (summary ? ResultBanner.spoken(summary) : ''), match ? null : s.noticeText);
     s.sheetInset = this.detail.inset;
+    this.audio.setVolume(s.save.settings.volume);
     this.audio.updateMusic(match ? match.music : s.musicMix, s.save.settings.music, Math.min(delta, 0.1));
     this.audio.updateTension(match ? 0 : s.tension, s.save.settings.sound, Math.min(delta, 0.1));
     this.audio.updateDrift(match ? null : s.driftSound, s.save.settings.sound, Math.min(delta, 0.1));

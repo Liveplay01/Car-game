@@ -3153,6 +3153,22 @@ button.mod:active {
   text-overflow: ellipsis;
 }
 
+/* A tab with something waiting: a small accent dot inside its top-right corner. */
+.board-tabs button.has-dot {
+  position: relative;
+}
+
+.board-tabs button.has-dot::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
 /* A filter switch (Ranks: my crew only): pressed fills with the accent. */
 .chip {
   justify-self: start;

@@ -529,6 +529,8 @@ export interface SettingsActions {
   /** The patch notes; `notesUnread` lights the row until they are opened. */
   openNotes(): void;
   notesUnread: boolean;
+  /** Progress worth keeping and no player to carry it: the Account tab carries a dot (no pop-up). */
+  unbacked: boolean;
   /** How each place works, over the settings (`guidesSheet`). */
   openGuides(): void;
   /** Police are on this career's road: the dispatch button's size has something to size. */
@@ -670,6 +672,13 @@ function sliderRow(title: string, sub: string, value: 1 | 2 | 3, onChange: (valu
   slider.addEventListener('input', () => onChange(Number(slider.value) as 1 | 2 | 3));
   const track = h('div', { class: 'step-track' }, h('i'), h('i'), h('i'), slider);
   return h('div', { class: 'row row-stack' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), h('div', { class: 'row-sub' }, sub)), track);
+}
+
+/** A smooth 0 to 100 % slider. */
+function volumeRow(title: string, value: number, onChange: (value: number) => void): HTMLElement {
+  const slider = h('input', { class: 'step-slider', type: 'range', min: '0', max: '100', step: '5', value: String(Math.round(value * 100)), 'aria-label': title });
+  slider.addEventListener('input', () => onChange(Number(slider.value) / 100));
+  return h('div', { class: 'row row-stack' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title)), h('div', { class: 'step-track' }, slider));
 }
 
 /** A group of rows with a plain header above it, as in iOS Settings. */
@@ -892,6 +901,10 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
       ),
       group(
         S.settings.sound,
+        volumeRow(S.settings.volume, s.volume, (volume) => {
+          s.volume = volume;
+          actions.changed(s);
+        }),
         switchRow(S.settings.soundEffects, null, s.sound, toggle('sound')),
         switchRow(S.settings.music, null, s.music, toggle('music')),
         switchRow(S.settings.mapSounds, S.settings.mapSoundsSub, s.mapSounds, toggle('mapSounds')),
@@ -957,6 +970,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
     show(next, true);
   });
   tabs.el.classList.add('sheet-tabs');
+  tabs.mark('account', actions.unbacked);
   function show(next: SettingsTab, animate: boolean): void {
     lastSettingsTab = next;
     tabs.set(next);

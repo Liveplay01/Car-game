@@ -122,6 +122,7 @@ export default (_s: Strings): Words<Strings> => ({
     lowDetailSub: "Meno effetti e niente vetro smerigliato, per un dispositivo datato. Il gioco lo attiva da solo se scatta.",
     sound: 'Suono e vibrazione',
     performance: 'Prestazioni',
+    volume: 'Volume',
     soundEffects: 'Effetti sonori',
     music: 'Musica',
     mapSounds: 'Suoni ambientali',

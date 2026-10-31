@@ -122,6 +122,7 @@ export default (_s: Strings): Words<Strings> => ({
     lowDetailSub: "Moins d'effets et pas de verre dépoli, pour un appareil plus ancien. Le jeu l'active tout seul s'il saccade.",
     sound: 'Son et vibrations',
     performance: 'Performances',
+    volume: 'Volume',
     soundEffects: 'Effets sonores',
     music: 'Musique',
     mapSounds: 'Sons d’ambiance',

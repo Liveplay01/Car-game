@@ -122,6 +122,7 @@ export default (_s: Strings): Words<Strings> => ({
     lowDetailSub: '효과와 유리 질감을 줄여요. 오래된 기기에 좋아요. 계속 끊기면 게임이 알아서 켜요.',
     sound: '소리와 햅틱',
     performance: '성능',
+    volume: '볼륨',
     soundEffects: '효과음',
     music: '음악',
     mapSounds: '맵 소리',

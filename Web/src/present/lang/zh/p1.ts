@@ -122,6 +122,7 @@ export default (_s: Strings): Words<Strings> => ({
     lowDetailSub: '减少特效，去掉毛玻璃，适合旧设备。如果一直卡顿，游戏会自动开启。',
     sound: '声音与触感',
     performance: '性能',
+    volume: '音量',
     soundEffects: '音效',
     music: '音乐',
     mapSounds: '地图环境音',

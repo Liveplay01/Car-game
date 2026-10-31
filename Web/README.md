@@ -539,8 +539,10 @@ the dial; it is used up by one round, won or lost, and the dial shows the chance
 - **Normal site and Google Play app** (the app opens the same page): Applixir (`ui/applixir.ts`). The
   offers show only once the SDK is ready (`applixirReady`); sound is off while the ad plays. The reward
   is paid on `complete` followed by the end of the ad (`allAdsCompleted`, `skipped`, `manuallyEnded`).
-  Without the SDK (blocker, offline) no ad plays and the offers pay nothing. On the live site add
-  `?werbung` to log each Applixir step to the console.
+  Without the SDK (blocker, offline) no ad plays and the offers pay nothing. **Ads are in testing
+  (31.10.2026): every offer, on every channel, shows only with `?werbung` in the address** (`testAds`,
+  gated in `ui/shell.ts`: `adReady`, `adOffers`). That flag also logs each Applixir step to the console.
+  Remove the `testAds &&` there to release them.
 - Where the chance of an ad is limited (`frequencyCapped`), the game says "try again in a few minutes".
 - **Streak ads and the Doubled pay** (16.10.2026): three more offers, one pill under the top card of the Game tab
   (`present/adPill.ts`, `GameSession.gameAd`), shown only once an ad is ready: the broken Daily streak back (3 days or

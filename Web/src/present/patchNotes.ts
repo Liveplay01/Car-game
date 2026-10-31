@@ -51,6 +51,20 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-10-31',
+    date: '31 October 2026',
+    title: 'Your volume, your progress',
+    impact: 'minor',
+    summary: [
+      'New volume slider in Settings → Sound.',
+      'A small dot on Settings reminds you to back up your progress with a player.',
+    ],
+    items: [
+      'Settings → Sound has a volume slider for everything the game plays. The switches below it still work as before.',
+      'Progress lives only in this browser. Once you have played a while without a player, a quiet dot appears on the settings button and on its Account tab. Create a player there and your progress is safe. No pop-up, and the dot goes away by itself.',
+    ],
+  },
+  {
     id: '2026-10-30',
     date: '30 October 2026',
     title: 'Straight into the game',

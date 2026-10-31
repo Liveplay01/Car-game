@@ -1,7 +1,7 @@
 import { h } from './dom';
 
 /** A segmented control (the one for Reduce motion in the settings): `set` moves the highlight to an item. */
-export function tabsControl<T extends string>(label: string, items: { id: T; label: string }[], pick: (id: T) => void): { el: HTMLElement; set(id: T): void } {
+export function tabsControl<T extends string>(label: string, items: { id: T; label: string }[], pick: (id: T) => void): { el: HTMLElement; set(id: T): void; mark(id: T, on: boolean): void } {
   const el = h('div', { class: 'segmented board-tabs', role: 'group', 'aria-label': label });
   const thumb = h('span', { class: 'thumb', 'aria-hidden': 'true' });
   thumb.style.width = `calc((100% - 4px) / ${items.length})`;
@@ -13,6 +13,9 @@ export function tabsControl<T extends string>(label: string, items: { id: T; lab
   });
   return {
     el,
+    mark(id, on) {
+      buttons[items.findIndex((item) => item.id === id)].classList.toggle('has-dot', on);
+    },
     set(id) {
       items.forEach((item, i) => {
         const on = item.id === id;

@@ -122,6 +122,7 @@ export default (_s: Strings): Words<Strings> => ({
     lowDetailSub: '演出とすりガラスを減らします。古い端末向け。ずっとカクつくときはゲームが自動でオンにします。',
     sound: 'サウンドと触覚',
     performance: 'パフォーマンス',
+    volume: '音量',
     soundEffects: '効果音',
     music: '音楽',
     mapSounds: 'マップの環境音',
