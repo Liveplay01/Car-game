@@ -352,6 +352,34 @@ export function installDialog(layer: HTMLElement, ipad: boolean, onDone: () => v
   ok.focus({ preventScroll: true });
 }
 
+/**
+ * A message from the team (Leo, 01.11.2026): the same full-screen card as the Home Screen tip, one fixed icon
+ * for every message, and only its button closes it.
+ */
+export function noticeDialog(layer: HTMLElement, title: string, body: string, onDone: () => void): void {
+  const previouslyFocused = document.activeElement as HTMLElement | null;
+  const ok = h('button', { class: 'btn primary block', type: 'button' }, S.intro.gotIt);
+  const root = h(
+    'div',
+    { class: 'install-root', role: 'alertdialog', 'aria-modal': 'true', 'aria-labelledby': 'notice-title', 'aria-describedby': 'notice-body' },
+    h('div', { class: 'install-card' }, h('div', { class: 'install-badge', 'aria-hidden': 'true' }, animatedIcon('bell')), h('h2', { class: 'install-title', id: 'notice-title' }, title), h('p', { class: 'install-why notice', id: 'notice-body' }, body), ok),
+  );
+  const onKey = (e: KeyboardEvent): void => {
+    if (e.key === 'Escape' || e.key === 'Tab') e.preventDefault();
+    e.stopPropagation();
+  };
+  ok.addEventListener('click', () => {
+    document.removeEventListener('keydown', onKey, true);
+    root.classList.add('closing');
+    window.setTimeout(() => root.remove(), window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 200);
+    previouslyFocused?.focus?.();
+    onDone();
+  });
+  document.addEventListener('keydown', onKey, true);
+  layer.append(root);
+  ok.focus({ preventScroll: true });
+}
+
 /** Closes every open sheet, the top one first; `instant` for a sheet that is replaced by a page of its own. */
 export const closeAnySheet = (instant = false): void => {
   for (const open of [...stack].reverse()) open.close(instant);
@@ -936,7 +964,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
       h(
         'p',
         { class: 'section-note settings-foot' },
-        inPortal ? S.settings.noteCrazyGames : cloudEnabled ? S.settings.noteCloud : S.settings.noteLocal,
+        cloudEnabled ? S.settings.noteCloud : S.settings.noteLocal,
       ),
       h('button', { class: 'btn block destructive', type: 'button', onclick: () => actions.openDeleteAccount() }, S.settings.deleteAccount),
     ],

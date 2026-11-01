@@ -14,6 +14,7 @@ import { FEEDBACK_KINDS, FEEDBACK_STATUSES, FeedbackStore, isRewardItem, REWARD_
 import { IDEA_STATUSES, IdeaStore, PUBLIC_TEXT_MAX, TITLE_MAX, type IdeaStatus } from '../ideas/store.ts';
 import { cleanText } from '../../http.ts';
 import { TuningStore } from '../tuning/index.ts';
+import { MESSAGE_AUDIENCES, MESSAGE_BODY_MAX, MESSAGE_TITLE_MAX, MessageStore, type MessageAudience } from '../messages/index.ts';
 import { ADMIN_PAGE } from './page.ts';
 
 /**
@@ -32,6 +33,9 @@ import { ADMIN_PAGE } from './page.ts';
  *   PATCH  /v1/admin/ideas/:id  {title, text, status}   reword and publish, mark underway (building) or made (built), or turn down (rejected)
  *   DELETE /v1/admin/ideas/:id                      remove one with its gifts
  *   POST   /v1/admin/rewards  {friendCode, item}     give a player a reward (the game picks it up); item "money" takes an `amount`
+ *   GET    /v1/admin/messages                        messages to players (`modules/messages`), newest first
+ *   POST   /v1/admin/messages  {audience, title, body, friendCode?}   audience: all · play · player (needs friendCode)
+ *   DELETE /v1/admin/messages/:id                    withdraw one
  *   GET    /v1/admin/tuning                          the remote tuning values (`modules/tuning`)
  *   PUT    /v1/admin/tuning  {values}                replace them all; the game takes them from its next start
  *
@@ -50,6 +54,7 @@ export function adminModule(): ServerModule {
       const feedback = new FeedbackStore(ctx.db);
       const ideas = new IdeaStore(ctx.db);
       const tuning = new TuningStore(ctx.db);
+      const messages = new MessageStore(ctx.db);
 
       const admin = new Hono<AppEnv>();
       // Every try counts, right or wrong: the token cannot be guessed at this speed.
@@ -165,6 +170,31 @@ export function adminModule(): ServerModule {
         if (!players.byId(playerId)) throw new ApiError(404, 'not_found', 'No player with that friend code.');
         feedback.grant(playerId, item, typeof body.reason === 'string' ? body.reason.slice(0, 80) : 'thank you', ctx.now(), false);
         return c.json({ given: item }, 201);
+      });
+
+      admin.get('/messages', (c) => c.json({ items: messages.all() }));
+
+      admin.post('/messages', async (c) => {
+        const body = await readJson(c);
+        const audience = body.audience as MessageAudience;
+        if (!MESSAGE_AUDIENCES.includes(audience)) throw new ApiError(422, 'invalid_audience', `Audience is one of ${MESSAGE_AUDIENCES.join(', ')}.`);
+        const title = cleanText(body.title).replace(/\s+/g, ' ');
+        const text = cleanText(body.body);
+        if (title === '' || title.length > MESSAGE_TITLE_MAX) throw new ApiError(422, 'title_invalid', `The heading is 1 to ${MESSAGE_TITLE_MAX} characters.`);
+        if (text === '' || text.length > MESSAGE_BODY_MAX) throw new ApiError(422, 'text_invalid', `The text is 1 to ${MESSAGE_BODY_MAX} characters.`);
+        let playerId: string | null = null;
+        if (audience === 'player') {
+          const code = normalizeCode(String(body.friendCode ?? ''), 8);
+          const row = code ? (ctx.db.prepare('SELECT player_id FROM friend_codes WHERE code = ?').get(code) as { player_id: string } | undefined) : undefined;
+          if (!row) throw new ApiError(404, 'not_found', 'No player with that friend code.');
+          playerId = row.player_id;
+        }
+        return c.json({ id: messages.add(audience, playerId, title, text, ctx.now()) }, 201);
+      });
+
+      admin.delete('/messages/:id', (c) => {
+        if (!messages.delete(c.req.param('id'))) throw new ApiError(404, 'not_found', 'No such message.');
+        return c.body(null, 204);
       });
 
       admin.get('/tuning', (c) => c.json({ values: tuning.values() }));

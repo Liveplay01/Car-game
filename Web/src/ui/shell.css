@@ -3063,6 +3063,11 @@ button.mod:active {
   line-height: 1.5;
 }
 
+.install-why.notice {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
 .install-steps {
   list-style: none;
   margin: 0;

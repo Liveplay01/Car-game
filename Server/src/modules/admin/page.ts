@@ -105,6 +105,20 @@ export const ADMIN_PAGE = `<!doctype html>
     </form>
     <p class="msg" id="rewardMsg">The game picks it up the next time the player opens it.</p>
   </section>
+  <section class="card reward">
+    <h2>Send a message</h2>
+    <form id="note" style="margin:0">
+      <div class="bar">
+        <select id="noteTo" aria-label="Audience"><option value="all">All players</option><option value="play">Google Play players</option><option value="player">One player</option></select>
+        <input id="noteCode" placeholder="Friend code (K7M2-9QXA)" style="flex:1;min-width:180px" hidden>
+      </div>
+      <input class="field" id="noteTitle" maxlength="60" placeholder="Heading (max 60)" required>
+      <textarea class="field" id="noteBody" maxlength="600" placeholder="Text (max 600)" required></textarea>
+      <button class="primary" type="submit">Send</button>
+    </form>
+    <p class="msg" id="noteMsg">Shown at the start of the game until the player taps it away. Offered for 30 days.</p>
+    <div id="noteList"></div>
+  </section>
   </div>
 </main>
 <script>
@@ -216,6 +230,31 @@ export const ADMIN_PAGE = `<!doctype html>
     try { await api('POST', '/rewards', { friendCode: $('code').value, item: $('item').value, amount: Number($('amount').value), reason: 'thank you' }); $('rewardMsg').textContent = 'Given. The game picks it up the next time the player opens it.'; $('code').value = ''; }
     catch (err) { $('rewardMsg').textContent = err.message; }
   });
+  const toLabel = { all: 'All players', play: 'Google Play', player: 'One player' };
+  async function loadNotes() {
+    if (!token) return;
+    try {
+      const data = await api('GET', '/messages');
+      $('noteList').innerHTML = data.items.map((m) => '<article class="card" data-note="' + m.id + '"><div class="meta"><span class="tag">' + toLabel[m.audience] + '</span><span>' + when(m.createdAt) + '</span>' +
+        (m.player ? '<span>' + esc(m.player.name) + (m.player.code ? ' · <code>' + esc(m.player.code.replace(/(.{4})(?=.)/g, '$1-')) + '</code>' : '') + '</span>' : '') + '</div>' +
+        '<p class="text"><strong>' + esc(m.title) + '</strong><br>' + esc(m.body) + '</p><div class="actions"><button type="button" data-withdraw>Withdraw</button></div></article>').join('');
+    } catch (e) { $('noteMsg').textContent = e.message; }
+  }
+  $('noteTo').addEventListener('change', () => { const one = $('noteTo').value === 'player'; $('noteCode').hidden = !one; $('noteCode').required = one; });
+  $('note').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      await api('POST', '/messages', { audience: $('noteTo').value, friendCode: $('noteCode').value, title: $('noteTitle').value, body: $('noteBody').value });
+      $('noteTitle').value = ''; $('noteBody').value = ''; $('noteCode').value = ''; $('noteMsg').textContent = 'Sent. Players see it the next time they open the game.';
+      loadNotes();
+    } catch (err) { $('noteMsg').textContent = err.message; }
+  });
+  $('noteList').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-withdraw]'); if (!b) return;
+    try { await api('DELETE', '/messages/' + b.closest('[data-note]').dataset.note); loadNotes(); } catch (err) { alert(err.message); }
+  });
+  $('login').addEventListener('submit', loadNotes);
+  loadNotes();
   load();
 </script>
 </body>

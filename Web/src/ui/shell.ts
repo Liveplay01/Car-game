@@ -7,13 +7,14 @@ import { AudioPlayer, Haptics } from '../audio/player';
 import { h, animatedIcon, playIcon, stillIcons, watchIconMoves } from './dom';
 import { share } from './share';
 import type { AnimatedIconId } from './animatedIcons';
-import { settingsSheet, deleteAccountSheet, patchNotesSheet, guidesSheet, legalSheet, licensesSheet, installDialog, offerDialog, isSheetOpen, closeAnySheet, closeTopSheet, onSheetSound } from './sheets';
+import { settingsSheet, deleteAccountSheet, patchNotesSheet, guidesSheet, legalSheet, licensesSheet, installDialog, noticeDialog, offerDialog, isSheetOpen, closeAnySheet, closeTopSheet, onSheetSound } from './sheets';
 import { installBackGesture, inSystemGestureZone } from './backGesture';
 import { disablePush, enablePush, pushChoiceOn, pushDelivers, pushState, pushTimers, setPushChoice, syncPush, type PushState, type PushTimer } from '../net/push';
 import { cloudEnabled, cloudLinked, cloudStoppedHere, createCloud, deleteCloud, onCloudChange } from '../net/cloud';
 import { fetchInvite, inviteUrl, readInviteLink, redeemInvite } from '../net/invite';
 import { deleteAccount, describeError, leaderboardEnabled, loadAccount, onAccountChange, onScoresSynced, saveAccount, syncScores } from '../net/leaderboard';
 import { collectRewards } from '../net/rewards';
+import { fetchNotices, markNoticeSeen, type Notice } from '../net/notices';
 import { openCrewLink, readCrewLink, watchCrewLaunches } from '../net/crews';
 import { legalDoc } from '../present/legal';
 import { PATCH_NOTES } from '../present/patchNotes';
@@ -493,6 +494,21 @@ export class Shell {
       syncPush(this.pushTimers);
     });
     onScoresSynced(() => this.collectRewards());
+    void fetchNotices().then((notices) => this.showNotices(notices));
+  }
+
+  /** Messages from the team, one after the other, each until it is tapped away; never over a shift or another full-screen card. */
+  private showNotices(notices: Notice[]): void {
+    const next = notices[0];
+    if (!next) return;
+    if (this.session.screen.k === 'playing' || document.querySelector('.install-root, .intro-root')) {
+      window.setTimeout(() => this.showNotices(notices), 3000);
+      return;
+    }
+    noticeDialog(this.layers, next.title, next.body, () => {
+      markNoticeSeen(next.id);
+      this.showNotices(notices.slice(1));
+    });
   }
 
   /**

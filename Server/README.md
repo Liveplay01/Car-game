@@ -245,6 +245,16 @@ curl -X POST   -H "$H" -d '{"friendCode":"K7M2-9QXA","item":"money","amount":500
 Easier: open `https://api.your-domain.tld/admin`, type the admin token (kept in that tab only), and the
 inbox shows every bug report and idea with the sender's name and friend code.
 
+## Messages to players
+
+`/admin` → "Send a message" writes a heading and a text for all players, for the Play app, or for one
+player (by friend code). The game asks `GET /v1/messages` at its start (`?channel=play` from the Play
+app, the player token when there is a name), shows each message on a full-screen card with one fixed
+icon, and keeps it until the player taps it. Which ones were tapped the game remembers on the device
+(`carGame.noticesSeen.v1`), so a message shows once per device. A message is offered for 30 days, then
+it is gone for new visitors; "Withdraw" removes it earlier. The Play channel is told by the client, so
+anyone can claim it: harmless, since the message is not secret.
+
 ## Remote tuning
 
 A few values of the game's `config.ts` change without a new build (`modules/tuning`): the quiet help
