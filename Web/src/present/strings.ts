@@ -1618,6 +1618,8 @@ export const S = {
     starIntro: (level: number): string => `The star before a level is the Prestige rank: how many times that player started over after Level ${level}.`,
     opensAt: (level: number): string => `Level ${level} opens it`,
     opensSub: 'Progress → Records → Elite. The button asks twice.',
+    longer: 'Every rank is longer',
+    longerSub: (levels: string): string => `Prestige asks for Level ${levels}, one rank after the other, and the traffic past Level 50 keeps getting harder.`,
     backTo1: 'Back to Level 1',
     backTo1Sub: 'Money, upgrades, roads, your collection and the Elite track stay. Best times start over.',
     harder: (start: number): string => `Harder traffic: +${start} levels per rank`,

@@ -12,6 +12,7 @@ import {
   cloneConfig,
   builtArmSlots,
   slotDistance,
+  bossesBefore,
 } from './config';
 import { Rng } from './rng';
 import { clamp } from './vec2';
@@ -49,9 +50,10 @@ export function tempoAt(time: number, rushHourSince: number | null, c: Config): 
 
 export function shiftCarsRange(level: number, c: Config): [number, number] {
   const l = Math.max(1, level);
-  const typical = Math.min(c.levelOneCars + c.carsPerLevel * (l - 1), c.maxShiftCars);
+  const deepCars = Math.min(Math.max(0, l - c.deepLevel) * c.deepCarsPerLevel, c.maxDeepShiftCars);
+  const typical = Math.min(c.levelOneCars + c.carsPerLevel * (l - 1), c.maxShiftCars) + deepCars;
   const middle = Math.round(typical);
-  return [Math.max(1, middle - c.shiftCarsSpread), Math.max(1, Math.min(c.maxShiftCars, middle + c.shiftCarsSpread))];
+  return [Math.max(1, middle - c.shiftCarsSpread), Math.max(1, Math.min(c.maxShiftCars + c.maxDeepShiftCars, middle + c.shiftCarsSpread))];
 }
 
 /**
@@ -97,6 +99,17 @@ export function forLevel(base: Config, level: number, seed: number, bossLevel = 
   c.aiQueuePerArm = Math.min(base.maxAiQueuePerArm, base.aiQueuePerArm + Math.floor(late / Math.max(1, base.lateLevelsPerQueueCar)));
   const quicker = Math.max(base.minSpawnDelayFactor, 1 - late * base.lateSpawnFasterPerLevel);
   c.aiSpawnDelay = { lo: base.aiSpawnDelay.lo * quicker, hi: base.aiSpawnDelay.hi * quicker };
+  // Past `deepLevel` the plateau ends: the ring keeps getting faster, fuller and busier, up to the last rank
+  const deep = Math.max(0, l - base.deepLevel);
+  const deepFaster = Math.min(deep * base.deepTempoPerLevel, base.maxDeepTempoBonus);
+  c.tempoStart += deepFaster;
+  c.tempoEnd += deepFaster;
+  c.rushHourTempo += deepFaster;
+  const deepDenser = Math.min(Math.floor(deep * base.deepDensityPerLevel), base.maxDeepDensityBonus);
+  c.densityStart += deepDenser;
+  c.densityEnd += deepDenser;
+  const deepQuicker = Math.max(base.minDeepSpawnFactor, 1 - deep * base.deepSpawnFasterPerLevel);
+  c.aiSpawnDelay = { lo: c.aiSpawnDelay.lo * deepQuicker, hi: c.aiSpawnDelay.hi * deepQuicker };
   c.minRingBots = Math.max(base.minRingBots, Math.min(base.maxMinRingBots, base.minRingBots + Math.floor((l - 1) * base.ringBotsPerLevel)));
   c.tankerShare = l >= base.tankerLevel ? base.tankerLevelShare : 0;
   c.lanes = l >= base.twoLaneLevel ? 2 : 1;
@@ -162,10 +175,12 @@ export function bossAt(level: number, c: Config): { kind: BossKind; round: numbe
 /** The first level that brings `kind`, counted along the whole schedule (the Prestige ranks added on). */
 export const firstBossLevel = (kind: BossKind, c: Config): number => c.convoyEvery * (BOSS_KINDS.indexOf(kind) + 1);
 
-/** Where `kind` first meets a career that Prestiges at Level 50: its rank and the level on that rank. */
+/** Where `kind` first meets a career: its rank and the level on that rank. */
 export const bossPlace = (kind: BossKind, c: Config): { rank: number; level: number } => {
   const index = BOSS_KINDS.indexOf(kind);
-  return { rank: Math.floor(index / c.bossesPerRank), level: c.convoyEvery * ((index % c.bossesPerRank) + 1) };
+  let rank = 0;
+  while (bossesBefore(c, rank + 1) <= index) rank++;
+  return { rank, level: c.convoyEvery * (index - bossesBefore(c, rank) + 1) };
 };
 
 /** The bosses that come in a blackout: the phantom, and the kingpin's finale. */

@@ -369,6 +369,8 @@ export default (S: Strings): Words<Strings> => ({
     starIntro: (level) => `L’étoile avant le niveau indique le prestige : le nombre de réinitialisations après le niveau ${level}.`,
     opensAt: (level) => `Accessible au niveau ${level}`,
     opensSub: 'Progression → Records → Élite. Confirmation demandée à deux reprises.',
+    longer: 'Chaque rang est plus long',
+    longerSub: (levels) => `Le Prestige demande les niveaux ${levels}, l'un après l'autre, et le trafic au-delà du niveau 50 devient toujours plus dur.`,
     backTo1: 'Retour au niveau 1',
     backTo1Sub: 'Vous conservez argent, améliorations, routes, collection et piste Élite. Les records repartent à zéro.',
     harder: (start) => `Trafic plus exigeant : +${start} niveaux par prestige`,

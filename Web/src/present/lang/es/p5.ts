@@ -369,6 +369,8 @@ export default (S: Strings): Words<Strings> => ({
     starIntro: (level) => `La estrella antes del nivel es el rango de prestigio: cuántas veces reinició el jugador tras el nivel ${level}.`,
     opensAt: (level) => `Se desbloquea en el nivel ${level}`,
     opensSub: 'Progreso → Récords → Élite. Se solicita confirmación dos veces.',
+    longer: 'Cada rango es más largo',
+    longerSub: (levels) => `Prestigio pide los niveles ${levels}, uno tras otro, y el tráfico más allá del nivel 50 sigue endureciéndose.`,
     backTo1: 'Volver al nivel 1',
     backTo1Sub: 'Conservas dinero, mejoras, carreteras, colección y el camino Élite. Los mejores tiempos reinician.',
     harder: (start) => `Tráfico más duro: +${start} niveles por rango`,

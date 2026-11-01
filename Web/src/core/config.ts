@@ -574,11 +574,7 @@ export const baseConfig = {
   // Syndicate convoy: every `convoyEvery` levels the criminal is the boss, with armoured escorts
   convoy: false,
   convoyEvery: 15,
-  /**
-   * A career plays Levels 1 to 50 and then Prestiges, so the whole syndicate is spread over the ranks (Leo, 18.10.2026): rank 0
-   * meets bosses 1 to 3 at Levels 15, 30 and 45, rank 1 the next three at the same levels, and so on round the list.
-   */
-  bossesPerRank: 3,
+  // A rank meets a boss at every multiple of `convoyEvery` it plays (Leo, 18.10.2026); the schedule runs on from rank to rank (`bossesBefore`)
   convoyEscorts: 2,
   /** The boss is on the ring this much longer than a plain criminal before it gets away. */
   convoyTimeFactor: 1.5,
@@ -695,6 +691,9 @@ export const baseConfig = {
 
   // Prestige (Leo, 28.09.2026): back to Level 1 with the traffic of a higher level; looks only
   prestigeLevel: 50,
+  /** Every rank asks for more levels than the one before, the step doubling: 50, 60, 80, 120, 200 (`prestigeLevelAt`; Leo, 01.11.2026). */
+  prestigeLevelStep: 10,
+  maxPrestigeLevel: 200,
   /** Each rank plays this many levels harder, at most `maxPrestigeHeadStart`. */
   prestigeHeadStart: 10,
   maxPrestigeHeadStart: 40,
@@ -1198,6 +1197,17 @@ export const baseConfig = {
   lateLevelsPerQueueCar: 6,
   maxAiQueuePerArm: 1,
 
+  // Deep levels (Leo, 01.11.2026): the plateau ended at about Level 45; ranks last up to `maxPrestigeLevel`, so past `deepLevel` the traffic keeps getting harder
+  deepLevel: 50,
+  deepTempoPerLevel: 0.004,
+  maxDeepTempoBonus: 0.6,
+  deepDensityPerLevel: 0.05,
+  maxDeepDensityBonus: 5,
+  deepSpawnFasterPerLevel: 0.002,
+  minDeepSpawnFactor: 0.7,
+  deepCarsPerLevel: 0.1,
+  maxDeepShiftCars: 20,
+
   // Bots in the ring
   minRingBots: 3,
   ringBotsPerLevel: 0.25,
@@ -1246,7 +1256,16 @@ export const cloneConfig = (c: Config): Config => ({
   crashCostImpacts: [...c.crashCostImpacts],
 });
 
-/** 9.81 m/s² in world units per second². */
+/** Career level that ends a rank and opens the next Prestige: 50, 60, 80, 120, 200. */
+export const prestigeLevelAt = (c: Config, rank: number): number => Math.min(c.maxPrestigeLevel, c.prestigeLevel + c.prestigeLevelStep * (2 ** rank - 1));
+
+/** How many bosses the ranks below `rank` have played: the next rank carries on with the following one. */
+export const bossesBefore = (c: Config, rank: number): number => {
+  let n = 0;
+  for (let k = 0; k < rank; k++) n += Math.floor(prestigeLevelAt(c, k) / c.convoyEvery);
+  return n;
+};
+
 /** Whether a shift sees what opens at a level, or from a Prestige rank on: the late specials come with the ranks, not with levels a career never plays. */
 export const reaches = (c: Config, level: number, rank: number): boolean => c.level >= level || c.prestige >= rank;
 

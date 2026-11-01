@@ -161,8 +161,8 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
     for (const step of elite.steps) if (step.item && (eliteBefore || step.level > 1)) news.push(S.elite.reached(step));
   }
   if (titles.length > 0) news.push(S.titles.earned(titles));
-  // Level 50 reached (again): Prestige is open, and the player hears about it once per rank.
-  if (levelBefore < ctx.config.prestigeLevel && Careers.canPrestige(career, ctx.config)) news.push(S.prestige.available(career.prestige + 1));
+  // The rank's last level reached: Prestige is open, and the player hears about it once per rank.
+  if (levelBefore < Careers.prestigeAt(career, ctx.config) && Careers.canPrestige(career, ctx.config)) news.push(S.prestige.available(career.prestige + 1));
   const pass = SeasonPass.record(career, result, ctx.today, ctx.config, markXp + heatBonus);
   if (pass) for (const step of pass.steps) if (step.reward.k !== 'chest') news.push(S.pass.reached(step));
   // A reason to come back tomorrow, from the first shift on: not told, but counted down on the Game tab.

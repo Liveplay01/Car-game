@@ -64,7 +64,7 @@ App-Store-Arbeit mehr vorschlagen.
 - **Nur zeigen, was erreicht ist (Leo, 12.10.2026):** Gesperrte Bereiche sind unsichtbar (`Unlocks.isKnown`). Neue freischaltbare Bereiche gleich so bauen. → [DECISIONS.md](DECISIONS.md)
 - **Einleitungs-Drawer (Leo, 12.10.2026):** Jeder nicht selbstverständliche Ort, Tab, Segment und jedes Feature bekommt einen Erklärungsdrawer (`INTROS`, `HINTS`, `Intros.known`, `S.intro`, `IntroArt`, `introHere`). → [DECISIONS.md](DECISIONS.md)
 - **Wenige Meldungen (Leo, 12.10.2026):** Notice-Pille nur für Absagen, Warnungen und Belohnung mit Grund. Was die UI schon zeigt, bekommt keine Zeile; dieselbe Sache nie über zwei Kanäle. → [DECISIONS.md](DECISIONS.md)
-- **Späte Inhalte hängen an den Prestige-Rängen (Leo, 18.10.2026):** Späte Inhalte an Prestige-Ränge hängen (`bossesPerRank`, `oversizePrestige` …), nicht an Level über 50. → [DECISIONS.md](DECISIONS.md)
+- **Späte Inhalte hängen an den Prestige-Rängen (Leo, 18.10.2026):** Späte Inhalte an Prestige-Ränge hängen (`bossesBefore`, `oversizePrestige` …), nicht an Level. Ränge werden länger: 50, 60, 80, 120, 200 Level (`prestigeLevelAt`), Verkehr ab 50 härter (Leo, 01.11.2026). → [DECISIONS.md](DECISIONS.md)
 - **Gestrichen am 18.10.2026 (Leo): Mutator des Tages, Chill-Modus, Ruhmeshalle zum Kaufen:** Gestrichen: Mutator des Tages, Chill-Modus, Ruhmeshalle. Sync-Code bleibt geheim und getrennt vom Freundescode. → [DECISIONS.md](DECISIONS.md)
 - **Animierte Icons (Leo, 20.10.2026):** Jedes DOM-Icon aus `ui/animatedIcons.ts` (`animatedIcon('<id>')`), nie nackte Pfade oder Emoji. Fehlendes nach `Web/ICONS.md` zeichnen. → [DECISIONS.md](DECISIONS.md)
 - **Fahrzeugfarben sind Spielinformation** und für die UI tabu; Fahrzeugtypen sind über

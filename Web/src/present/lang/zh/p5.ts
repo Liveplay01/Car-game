@@ -369,6 +369,8 @@ export default (S: Strings): Words<Strings> => ({
     starIntro: (level) => `等级前面的星是声望段位：这位玩家在 ${level} 级之后重新开始的次数。`,
     opensAt: (level) => `${level} 级解锁`,
     opensSub: '进度 → 纪录 → 精英。按钮会确认两次。',
+    longer: '每个段位更长',
+    longerSub: (levels) => `声望依次要求 ${levels} 级，50 级之后的车流会越来越难。`,
     backTo1: '回到 1 级',
     backTo1Sub: '金钱、升级、道路、收藏和精英之路都会保留。最佳用时从头开始。',
     harder: (start) => `更难的车流：每个段位 +${start} 级`,

@@ -369,6 +369,8 @@ export default (S: Strings): Words<Strings> => ({
     starIntro: (level) => `Der Stern vor einem Level ist der Prestige-Rang: wie oft dieser Spieler nach Level ${level} neu angefangen hat.`,
     opensAt: (level) => `Level ${level} schaltet es frei`,
     opensSub: 'Fortschritt → Rekorde → Elite. Der Knopf fragt zweimal.',
+    longer: 'Jeder Rang ist länger',
+    longerSub: (levels) => `Prestige verlangt nacheinander Level ${levels}, und der Verkehr nach Level 50 wird immer härter.`,
     backTo1: 'Zurück zu Level 1',
     backTo1Sub: 'Geld, Upgrades, Straßen, deine Sammlung und die Elite-Strecke bleiben. Bestzeiten beginnen von vorn.',
     harder: (start) => `Härterer Verkehr: +${start} Level pro Rang`,

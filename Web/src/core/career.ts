@@ -1,5 +1,5 @@
 import { MUSEUM_SHELVES, FAIL_SKIN, museumId, failuresComplete } from './museum';
-import { baseConfig, cloneConfig, type Config, type RoadModule, type Weather, type CityEvent, type BossKind, type LegendaryRule, MODULE_MAX_LEVEL, modulePrice, moduleUpgradePrice } from './config';
+import { baseConfig, cloneConfig, type Config, type RoadModule, type Weather, type CityEvent, type BossKind, type LegendaryRule, MODULE_MAX_LEVEL, modulePrice, moduleUpgradePrice, bossesBefore, prestigeLevelAt } from './config';
 import {
   forLevel,
   drawLegendary,
@@ -639,12 +639,15 @@ export const Careers = {
   /** The level whose traffic the career meets: what `forIntro` and the daily challenges go by. */
   reach: (c: Career): number => c.level + Careers.headStart(c),
 
-  /** The levels the boss schedule has moved on: a rank meets the next `bossesPerRank` bosses at the same levels 15, 30 and 45. */
-  bossShift: (c: Career, config: Config = baseConfig): number => c.prestige * config.bossesPerRank * config.convoyEvery,
+  /** The levels the boss schedule has moved on: a rank carries on with the boss after the last one the ranks below played. */
+  bossShift: (c: Career, config: Config = baseConfig): number => bossesBefore(config, c.prestige) * config.convoyEvery,
 
   headStart: (c: Career, config: Config = baseConfig): number => Math.min(c.prestige * config.prestigeHeadStart, config.maxPrestigeHeadStart),
 
-  canPrestige: (c: Career, config: Config = baseConfig): boolean => c.level >= config.prestigeLevel,
+  /** The level this rank ends at: 50, then 60, 80, 120, 200 (Leo, 01.11.2026). */
+  prestigeAt: (c: Career, config: Config = baseConfig): number => prestigeLevelAt(config, c.prestige),
+
+  canPrestige: (c: Career, config: Config = baseConfig): boolean => c.level >= Careers.prestigeAt(c, config),
 
   /**
    * Starts the career over at Level 1, one rank up: money, upgrades, roads and collection stay,

@@ -1982,6 +1982,14 @@ export const ResultBanner = {
   leaving: (age: number): number => Ease.smoothstep(ResultBanner.settled(age) * 2),
   arriving: (age: number): number => Ease.smoothstep(ResultBanner.settled(age) * 2 - 1),
 
+  /** The tap prompt under a finished shift. */
+  prompt(summary: ShiftSummary, nextLevel: number): string {
+    if (summary.run) return S.run.again;
+    if (summary.mode === 'unlimited') return S.modes.again;
+    if (summary.mode === 'mayhem') return S.mayhem.again;
+    return summary.result.outcome === 'completed' ? S.result.nextLevel(nextLevel) : S.result.retryLevel(nextLevel);
+  },
+
   /** How the shift ended, in words and colour: the card's caption and the photo's headline. */
   title(summary: ShiftSummary): [string, ColorToken] {
     const r = summary.result;
@@ -2078,15 +2086,7 @@ export const ResultBanner = {
     list.tag = undefined;
     const lock = ResultBanner.lock(summary);
     const prompt = Ease.outCubic((age - lock) / ResultBanner.enter);
-    const next = run
-      ? S.run.again
-      : summary.mode === 'unlimited'
-        ? S.modes.again
-        : summary.mode === 'mayhem'
-          ? S.mayhem.again
-          : r.outcome === 'completed'
-            ? S.result.nextLevel(nextLevel)
-            : S.result.retryLevel(nextLevel);
+    const next = ResultBanner.prompt(summary, nextLevel);
     const detail: [string, ColorToken] | null = run
       ? [run.line, run.lineColor]
       : r.heist > 0
@@ -2146,9 +2146,8 @@ export const ResultBanner = {
     const eliteY = y + eliteRow.height / 2;
 
     if (prompt <= 0) return { chip: chipAt, grow: 0 };
-    islandBlock(list, promptRow.lines, islandRadius, promptY, 17, 'primary', prompt, 'bold');
-    // Once the result's details are gone the prompt stays alone: the promise for tomorrow takes their place, as on the ready screen.
-    if (useLow) islandBlock(list, giftRow.lines, islandRadius, lowY, 13, 'muted', prompt * ResultBanner.arriving(age));
+    // The next shift's ready screen takes over the prompt and the promise for tomorrow (`GameSession`): they cross-fade, so its own island line never lands on top of them.
+    islandBlock(list, promptRow.lines, islandRadius, promptY, 17, 'primary', prompt * (1 - ResultBanner.arriving(age)), 'bold');
     const details = prompt * (1 - ResultBanner.leaving(age));
     if (details <= 0.001) return { chip: chipAt, grow: 0 };
     if (useDetail && detail) islandBlock(list, detailRow.lines, islandRadius, detailY, 14, detail[1], details, 'bold');

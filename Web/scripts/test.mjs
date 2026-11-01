@@ -18,7 +18,7 @@ const { Habits } = await load('/src/core/habits.ts');
 const { detourArmSlot } = await load('/src/core/modules.ts');
 const { CHALLENGES, challengesOf, challengeMet, challengeProgress, challengeReward } = await load('/src/core/daily.ts');
 const { baseConfig, BOSS_KINDS } = await load('/src/core/config.ts');
-const { forLevel, upgraded, UPGRADES, upgradeMaxSteps } = await load('/src/core/levels.ts');
+const { forLevel, upgraded, UPGRADES, upgradeMaxSteps, bossPlace } = await load('/src/core/levels.ts');
 const { Elite, TITLES, TITLE_RULES, ELITE_LAST_MILESTONE } = await load('/src/core/elite.ts');
 const { COSMETICS, rollChest, PITY_LEGENDARY_CHESTS, collectableSkins } = await load('/src/core/loot.ts');
 const { Goals } = await load('/src/core/goals.ts');
@@ -1320,7 +1320,7 @@ test('a car sent into a jam brakes behind it instead of ploughing in', async () 
 
 test('the two-lane ring (level 80) replays exactly, and the careful bot stays safe', () => {
   const run = (seed, tapAt) => {
-    const world = new World(forLevel(baseConfig, 82, seed), seed, { startsOnFirstTap: false });
+    const world = new World(forLevel({ ...baseConfig, deepLevel: 1e9 }, 82, seed), seed, { startsOnFirstTap: false });
     assert.equal(world.layout.lanes, 2);
     const taps = [];
     let result = null;
@@ -1477,7 +1477,7 @@ test('Big Screen is the Prestige ★5 reward, and older saves past ★5 get it',
   assert.equal(prestigeReward(5)?.id, BIG_SCREEN);
   const c = newCareer();
   c.prestige = 4;
-  c.level = baseConfig.prestigeLevel;
+  c.level = Careers.prestigeAt(c, baseConfig);
   assert.deepEqual(Careers.prestige(c, baseConfig), { rank: 5, item: BIG_SCREEN });
   assert.ok(Careers.wear(c, BIG_SCREEN) && c.mapSkin === BIG_SCREEN);
   // A save from before Big Screen, already at ★6, finds it in the collection, marked new.
@@ -3643,7 +3643,7 @@ test('what the career has not reached is not on show: the Casino in the Shop, th
   assert.deepEqual(ShopPage.sections(late), [0, 1, 2]);
 });
 
-test('a career that Prestiges at Level 50 meets all eight bosses and the late specials, spread over the ranks', () => {
+test('the bosses and late specials run on from rank to rank, and each rank asks for more levels', () => {
   const at = (rank, level) => {
     const c = newCareer();
     c.prestige = rank;
@@ -3651,11 +3651,18 @@ test('a career that Prestiges at Level 50 meets all eight bosses and the late sp
     return Careers.config(c, baseConfig, 4242, 'clear', null, null);
   };
   assert.deepEqual([15, 30, 45].map((l) => at(0, l).bossKind), ['convoy', 'getaway', 'armoured'], 'rank 0 meets the first three');
-  assert.deepEqual([15, 30, 45].map((l) => at(1, l).bossKind), ['phantom', 'twins', 'decoy']);
-  assert.deepEqual([15, 30].map((l) => at(2, l).bossKind), ['smuggler', 'kingpin']);
+  assert.deepEqual([15, 30, 45, 60].map((l) => at(1, l).bossKind), ['phantom', 'twins', 'decoy', 'smuggler'], 'rank 1 plays 60 levels: four bosses');
+  assert.deepEqual([15, 30].map((l) => at(2, l).bossKind), ['kingpin', 'convoy'], 'the schedule carries on, round after round');
   assert.equal(at(1, 20).convoy, false, 'only every 15th level');
   assert.equal(at(3, 15).convoy && at(3, 45).convoy, true);
-  assert.equal(Careers.bossShift({ ...newCareer(), prestige: 2 }), 90);
+  assert.equal(Careers.bossShift({ ...newCareer(), prestige: 2 }), 105);
+  assert.deepEqual([0, 1, 2, 3, 4, 5].map((r) => Careers.prestigeAt({ ...newCareer(), prestige: r })), [50, 60, 80, 120, 200, 200], 'each rank asks for more levels, up to a cap');
+  assert.equal(Careers.canPrestige({ ...newCareer(), prestige: 1, level: 59 }), false);
+  assert.equal(Careers.canPrestige({ ...newCareer(), prestige: 1, level: 60 }), true);
+  const deep = (l) => forLevel(baseConfig, l, 1);
+  assert.ok(deep(100).tempoEnd > deep(50).tempoEnd && deep(200).densityEnd > deep(50).densityEnd, 'past Level 50 the traffic keeps getting harder');
+  assert.equal(bossPlace('kingpin', baseConfig).rank, 2);
+  assert.deepEqual(bossPlace('smuggler', baseConfig), { rank: 1, level: 60 });
   const comes = (rank, level) => {
     const cfg = at(rank, level);
     cfg.oversizeChance = cfg.racerChance = cfg.weddingChance = 1;

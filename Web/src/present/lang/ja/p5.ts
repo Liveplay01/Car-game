@@ -369,6 +369,8 @@ export default (S: Strings): Words<Strings> => ({
     starIntro: (level) => `レベルの前の星はプレステージランクで、そのプレイヤーがレベル${level}のあとにやり直した回数です。`,
     opensAt: (level) => `レベル${level}で解放`,
     opensSub: '進捗 → 記録 → エリート。ボタンは2回確認します。',
+    longer: 'ランクごとに長くなる',
+    longerSub: (levels) => `プレステージは${levels}レベルを順に求め、レベル50を超えると交通はさらに厳しくなります。`,
     backTo1: 'レベル1に戻る',
     backTo1Sub: 'お金、アップグレード、道、コレクション、エリートロードは残ります。ベストタイムは最初から。',
     harder: (start) => `交通が厳しく: ランクごとに +${start}レベル`,

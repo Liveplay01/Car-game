@@ -3820,7 +3820,7 @@ export class GameSession {
       this.introWant = grow;
       if (chipAt) this.addFailChip(list, s.summary, chipAt);
       const arriving = ResultBanner.arriving(this.resultAge);
-      if (arriving > 0) this.addReadyBanner(list, null, false, arriving);
+      if (arriving > 0) this.addReadyBanner(list, ResultBanner.prompt(s.summary, this.playingLevel), false, arriving);
       list.camera = camera;
       this.tutorial?.add(list, world, alpha, this.sceneTime, rm);
       if (arriving <= 0) this.addGameAd(list, TopBar.foot(list) + 18, 1);

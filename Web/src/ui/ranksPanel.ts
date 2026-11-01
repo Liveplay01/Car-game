@@ -19,7 +19,7 @@ import { fetchCrewBoard, hasCrew } from '../net/crews';
 import { NAME_MAX } from '../net/room';
 import { savePlayerName } from '../storage/profile';
 import { Fmt, S } from '../present/strings';
-import { baseConfig, INVITE_LEVEL } from '../core/config';
+import { baseConfig, INVITE_LEVEL, prestigeLevelAt } from '../core/config';
 import { dayNumber } from '../core/daily';
 import { TITLES, type TitleId } from '../core/elite';
 import { tierOf } from '../core/tiers';
@@ -165,6 +165,7 @@ export function prestigeStar(rank: number, onTap: () => void): HTMLElement {
 function prestigeInfo(back: () => void): HTMLElement {
   const row = (title: string, sub: string): HTMLElement => h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), h('div', { class: 'row-sub' }, sub)));
   const { prestigeLevel, prestigeHeadStart, maxPrestigeHeadStart } = baseConfig;
+  const steps = Array.from({ length: 5 }, (_, rank) => prestigeLevelAt(baseConfig, rank));
   return h(
     'div',
     { class: 'board prestige-info' },
@@ -174,6 +175,7 @@ function prestigeInfo(back: () => void): HTMLElement {
       'div',
       { class: 'list' },
       row(S.ranks.opensAt(prestigeLevel), S.ranks.opensSub),
+      row(S.ranks.longer, S.ranks.longerSub(steps.join(', '))),
       row(S.ranks.backTo1, S.ranks.backTo1Sub),
       row(S.ranks.harder(prestigeHeadStart), S.ranks.harderSub(prestigeHeadStart, maxPrestigeHeadStart, Math.ceil(maxPrestigeHeadStart / prestigeHeadStart))),
       row(S.ranks.show, S.ranks.showSub),

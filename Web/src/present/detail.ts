@@ -266,7 +266,7 @@ export const Details = {
     const ready = Careers.canPrestige(career, config);
     const notes: Detail['notes'] = [];
     if (next) notes.push({ text: S.elite.next(next), color: 'accent' });
-    notes.push({ text: ready ? S.prestige.ready(career.level) : S.prestige.locked(config.prestigeLevel), color: ready ? 'coin' : 'muted' });
+    notes.push({ text: ready ? S.prestige.ready(career.level) : S.prestige.locked(Careers.prestigeAt(career, config)), color: ready ? 'coin' : 'muted' });
     notes.push({ text: S.prestige.keeps, color: 'muted' });
     return {
       key: 'elite',

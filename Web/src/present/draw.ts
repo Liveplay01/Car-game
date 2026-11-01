@@ -913,10 +913,11 @@ export class CanvasDrawer {
           }
         }
         if (item.fade && rot === 0) {
-          // Eased stops, so neither the start nor the end of the fade shows as an edge.
-          ctx.fillStyle = this.fadeGradient(item.color, item.opacity, cy - h / 2, h);
+          // Eased stops, so neither the start nor the end of the fade shows as an edge. A fade from the top starts at the screen's edge, not at the safe area's.
+          const top = !world && cy - h / 2 <= 0.5 ? -this.offset.y : cy - h / 2;
+          ctx.fillStyle = this.fadeGradient(item.color, item.opacity, top, cy + h / 2 - top);
           this.fill = null;
-          ctx.fillRect(cx - w / 2, cy - h / 2, w, h);
+          ctx.fillRect(cx - w / 2, top, w, cy + h / 2 - top);
           return;
         }
         this.setFill(color);

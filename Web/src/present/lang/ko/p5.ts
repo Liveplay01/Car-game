@@ -369,6 +369,8 @@ export default (S: Strings): Words<Strings> => ({
     starIntro: (level) => `레벨 앞의 별은 프레스티지 랭크로, 그 플레이어가 레벨 ${level} 이후 다시 시작한 횟수예요.`,
     opensAt: (level) => `레벨 ${level}에서 열려요`,
     opensSub: '진행 → 기록 → 엘리트. 버튼은 두 번 확인해요.',
+    longer: '랭크마다 더 길어져요',
+    longerSub: (levels) => `프레스티지는 ${levels} 레벨을 차례로 요구하고, 레벨 50 이후 교통은 계속 더 어려워져요.`,
     backTo1: '레벨 1로 돌아가기',
     backTo1Sub: '돈, 업그레이드, 도로, 컬렉션, 엘리트 도로는 그대로예요. 최고 기록은 처음부터 다시 시작해요.',
     harder: (start) => `더 거센 교통: 랭크마다 +${start}레벨`,

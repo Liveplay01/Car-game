@@ -53,15 +53,20 @@ export const PATCH_NOTES: PatchNote[] = [
   {
     id: '2026-11-01',
     date: '1 November 2026',
-    title: 'Fairer chest auctions, Perfects that count, easier Long Chain',
+    title: 'Longer careers, fairer chest auctions, Perfects that count',
     impact: 'major',
     summary: [
+      'Each Prestige now asks for more levels: 50, then 60, 80, 120 and 200. Past Level 50 it gets harder.',
       { text: 'Chests in the Auction House never cost more than the shop price any more.', from: null },
       { text: 'Perfect merges in trials and tours now count for daily quests and Mastery.', from: null },
       { text: 'Long Chain mastery is easier: the tiers now ask for 8, 12, 18, 25 and 30 Perfect merges.', from: null },
-      'Playing on CrazyGames? Cloud sync now brings your progress to your phone and the app.',
     ],
     items: [
+      'Fixed: after a shift, the tap prompt and the next shift\'s rule line (e.g. a Legendary Shift) no longer print on top of each other in the middle of the ring.',
+      'Fixed: the dark fade at the top of the screen now starts at the screen\'s edge, also on iPads and phones with a status bar.',
+      'Careers last longer: every Prestige rank asks for more levels than the one before. The first stays at Level 50, then 60, 80, 120 and 200 for ★4 and on. Levels you already played count.',
+      'The road keeps getting harder past Level 50: a faster ring, more cars on it and shorter gaps between them, up to the last rank. Level 50 is no longer the hardest.',
+      'Bosses carry on from rank to rank: a longer rank meets one more of them, so the whole syndicate still takes its turn.',
       'News from the team can now reach you at the start of the game. Tap it once and it is gone.',
       { text: 'The lane arrow is much easier to see in night shifts.', from: null },
       { text: 'Perfect merges in trials and tours, the Haunted Ring included, now count for daily quests and Mastery. The quest bar shows during a trial, too.', from: null },

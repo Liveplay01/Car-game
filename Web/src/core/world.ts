@@ -202,6 +202,20 @@ export function unitHashId(id: number): number {
  * Game state plus rules. Fixed step of 1/120 s, deterministic: the same seed and the same
  * taps give the same result (FOUNDATION.md 4.1).
  */
+/** What a special vehicle becomes when its event does not follow it into the next shift. */
+const CARRIED_AS: Partial<Record<VehicleType, VehicleType>> = {
+  military: 'truck',
+  transporter: 'truck',
+  oversize: 'truck',
+  fireTruck: 'truck',
+  ambulance: 'van',
+  pickup: 'van',
+  racer: 'car',
+  learner: 'car',
+  wedding: 'car',
+  drift: 'car',
+};
+
 export class World {
   readonly layout: Layout;
   /** The roadworks' stretch of the ring (ring distance of its start, and its length), clear of every junction. */
@@ -371,8 +385,16 @@ export class World {
     const next = new World(config, seed, { prefill: false, startsOnFirstTap: true, firstVehicleId: this.nextVehicleId });
     // A ring with one lane has no inner lane: whoever still drove there leaves the picture.
     const carried = this.vehicles.filter((veh) => veh.phase.kind !== 'queued' && (veh.lane === 0 || next.layout.lanes > 1));
+    const m = this.military;
     for (const veh of carried) {
       veh.owner = 'ai';
+      // Events are not carried over (except the active military round below): their cars become plain traffic.
+      if (!(m.kind === 'active' && m.vehicle === veh.id)) {
+        const plain = CARRIED_AS[veh.type];
+        if (plain) veh.type = plain;
+        veh.role = null;
+        veh.armour = 0;
+      }
       if (veh.phase.kind === 'ring') {
         veh.phase.justMerged = null;
       }
@@ -381,11 +403,8 @@ export class World {
     }
     next.vehicles = [...carried, ...next.vehicles];
     // A military truck still on its rounds keeps them, on the new shift's clock.
-    const m = this.military;
     if (m.kind === 'active') next.military = { kind: 'active', vehicle: m.vehicle, deadline: Math.max(0, m.deadline - this.time) };
     else if (m.kind === 'leaving') next.military = { kind: 'leaving', vehicle: m.vehicle };
-    // A Jackpot truck still driving off stays gilded.
-    next.jackpotVehicle = this.jackpotVehicle;
     next.tempoGlide = { from: this.ringSpeed, since: 0 };
     next.applyShiftCurves(0);
     next.queue.state = { kind: 'filling', elapsed: 0 };
@@ -1544,6 +1563,7 @@ export class World {
     this.shift.phase = this.shift.endedIn;
     this.shift.outcome = null;
     this.shift.failCause = null;
+    this.shift.detonated = false;
     this.graceUntil = now + this.config.reviveGrace;
     this.revives++;
     return true;
