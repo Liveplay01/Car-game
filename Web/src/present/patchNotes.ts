@@ -51,6 +51,27 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-11-01',
+    date: '1 November 2026',
+    title: 'Fairer chest auctions, Perfects that count, easier Long Chain',
+    impact: 'major',
+    summary: [
+      { text: 'Chests in the Auction House never cost more than the shop price any more.', from: null },
+      { text: 'Perfect merges in trials and tours now count for daily quests and Mastery.', from: null },
+      { text: 'Long Chain mastery is easier: the tiers now ask for 8, 12, 18, 25 and 30 Perfect merges.', from: null },
+      'Playing on CrazyGames? Cloud sync now brings your progress to your phone and the app.',
+    ],
+    items: [
+      'News from the team can now reach you at the start of the game. Tap it once and it is gone.',
+      { text: 'The lane arrow is much easier to see in night shifts.', from: null },
+      { text: 'Perfect merges in trials and tours, the Haunted Ring included, now count for daily quests and Mastery. The quest bar shows during a trial, too.', from: null },
+      { text: 'Chests in the Auction House no longer sell for two to four times the shop price: a collector never bids past what the chest costs in the shop, premium included.', from: null },
+      { text: 'Long Chain mastery is easier: 50 Perfect merges in a row was close to impossible. The tiers now ask for 8, 12, 18, 25 and 30. Tiers you already finished stay finished.', from: null },
+      'Cloud sync now works inside CrazyGames. Open Settings → Account, create your player, and keep the sync code it shows.',
+      'On your phone or in the app, choose "I have a sync code" and type it: your progress from CrazyGames is there. It stays in sync both ways.',
+    ],
+  },
+  {
     id: '2026-10-31',
     date: '31 October 2026',
     title: 'Your volume, your progress',

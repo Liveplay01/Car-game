@@ -179,7 +179,6 @@ export const S = {
     installButton: 'Install',
     addToHome: 'Add to Home Screen',
     addToHomeSub: 'In Safari, tap Share, then “Add to Home Screen” to play full screen and offline.',
-    noteCrazyGames: 'Log in to CrazyGames to keep your progress on every device.',
     noteCloud: 'Your progress is saved on this device. Cloud sync keeps a copy and brings it to your other devices.',
     noteLocal: 'Your progress is saved on this device.',
     deleteAccount: 'Delete account',

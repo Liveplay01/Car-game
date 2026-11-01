@@ -510,7 +510,7 @@ export const SceneBuilder = {
    * Two lanes: an arrow on the road in front of your stop line says which lane your front car
    * is bound for, straight on into the outer lane or bending left across it into the inner one.
    */
-  addLaneArrow(list: RenderList, world: World): void {
+  addLaneArrow(list: RenderList, world: World, night = false): void {
     const layout = world.layout;
     if (layout.lanes < 2) return;
     const front = world.queue.vehicles[0];
@@ -519,11 +519,12 @@ export const SceneBuilder = {
     const path = layout.entry(layout.player, veh.lane);
     const pts: Vec2[] = [];
     for (let k = 0; k <= 8; k++) pts.push(path.point(path.length * (0.12 + 0.5 * (k / 8))));
-    for (let k = 1; k < pts.length; k++) list.w(line(pts[k - 1], pts[k], 2.4), 'accent', 0.45);
+    // At night it is drawn over the dark veil and stronger, so it still reads.
+    for (let k = 1; k < pts.length; k++) list.w(line(pts[k - 1], pts[k], 2.4), 'accent', night ? 0.8 : 0.45);
     const tip = path.pose(path.length * 0.62);
     const ahead = fromAngle(tip.heading);
     const side = mul(left(ahead), 4.5);
-    list.w(polygon([add(tip.position, mul(ahead, 6)), add(tip.position, side), sub(tip.position, side)]), 'accent', 0.6);
+    list.w(polygon([add(tip.position, mul(ahead, 6)), add(tip.position, side), sub(tip.position, side)]), 'accent', night ? 0.95 : 0.6);
   },
 
   /** A line along a lane's kerb, from the back of its queue to just past the stop line. */

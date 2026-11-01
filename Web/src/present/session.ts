@@ -1286,6 +1286,13 @@ export class GameSession {
     const summary = settled.summary;
     this.shareable = settled.shareable;
     this.dailyShare = null;
+    // A trial is a shift: its Perfects and the rest count for today's quests and the lifelong goals.
+    if (run.k === 'trial') {
+      const quests = Careers.recordChallenges(career, result, this.today);
+      const goals = Careers.recordMastery(career, result);
+      settled.news.push(...quests.map((ch) => S.daily.challengeDone(ch, Fmt.number(challengeReward(ch, Careers.reach(career))))));
+      if (goals.length > 0) settled.news.push(S.mastery.toast(goals));
+    }
     if (settled.news.length > 0) this.announce(...settled.news);
     if (this.tutorial) {
       this.tutorial.end();
@@ -3621,7 +3628,7 @@ export class GameSession {
     this.tyreMarks.addGround(list, world.layout, world.config);
     this.brakeMarks.addGround(list);
     this.driftFx.addGround(list);
-    SceneBuilder.addLaneArrow(list, world);
+    if (!night) SceneBuilder.addLaneArrow(list, world);
     this.explosions.addGround(list);
     this.effects.carSkins = career.carSkins;
     this.effects.indicators = (id) => this.lamps.indicators(id);
@@ -3629,6 +3636,7 @@ export class GameSession {
     const thin = this.lowDetail || this.sceneThin;
     CityLights.add(list, world, alpha, theme, this.lamps, rm ? null : world.time, this.nightPreview, thin, this.lampWave);
     if (night) NightLayer.addRoadLights(list, world, alpha, this.lamps, rm ? null : world.time, thin ? 3 : undefined, this.lampWave);
+    if (night) SceneBuilder.addLaneArrow(list, world, true);
     if (night) {
       // Keep the ring's glow in the world layer so vehicles and wreckage can occlude it.
       const lit = list.items.length;
@@ -3675,11 +3683,11 @@ export class GameSession {
 
   /**
    * Today's challenges that are still open, counted from the live scoreboard. A career shift
-   * (the Daily included) can finish any of them; a special, a match and Mayhem book nothing,
-   * so they do not show the bar.
+   * (the Daily included) or a trial can finish any of them; a friend's challenge, a match and Mayhem
+   * book nothing, so they do not show the bar.
    */
   private liveChallenges(world: World): LiveChallenge[] {
-    if (this.special || this.versusSelected || this.playingMode === 'mayhem' || !(this.tutorial?.isOver ?? true)) return [];
+    if (this.special?.k === 'challenge' || this.versusSelected || this.playingMode === 'mayhem' || !(this.tutorial?.isOver ?? true)) return [];
     const career = this.save.career;
     const stats = {
       perfects: world.score.perfects,

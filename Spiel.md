@@ -452,7 +452,7 @@ Acht Ziele mit je drei Stufen zählen über die ganze Laufbahn; beim Erreichen e
 | Perfect Timing (Perfect Inputs) | 25 / 150 / 600 |
 | Tight Spots (Tight Fits) | 25 / 150 / 600 |
 | Close Calls (Near Misses) | 50 / 300 / 1.200 |
-| Long Chain (beste Kette) | 8 / 15 / 25 |
+| Long Chain (beste Kette) | 8 / 12 / 18 (IV 25, V 30) |
 | Crime Fighter (Takedowns) | 10 / 75 / 300 |
 | Secure Route (Transporter) | 10 / 75 / 300 |
 | Combo Master (beste Combo) | 20 / 40 / 80 |

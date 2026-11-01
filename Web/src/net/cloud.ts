@@ -1,5 +1,4 @@
 import type { SaveGame } from '../core/career';
-import { inPortal } from '../storage/device';
 import { parseImport, SEAL_FIELD, sealSave } from '../storage/save';
 import { savePlayerName } from '../storage/profile';
 import { storage } from '../storage/store';
@@ -20,11 +19,11 @@ import { type Account, apiRequest, leaderboardEnabled, LeaderboardError, loadAcc
  *
  * Two devices can diverge (both played since they last synced). The service refuses a write that
  * builds on an old version, and the game then never overwrites quietly: it shows both sides and
- * asks (`status` 'choose'). While it waits nothing is sent. Not on a portal: CrazyGames keeps the
- * save in its own cloud.
+ * asks (`status` 'choose'). While it waits nothing is sent. Also on CrazyGames (Leo, 01.11.2026, players asked
+ * for it): their login keeps the save on their own devices, the sync code brings it to the phone and the app.
  */
 
-export const cloudEnabled = leaderboardEnabled && !inPortal;
+export const cloudEnabled = leaderboardEnabled;
 
 const KEY = 'carGame.sync.v1';
 /** A change goes up this long after the last one, so a burst of changes is one request. */

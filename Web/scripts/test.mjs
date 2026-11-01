@@ -3523,7 +3523,32 @@ test('the Auction House: a win pays the hammer price and the premium and hands o
   assert.equal(Auction.canStart(d, slot, day), false, 'taken');
 });
 
-test('Collector asks for every skin still to be had, Completionist for every other title, the crew titles for a podium', () => {
+test('the Auction House: a chest never costs more than the shop asks for it', () => {
+  const day = 20_003;
+  const shop = baseConfig.diamondChestPrice;
+  let wins = 0;
+  for (let seed = 1; seed <= 300; seed++) {
+    const c = newCareer();
+    c.level = 60;
+    c.money = 100_000_000;
+    c.casinoSeed = seed;
+    c.auctionDay = day;
+    c.auctionLots = ['chest:diamond'];
+    const run = Auction.begin(c, 0, day);
+    for (let n = 0; n < 200 && run.phase === 'bidding'; n++) {
+      const offers = Auction.offers(c, run);
+      if (offers.length === 0) break;
+      assert.ok(Auction.bid(c, run, offers[0]));
+    }
+    if (run.phase === 'won') {
+      wins++;
+      assert.ok(run.paid <= shop, `paid ${run.paid} for a chest of ${shop}`);
+    }
+  }
+  assert.ok(wins > 30, 'a chest is still won often enough');
+});
+
+test('Collector asks for every skin still to be had,Completionist for every other title, the crew titles for a podium', () => {
   const c = newCareer();
   const had = (id) => Elite.titleEarned(id, c, baseConfig);
   assert.ok(!COSMETICS.filter((x) => x.source.kind === 'hall' || x.source.kind === 'fund').some((x) => collectableSkins().includes(x)), 'retired skins do not count');

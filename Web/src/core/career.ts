@@ -180,7 +180,7 @@ export const MASTERY_THRESHOLDS: Record<MasteryGoal, number[]> = {
   perfectTiming: [25, 150, 600, 1500, 3000],
   tightSpots: [25, 150, 600, 1500, 3000],
   closeCalls: [50, 300, 1200, 3000, 6000],
-  longChain: [8, 15, 25, 35, 50],
+  longChain: [8, 12, 18, 25, 30],
   crimeFighter: [10, 75, 300, 750, 1500],
   secureRoute: [10, 75, 300, 750, 1500],
   comboMaster: [20, 40, 80, 120, 160],

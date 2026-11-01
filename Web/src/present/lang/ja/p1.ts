@@ -140,7 +140,6 @@ export default (_s: Strings): Words<Strings> => ({
     installButton: 'インストール',
     addToHome: 'ホーム画面に追加',
     addToHomeSub: 'Safariで共有をタップし、「ホーム画面に追加」を選ぶと、フルスクリーンかつオフラインで遊べます。',
-    noteCrazyGames: 'CrazyGamesにログインすると、どの端末でも進行状況が残ります。',
     noteCloud: '進行状況はこの端末に保存されます。クラウド同期はそのコピーを保管し、ほかの端末にも届けます。',
     noteLocal: '進行状況はこの端末に保存されます。',
     deleteAccount: 'アカウントを削除',

@@ -140,7 +140,6 @@ export default (_s: Strings): Words<Strings> => ({
     installButton: 'Installa',
     addToHome: 'Aggiungi a schermata Home',
     addToHomeSub: 'In Safari, tocca Condividi e poi «Aggiungi a schermata Home» per giocare a schermo intero e offline.',
-    noteCrazyGames: 'Accedi su CrazyGames per mantenere i tuoi progressi su qualsiasi dispositivo.',
     noteCloud: 'I tuoi progressi sono salvati su questo dispositivo. Il Cloud conserva una copia per gli altri tuoi dispositivi.',
     noteLocal: 'I tuoi progressi sono salvati su questo dispositivo.',
     deleteAccount: 'Elimina account',

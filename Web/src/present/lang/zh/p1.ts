@@ -140,7 +140,6 @@ export default (_s: Strings): Words<Strings> => ({
     installButton: '安装',
     addToHome: '添加到主屏幕',
     addToHomeSub: '在 Safari 中点按分享，再选“添加到主屏幕”,即可全屏离线游玩。',
-    noteCrazyGames: '登录 CrazyGames,就能在每台设备上保留你的进度。',
     noteCloud: '你的进度保存在这台设备上。云同步会保留一份副本，并带到你的其他设备。',
     noteLocal: '你的进度保存在这台设备上。',
     deleteAccount: '删除账号？',

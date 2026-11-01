@@ -79,6 +79,9 @@ export const Auction = {
     return Math.ceil((estimate * config.auctionStartShare) / step) * step;
   },
 
+  /** The highest ceiling a collector may have for a chest, so the winning bid (one step over it) plus the premium stays within the shop price. */
+  chestCap: (estimate: number, step: number, config: Config = baseConfig): number => estimate / (1 + config.auctionPremium) - step,
+
   /** The money a hammer price costs: the price and the buyer's premium. */
   cost: (price: number, config: Config = baseConfig): number => price + Math.floor(price * config.auctionPremium),
 
@@ -157,10 +160,12 @@ export const Auction = {
     const start = Auction.start(estimate, config);
     const names = [...NAMES];
     const count = rng.int(config.auctionBots[0], config.auctionBots[1]);
+    // A chest is on sale in the shop: no collector pushes a winning bid past a price that costs more than that.
+    const cap = lot.k === 'chest' ? Auction.chestCap(estimate, step, config) : Infinity;
     const field = Array.from({ length: config.auctionField }, () => {
       const [lo, hi] = rng.unit() < config.auctionSharkShare ? config.auctionShark : config.auctionPenny;
       // Rounded down to the grid of the bidding, so a collector stops on a step.
-      return start + Math.floor((estimate * rng.range(lo, hi) - start) / step) * step;
+      return start + Math.floor((Math.min(estimate * rng.range(lo, hi), cap) - start) / step) * step;
     });
     const bots: AuctionBot[] = [];
     const reach: number[] = [];
@@ -183,7 +188,8 @@ export const Auction = {
   offers(c: Career, run: AuctionRun, config: Config = baseConfig): number[] {
     if (run.phase !== 'bidding' || run.leader === 'you') return [];
     const min = Auction.minBid(run);
-    return [0, 2, 5].map((n) => min + n * run.step).filter((bid) => Auction.cost(bid, config) <= c.money);
+    const limit = run.lot.k === 'chest' ? Math.min(c.money, run.estimate) : c.money;
+    return [0, 2, 5].map((n) => min + n * run.step).filter((bid) => Auction.cost(bid, config) <= limit);
   },
 
   /**
