@@ -1274,6 +1274,8 @@ export const S = {
     clutchSaved: (s: string): string => `Out ${s} s before the crash`,
     slotsHint: 'Three alike on the line pay · odds in the sheet',
     noWin: 'No win this time',
+    soClose: 'So close!',
+    flewOn: (x: string): string => `It flew on to ${x}`,
     slotRule(rule: 'triple' | 'bossPair' | 'pair' | null, pay: number, line: readonly SlotSymbol[]): string {
       if (rule === 'triple') return `Three × ${S.casino.symbol(line[0])} · ${pay}×`;
       if (rule === 'bossPair') return `Two bosses · ${pay}×`;

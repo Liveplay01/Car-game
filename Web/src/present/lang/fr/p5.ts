@@ -45,6 +45,8 @@ export default (S: Strings): Words<Strings> => ({
     clutchSaved: (s) => `Sorti ${s} s avant le crash`,
     slotsHint: 'Trois identiques alignés paient · détails dans la fiche',
     noWin: 'Pas de gain cette fois',
+    soClose: 'Si près !',
+    flewOn: (x) => `Il a continué jusqu'à ${x}`,
     slotRule(rule, pay, line) {
       if (rule === 'triple') return `Trois × ${S.casino.symbol(line[0])} · ${pay}×`;
       if (rule === 'bossPair') return `Deux boss · ${pay}×`;

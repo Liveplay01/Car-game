@@ -45,6 +45,8 @@ export default (S: Strings): Words<Strings> => ({
     clutchSaved: (s) => `撞车前 ${s} 秒撤出`,
     slotsHint: '连线上三个相同即中奖 · 概率见窗口',
     noWin: '这次没中',
+    soClose: '差一点！',
+    flewOn: (x) => `本来能到 ${x}`,
     slotRule(rule, pay, line) {
       if (rule === 'triple') return `三个${S.casino.symbol(line[0])} · ${pay}×`;
       if (rule === 'bossPair') return `两个首领 · ${pay}×`;

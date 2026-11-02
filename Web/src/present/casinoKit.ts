@@ -1,5 +1,5 @@
 import { baseConfig } from '../core/config';
-import { Casino, type SlotSymbol, type UpgradeRoll } from '../core/casino';
+import { Casino, type CasinoGame, type SlotSpin, type SlotSymbol, type RouletteSpin, type ScratchCard, type UpgradeRoll } from '../core/casino';
 import type { VehicleType } from '../core/vehicle';
 import { Ease, unitHash } from './render';
 import type { ColorToken } from './theme';
@@ -23,8 +23,8 @@ export const TIMES = {
   edge: 0.035,
   needleTurns: 3,
   pegs: 24,
-  flip: 1.15,
-  flipHalfTurns: 8,
+  flip: 1.6,
+  flipHalfTurns: 10,
   crashSpin: 0.9,
   /** The crash freezes this long before it blows (a hitstop). */
   hitstop: 0.06,
@@ -86,10 +86,65 @@ export const unit = (index: number, salt: number): number => unitHash(index, sal
 export const winTier = (times: number): number => baseConfig.casinoWinTiers.filter((x) => times >= x).length;
 /** The tier of a round's payout `win` at `times` the stake: the louder of its multiple and its profit. */
 export const payTier = (times: number, win: number): number => Casino.tier(times, win);
+/** The tier of a doubled win: the chain makes it loud even when the money is small (louder with every doubling, loudest from the 3rd). */
+export const flipTier = (chain: number, money: number): number => Math.max(payTier(2 ** chain, money), Math.min(4, chain + 1));
 /** How long a win of `tier` counts up: the bigger, the longer the number keeps the player waiting. */
 export const countTime = (tier: number): number => [0.6, 0.8, 1.2, 1.8, 2.6][tier] ?? 2.6;
 /** The coins of a big win rain this long. */
 export const rainTime = (tier: number): number => (tier >= 4 ? 3 : 2.2);
+
+/** The neon of each table: a palette of its own, never the whole rainbow. `warm` is the coin's and the buttons', `win` the payout's. */
+export const NEON: Record<CasinoGame | 'warm' | 'win', ColorToken[]> = {
+  crash: ['destructive', 'indicator', 'accent'],
+  slots: ['vehicleRacer', 'vehicleCriminal', 'lightBlue'],
+  roulette: ['learnerSign', 'lightBlue', 'vehicleCriminal'],
+  scratch: ['accent', 'skinCoral', 'vehicleRacer'],
+  upgrade: ['rushHour', 'learnerSign', 'lightBlue'],
+  warm: ['accent', 'indicator', 'vehicleRacer'],
+  win: ['accent', 'headlight', 'vehicleRacer', 'headlight'],
+};
+/** How a neon tube runs: how far its comets have come, how bright it burns, its colours, and how much of it is lit all round (a win). */
+export interface Tube {
+  phase: number;
+  strength: number;
+  palette: ColorToken[];
+  flood?: number;
+}
+
+/** Rounds won in a row, newest last in `rounds`. */
+export function winStreak(rounds: readonly { win: number }[]): number {
+  let n = 0;
+  while (n < rounds.length && rounds[rounds.length - 1 - n].win > 0) n++;
+  return n;
+}
+
+/** A lost spin whose second reel had the first one's symbol one row off the line: that row (−1 above, 1 below), else 0. */
+export function slotNear(spin: SlotSpin): -1 | 0 | 1 {
+  const strip = baseConfig.slotStrip;
+  if (spin.win > 0 || spin.line[0] === 'boss') return 0;
+  return ([-1, 1] as const).find((d) => strip[(spin.stops[1] + d + strip.length) % strip.length] === spin.line[0]) ?? 0;
+}
+export const rouletteNear = (spin: RouletteSpin): boolean => {
+  const strip = baseConfig.slotStrip;
+  return !spin.won && [-1, 1].some((d) => strip[(spin.exit + d + strip.length) % strip.length] === spin.bet);
+};
+export const upgradeNear = (roll: UpgradeRoll): boolean => !roll.won && roll.roll - roll.chance < 0.06;
+/** A lost card with a pair of a big number: the cells of it. */
+export const scratchNear = (card: ScratchCard): number[] => (card.win > 0 ? [] : card.cells.filter((c, i) => c >= 10 && card.cells.indexOf(c) !== i));
+export function nearMiss(run: CasinoRun): boolean {
+  switch (run.k) {
+    case 'slots':
+      return slotNear(run.spin) !== 0;
+    case 'roulette':
+      return rouletteNear(run.spin);
+    case 'upgrade':
+      return upgradeNear(run.roll);
+    case 'scratch':
+      return scratchNear(run.card).length > 0;
+    default:
+      return false;
+  }
+}
 
 export const SYMBOL: Record<SlotSymbol, { type: VehicleType; tint: ColorToken }> = {
   car: { type: 'car', tint: 'rarityCommon' },

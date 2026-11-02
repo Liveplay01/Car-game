@@ -2,7 +2,7 @@ import type { SaveGame } from '../core/career';
 import type { Config } from '../core/config';
 import { Casino } from '../core/casino';
 import { cosmetic } from '../core/loot';
-import { CasinoPage, type Books, type CasinoState, type CasinoTarget, type CasinoCue, payTier } from './casino';
+import { CasinoPage, type Books, type CasinoState, type CasinoTarget, type CasinoCue, payTier, flipTier } from './casino';
 import type { SoundID, HapticID } from './feedback';
 import { S, Fmt, money as moneyText } from './strings';
 
@@ -314,7 +314,11 @@ export class CasinoFlow {
       case 'tick':
         // The drive's meter blips at every tenth more, a semitone higher each time: the tension is heard.
         if (run.k === 'crash') this.host.playPitched('meterTick', Math.pow(2, Math.min(cue.step, 24) / 12));
-        else this.host.playPitched('needleTick', 1.4 + 0.08 * (cue.step % 3));
+        else if (run.k === 'flip') {
+          // Every turn of the coin rings a little higher.
+          this.host.playPitched('needleTick', 1 + 0.1 * cue.step);
+          this.host.play([], ['tap']);
+        } else this.host.playPitched('needleTick', 1.4 + 0.08 * (cue.step % 3));
         break;
       case 'reel':
         // Klack-wumm: the stop, a little higher reel by reel.
@@ -335,6 +339,11 @@ export class CasinoFlow {
       case 'coins':
         this.host.playPitched('coinClink', 1 + 0.1 * cue.tier);
         this.host.play([], ['paid']);
+        break;
+      case 'near':
+        // The breath before the sigh: a low tick, a tap.
+        this.host.playPitched('needleTick', 0.55);
+        this.host.play([], ['tap']);
         break;
       case 'clutchBoom':
         this.host.play(['explosion'], ['explosion']);
@@ -366,7 +375,7 @@ export class CasinoFlow {
         } else if (run.k === 'flip') {
           // A doubled win flies in: what the coin added, as loud as the chain has grown.
           const gained = run.flip.won && !run.items ? run.flip.money / 2 : 0;
-          const tier = payTier(2 ** run.chain, run.flip.money);
+          const tier = flipTier(run.chain, run.flip.money);
           this.host.casino.wallet.reveal(bank, gained, tier, rm);
           this.host.play(['coinLand'], []);
           if (run.flip.won) {

@@ -14,7 +14,7 @@ import { SYNDICATE_BOSS } from './scene';
 import { land } from './hud';
 import { ShopPage } from './shop';
 import { CasinoPage, type CasinoRun, CasinoState } from './casino';
-import { TIMES, HEAT, SYMBOL, slotEnd, reelStop, reelAt, needleTime, needleTurn, heatOf, unit, winTier, payTier, rouletteEnd, rouletteTurn, scratchAt, scratchEnd, type RouletteRun } from './casinoKit';
+import { TIMES, HEAT, SYMBOL, slotEnd, reelStop, reelAt, needleTime, needleTurn, heatOf, unit, winTier, payTier, rouletteEnd, rouletteTurn, scratchAt, scratchEnd, slotNear, rouletteNear, upgradeNear, scratchNear, flipTier, NEON, type Tube, type RouletteRun } from './casinoKit';
 
 /**
  * The four tables of the casino, drawn as pure functions of their age: Crash, Slots, the Skin
@@ -28,7 +28,7 @@ export const CasinoGames = {
    * in stages: calm, then speed lines, then nitro with a glowing edge, then the danger zone
    * with warning lights. The crash is a bang: a freeze, a fireball, debris and a red flash.
    */
-  addCrash(list: RenderList, stage: Rect, run: Extract<CasinoRun, { k: 'crash' }> | null, reduceMotion: boolean, enter: number): void {
+  addCrash(list: RenderList, stage: Rect, run: Extract<CasinoRun, { k: 'crash' }> | null, reduceMotion: boolean, enter: number, tube: Tube): void {
     const cfg = baseConfig;
     const vp = list.camera.viewport;
     const crashed = run?.crash ?? null;
@@ -52,6 +52,7 @@ export const CasinoGames = {
     }
     const s = R.offset(stage, shake);
     ShopPage.panel(list, s, 'card', enter);
+    CasinoPage.neon(list, s, tube, enter);
     if (driving && heat >= 2 && !reduceMotion) CasinoPage.edgeGlow(list, HEAT[heat], (heat === 3 ? 0.9 : 0.55) * (0.75 + 0.25 * Math.sin(run!.age * (heat === 3 ? 14 : 7))));
 
     // Clear of the line under the multiplier, and room left of it for the scale beside the car.
@@ -180,6 +181,8 @@ export const CasinoGames = {
 
     // Got out just in time: a stamp slams onto the stage.
     if (out && out.clutch !== null) CasinoPage.clutchStamp(list, v(R.center(s).x, s.maxY - 64), out.age, out.clutch, reduceMotion, enter);
+    // Out early: the drive flew on, and the table says how far. Honest, and it stings.
+    else if (out && run!.point > out.m * 1.05 && out.age > 0.9) drawText(list, S.casino.flewOn(S.casino.times(run!.point)), v(R.center(s).x, s.maxY - 26), 13, 'hazard', { weight: 'bold', align: 'center', opacity: enter * (reduceMotion ? 1 : Ease.outCubic((out.age - 0.9) / 0.3)) });
     if (out) CasinoPage.celebrate(list, s, big, out.age, tier, 'accent', reduceMotion);
     // The crash flashes the whole display red (after the freeze), briefly.
     if (crashed !== null && !reduceMotion) {
@@ -243,17 +246,29 @@ export const CasinoGames = {
     }
   },
 
+  /** The display dims round `stage`, so what happens on it stands alone. */
+  spotlight(list: RenderList, stage: Rect, dim: number): void {
+    const vp = list.camera.viewport;
+    list.s(rect(v(vp.x / 2, stage.minY / 2), v(vp.x, stage.minY)), 'background', dim);
+    list.s(rect(v(vp.x / 2, (stage.maxY + vp.y) / 2), v(vp.x, vp.y - stage.maxY)), 'background', dim);
+    list.s(rect(v(stage.minX / 2, R.center(stage).y), v(stage.minX, R.height(stage))), 'background', dim);
+    list.s(rect(v((stage.maxX + vp.x) / 2, R.center(stage).y), v(vp.x - stage.maxX, R.height(stage))), 'background', dim);
+  },
+
   // MARK: Slots
 
-  addSlots(list: RenderList, stage: Rect, state: CasinoState, run: Extract<CasinoRun, { k: 'slots' }> | null, reduceMotion: boolean, enter: number): void {
+  addSlots(list: RenderList, stage: Rect, state: CasinoState, run: Extract<CasinoRun, { k: 'slots' }> | null, reduceMotion: boolean, enter: number, tube: Tube): void {
     const cfg = baseConfig;
     const n = cfg.slotStrip.length;
     const done = !run || run.age >= slotEnd(run);
     const win = run && done && run.spin.win > 0 ? run.spin : null;
     const since = run ? run.age - slotEnd(run) : 0;
     const tier = win ? payTier(win.pay, win.win) : 0;
+    const near = run && done ? slotNear(run.spin) : 0;
+    const closeGlow = reduceMotion ? 1 : Ease.clamp01(since / 0.15) * (0.6 + 0.4 * Math.sin(since * 10));
     stage = R.offset(stage, CasinoPage.jolt(since, tier, reduceMotion));
     ShopPage.panel(list, stage, 'card', enter);
+    CasinoPage.neon(list, stage, tube, enter);
     const g = 10;
     const pad = 16;
     const reelW = (R.width(stage) - 2 * pad - 2 * g) / 3;
@@ -266,14 +281,7 @@ export const CasinoGames = {
     // Reels 1 and 2 alike: the rest of the screen dims and they glow gold while reel 3 creeps in.
     const holding = run !== null && run.anticipate && run.age >= TIMES.reelStops[1];
     const focus = holding && !reduceMotion ? Ease.clamp01((run!.age - TIMES.reelStops[1]) / 0.25) * (1 - Ease.clamp01((run!.age - slotEnd(run!)) / 0.35)) : 0;
-    if (focus > 0) {
-      const vp = list.camera.viewport;
-      const dim = 0.55 * focus;
-      list.s(rect(v(vp.x / 2, stage.minY / 2), v(vp.x, stage.minY)), 'background', dim);
-      list.s(rect(v(vp.x / 2, (stage.maxY + vp.y) / 2), v(vp.x, vp.y - stage.maxY)), 'background', dim);
-      list.s(rect(v(stage.minX / 2, R.center(stage).y), v(stage.minX, R.height(stage))), 'background', dim);
-      list.s(rect(v((stage.maxX + vp.x) / 2, R.center(stage).y), v(vp.x - stage.maxX, R.height(stage))), 'background', dim);
-    }
+    if (focus > 0) CasinoPage.spotlight(list, stage, 0.55 * focus);
     for (let i = 0; i < 3; i++) {
       const x = stage.minX + pad + i * (reelW + g);
       const reel = R.make(x, top, x + reelW, top + reelH);
@@ -303,8 +311,10 @@ export const CasinoGames = {
         const y = midY + (p - j) * rh;
         const sym = cfg.slotStrip[((j % n) + n) % n];
         const onLine = Math.abs(y - midY) < rh / 2;
+        // The row that would have matched the first reel, one off the line: it glows in warning.
+        const close = near !== 0 && i === 1 && k === near;
         const lit = (onLine && winning) || (onLine && focus > 0 && i < 2);
-        const dim = done && !onLine ? 0.4 : 1;
+        const dim = done && !onLine && !close ? 0.4 : 1;
         // A winning symbol hops once, left to right: flat on take-off, long in the air, flat on landing.
         let at = v(R.center(reel).x, y);
         let squash = 0;
@@ -315,7 +325,7 @@ export const CasinoGames = {
             squash = 0.7 * Math.cos(2 * Math.PI * x) * Math.sin(Math.PI * x);
           }
         }
-        CasinoPage.symbol(list, sym, at, Math.min(reelW, rh) * 0.86, enter * dim, lit ? (winning ? glowOn : focus) : 0, winning ? null : 'coin', blur, squash);
+        CasinoPage.symbol(list, sym, at, Math.min(reelW, rh) * 0.86, enter * dim, close ? closeGlow : lit ? (winning ? glowOn : focus) : 0, close ? 'hazard' : winning ? null : 'coin', blur, squash);
       }
       list.clip = saved;
     }
@@ -349,7 +359,10 @@ export const CasinoGames = {
       if (power > 0 && !reduceMotion) CasinoPage.coinFountain(list, center, since, power);
       const h = CasinoPage.winCount(list, under, win.win, since, tier, triple ? 28 : 22, R.width(stage) - 24, triple ? 'coin' : 'accent', reduceMotion, enter);
       drawText(list, S.casino.slotRule(win.rule, win.pay, win.line), v(under.x, Math.min(under.y + h / 2 + 12, stage.maxY - 10)), 12, 'muted', { align: 'center', opacity: enter });
-    } else if (run && done) drawText(list, S.casino.noWin, under, 13, 'muted', { align: 'center', opacity: enter * (reduceMotion ? 1 : Ease.outCubic(since / 0.2)) });
+    } else if (run && done) {
+      drawText(list, S.casino.noWin, under, 13, 'muted', { align: 'center', opacity: enter * (reduceMotion ? 1 : Ease.outCubic(since / 0.2)) });
+      if (near !== 0) CasinoPage.soClose(list, v(under.x, under.y + 24), since, R.width(stage) - 24, reduceMotion, enter);
+    }
     else if (!run) drawText(list, S.casino.slotsHint, under, 12, 'muted', { align: 'center', opacity: enter });
   },
 
@@ -362,8 +375,10 @@ export const CasinoGames = {
       const d = (i / n) * 2 * (w + h);
       const p = d < w ? v(r.minX + d, r.minY) : d < w + h ? v(r.maxX, r.minY + d - w) : d < 2 * w + h ? v(r.maxX - (d - w - h), r.maxY) : v(r.minX, r.maxY - (d - 2 * w - h));
       const on = mode === 'idle' ? 0.3 : mode === 'spin' ? (((i - Math.floor(age * 18)) % 3) + 3) % 3 === 0 ? 1 : 0.2 : (Math.floor(age * 8) + i) % 2 === 0 ? 1 : 0.25;
-      list.s(circle(p, 5.5), 'coin', 0.22 * on * enter);
-      list.s(circle(p, 2.5), 'coin', on * enter);
+      const palette = mode === 'win' ? NEON.win : NEON.slots;
+      const tint: ColorToken = mode === 'idle' ? 'coin' : palette[(i + Math.floor(age * 10)) % palette.length];
+      list.s(circle(p, 5.5), tint, 0.22 * on * enter);
+      list.s(circle(p, 2.5), tint, on * enter);
     }
   },
 
@@ -426,7 +441,7 @@ export const CasinoGames = {
    * The bet's exits stay lit. The car circles fast, clicks past every exit (its tile pops) and
    * eases onto the drawn one, turns in and arrives; a win lights that exit and showers coins.
    */
-  addRoulette(list: RenderList, stage: Rect, state: CasinoState, run: RouletteRun | null, reduceMotion: boolean, enter: number): void {
+  addRoulette(list: RenderList, stage: Rect, state: CasinoState, run: RouletteRun | null, reduceMotion: boolean, enter: number, tube: Tube): void {
     const cfg = baseConfig;
     const n = cfg.slotStrip.length;
     const done = run !== null && run.age >= rouletteEnd;
@@ -434,8 +449,10 @@ export const CasinoGames = {
     const spin = run?.spin ?? null;
     const won = done && spin !== null && spin.won;
     const tier = won ? payTier(spin.pay, spin.win) : 0;
+    const near = done && spin !== null && rouletteNear(spin) && state.bet === spin.bet;
     stage = R.offset(stage, CasinoPage.jolt(since, tier, reduceMotion));
     ShopPage.panel(list, stage, 'card', enter);
+    CasinoPage.neon(list, stage, tube, enter);
     // The wheel (its tiles stand 14 outside the radius) fits above the line under it, on a short stage too.
     const room = 46;
     const center = v(R.center(stage).x, stage.minY + (R.height(stage) - room) / 2 + 2);
@@ -466,13 +483,17 @@ export const CasinoGames = {
       const a = top + (i / n) * TAU;
       const mine = sym === bet;
       const hit = done && spin !== null && i === spin.exit;
+      // The exit next to the drawn one that the bet was on: it lights in warning.
+      const close = near && spin !== null && sym === spin.bet && (i === (spin.exit + 1) % n || i === (spin.exit + n - 1) % n);
       let pop = 1;
       if (run && !done && !reduceMotion && passed > 0 && i === lastExit) pop += 0.35 * (1 - frac) ** 2;
       if (hit) pop += 0.35 * (reduceMotion ? 1 : Ease.spring(Ease.clamp01(since / 0.45)));
-      const o = enter * (done ? (hit || (repicked && mine) ? 1 : 0.28) : mine ? 1 : 0.5);
+      if (close) pop += 0.3 * (reduceMotion ? 1 : Ease.spring(Ease.clamp01(since / 0.45)));
+      const o = enter * (done ? (hit || close || (repicked && mine) ? 1 : 0.28) : mine ? 1 : 0.5);
       list.s(line(at(a, radius + 14 * u), at(a, radius + 22 * u), 7 * u), 'marking', 0.5 * o);
       const tile = at(a, radius + 32 * u);
       if (hit && !reduceMotion) MenuKit.glow(list, tile, 30 * u, won ? 'accent' : tint, (won ? 0.7 : 0.45) * enter * (0.8 + 0.2 * Math.sin(since * 9)));
+      if (close && !reduceMotion) MenuKit.glow(list, tile, 30 * u, 'hazard', 0.7 * enter * Ease.clamp01(since / 0.15) * (0.7 + 0.3 * Math.sin(since * 10)));
       if (mine && (!done || repicked)) list.s(rect(tile, v(25 * u * pop, 25 * u * pop), 8 * u), 'primary', 0.9 * o);
       if (hit && won) list.s(rect(tile, v(26 * u * pop, 26 * u * pop), 8 * u), 'accent', enter);
       list.s(rect(tile, v(20 * u * pop, 20 * u * pop), 6 * u), tint, o);
@@ -516,7 +537,10 @@ export const CasinoGames = {
         if (tier >= 2 && !reduceMotion) CasinoPage.coinFountain(list, center, since, CasinoPage.fountain(tier));
         const h = CasinoPage.winCount(list, under, spin.win, since, tier, 24, R.width(stage) - 24, 'accent', reduceMotion, enter);
         drawText(list, S.casino.rouletteWin(S.casino.symbol(spin.symbol), spin.pay), v(under.x, Math.min(under.y + h / 2 + 12, stage.maxY - 10)), 12, 'muted', { align: 'center', opacity: enter });
-      } else drawText(list, S.casino.rouletteLose(S.casino.symbol(spin.symbol)), under, 13, 'muted', { align: 'center', opacity: enter * (reduceMotion ? 1 : Ease.outCubic(since / 0.25)) });
+      } else {
+        drawText(list, S.casino.rouletteLose(S.casino.symbol(spin.symbol)), under, 13, 'muted', { align: 'center', opacity: enter * (reduceMotion ? 1 : Ease.outCubic(since / 0.25)) });
+        if (near) CasinoPage.soClose(list, v(under.x, under.y + 24), since, R.width(stage) - 24, reduceMotion, enter);
+      }
     } else if (!run) drawFitted(list, S.casino.rouletteHint, under, 12, R.width(stage) - 24, 'muted', { align: 'center', opacity: enter });
   },
 
@@ -526,14 +550,16 @@ export const CasinoGames = {
    * The card: nine foil cells. Each is scratched clear in turn (the foil wipes away with a few
    * scratch marks and flakes, the number lands with a pop); three alike hop, glow and pay.
    */
-  addScratch(list: RenderList, stage: Rect, career: Career, run: Extract<CasinoRun, { k: 'scratch' }> | null, reduceMotion: boolean, enter: number): void {
+  addScratch(list: RenderList, stage: Rect, career: Career, run: Extract<CasinoRun, { k: 'scratch' }> | null, reduceMotion: boolean, enter: number, tube: Tube): void {
     const card = run?.card ?? null;
     const done = run !== null && run.age >= scratchEnd;
     const since = run ? run.age - scratchEnd : 0;
     const won = done && card !== null && card.win > 0;
     const tier = won ? payTier(card.x, card.win) : 0;
+    const close = card && done ? scratchNear(card) : [];
     stage = R.offset(stage, CasinoPage.jolt(since, tier, reduceMotion));
     ShopPage.panel(list, stage, 'card', enter);
+    CasinoPage.neon(list, stage, tube, enter);
     const room = 64;
     const side = Math.max(120, Math.min(R.width(stage) - 36, R.height(stage) - room - 16, 290));
     const c = v(R.center(stage).x, stage.minY + 10 + (R.height(stage) - room - 10) / 2);
@@ -562,7 +588,9 @@ export const CasinoGames = {
         const value = card.cells[i];
         const winning = won && value === card.x;
         const rank = order.indexOf(i);
-        const dim = done ? (winning ? 1 : won ? 0.3 : 0.7) : 1;
+        const hot = close.includes(value);
+        const dim = done ? (winning || hot ? 1 : won ? 0.3 : 0.7) : 1;
+        if (hot && !reduceMotion) MenuKit.glow(list, cc, cell * 0.8, 'hazard', 0.55 * enter * Ease.clamp01(since / 0.15) * (0.7 + 0.3 * Math.sin(since * 10 + i)));
         let at = cc;
         let squash = 0;
         if (winning && !reduceMotion) {
@@ -618,7 +646,10 @@ export const CasinoGames = {
         if (tier >= 2 && !reduceMotion) CasinoPage.coinFountain(list, c, since, CasinoPage.fountain(tier));
         const h = CasinoPage.winCount(list, under, card.win, since, tier, 24, R.width(stage) - 24, 'coin', reduceMotion, enter);
         drawText(list, S.casino.cardWon(card.x), v(under.x, Math.min(under.y + h / 2 + 12, stage.maxY - 10)), 12, 'muted', { align: 'center', opacity: enter });
-      } else drawText(list, S.casino.cardLost, under, 13, 'muted', { align: 'center', opacity: enter * (reduceMotion ? 1 : Ease.outCubic(since / 0.25)) });
+      } else {
+        drawText(list, S.casino.cardLost, under, 13, 'muted', { align: 'center', opacity: enter * (reduceMotion ? 1 : Ease.outCubic(since / 0.25)) });
+        if (close.length > 0) CasinoPage.soClose(list, v(under.x, under.y + 24), since, R.width(stage) - 24, reduceMotion, enter);
+      }
     } else if (!run) {
       drawText(list, S.casino.scratchHand(career.scratchCards), under, 14, career.scratchCards > 0 ? 'coin' : 'muted', { weight: 'bold', align: 'center', opacity: enter });
       drawText(list, S.casino.scratchHint, v(under.x, under.y + 22), 11, 'muted', { align: 'center', opacity: enter });
@@ -627,8 +658,9 @@ export const CasinoGames = {
 
   // MARK: Skin Upgrade
 
-  addUpgrade(list: RenderList, stage: Rect, state: CasinoState, run: Extract<CasinoRun, { k: 'upgrade' }> | null, waitingBoost: boolean, reduceMotion: boolean, enter: number): void {
+  addUpgrade(list: RenderList, stage: Rect, state: CasinoState, run: Extract<CasinoRun, { k: 'upgrade' }> | null, waitingBoost: boolean, reduceMotion: boolean, enter: number, tube: Tube): void {
     ShopPage.panel(list, stage, 'card', enter);
+    CasinoPage.neon(list, stage, tube, enter);
     const slots = CasinoPage.slots(stage);
     const dialBottom = slots[0].minY - 26;
     // Centred in the room above the slots, with space outside for the pegs and the pointer's tip.
@@ -685,6 +717,7 @@ export const CasinoGames = {
       CasinoPage.celebrate(list, stage, center, since, tier, ShopPage.rarityColor(targetItem.rarity), reduceMotion, S.casino.upgradedBanner);
     } else if (done) {
       drawText(list, S.casino.lostSkins(run!.roll.staked.length), center, 15, 'destructive', { weight: 'bold', align: 'center', opacity: enter });
+      if (upgradeNear(run!.roll)) CasinoPage.soClose(list, v(center.x, center.y + radius * 0.55), since, radius * 1.5, reduceMotion, enter);
       // The stake breaks apart in the pot: shards in the colours of what was lost.
       if (!reduceMotion && since < 1) {
         const colors = run!.roll.staked.map((id) => ShopPage.rarityColor(cosmetic(id)?.rarity ?? 'common'));
@@ -784,37 +817,83 @@ export const CasinoGames = {
     if (fall === 0) drawText(list, S.casino.chainTimes(2 ** count), v(foot.x, foot.y - 4 - count * 7 - 12), 11, tint, { weight: 'bold', align: 'center', opacity: enter });
   },
 
-  /** A coin with a car on one face and a crash on the other; it jumps, turns and lands. */
-  addFlip(list: RenderList, stage: Rect, run: Extract<CasinoRun, { k: 'flip' }>, career: Career, reduceMotion: boolean, enter: number): void {
-    ShopPage.panel(list, stage, 'card', enter);
+  /**
+   * A coin with a car on one face and a crash on the other. It flies up into a spotlight, leaves
+   * afterimages, glints on every turn and lands; the more it has doubled, the louder it all is.
+   * A win bursts as big as the chain; a loss shatters the coin and flashes the display red.
+   */
+  addFlip(list: RenderList, stage: Rect, run: Extract<CasinoRun, { k: 'flip' }>, career: Career, reduceMotion: boolean, enter: number, tube: Tube): void {
     const done = run.age >= TIMES.flip;
-    const x = reduceMotion ? 1 : Ease.clamp01(run.age / TIMES.flip);
+    const since = run.age - TIMES.flip;
+    const won = run.flip.won;
+    const tier = done && won ? flipTier(run.chain, run.flip.money) : 0;
+    let shake = CasinoPage.jolt(since, tier, reduceMotion);
+    if (done && !won && !reduceMotion && since < 0.4) shake = mul(v(Math.sin(since * 70), Math.cos(since * 55) * 0.5), 8 * (1 - since / 0.4));
+    stage = R.offset(stage, shake);
+    ShopPage.panel(list, stage, 'card', enter);
+    CasinoPage.neon(list, stage, tube, enter);
     const radius = Math.min(64, R.height(stage) * 0.24);
     const rest = v(R.center(stage).x, R.center(stage).y - 10);
-    const jump = reduceMotion ? 0 : Math.sin(Math.PI * x) * Math.min(90, R.height(stage) * 0.3);
-    const center = add(rest, v(0, -jump));
+    const lift = Math.min(90, R.height(stage) * 0.3);
     // Half-turns: an even count shows the car (a win), an odd one the crash; it ends on the draw.
-    const total = TIMES.flipHalfTurns + (run.flip.won ? 0 : 1);
-    const turn = reduceMotion ? total : Ease.outCubic(x) * total;
+    const total = TIMES.flipHalfTurns + (won ? 0 : 1);
+    const pose = (age: number): { jump: number; turn: number; squeeze: number } => {
+      const x = reduceMotion ? 1 : Ease.clamp01(age / TIMES.flip);
+      const turn = reduceMotion ? total : Ease.outCubic(x) * total;
+      return { jump: reduceMotion ? 0 : Math.sin(Math.PI * x) * lift, turn, squeeze: reduceMotion ? 1 : Math.max(0.06, Math.abs(Math.cos(turn * Math.PI))) };
+    };
+    const { jump, turn, squeeze } = pose(run.age);
+    const center = add(rest, v(0, -jump));
     const face = Math.floor(turn) % 2 === 0 ? 'win' : 'lose';
-    const squeeze = reduceMotion ? 1 : Math.max(0.06, Math.abs(Math.cos(turn * Math.PI)));
     const tint: ColorToken = face === 'win' ? 'accent' : 'destructive';
+    const hue: ColorToken = done && !won ? 'destructive' : 'coin';
+    const riding = 2 ** run.chain;
+
+    // In the air the rest of the display dims, the edge glows (harder with every doubling) and ×N hangs over the coin.
+    const focus = reduceMotion ? 0 : Ease.clamp01(run.age / 0.2) * (1 - Ease.clamp01(since / 0.4));
+    if (focus > 0) {
+      CasinoPage.spotlight(list, stage, 0.6 * focus);
+      CasinoPage.edgeGlow(list, 'coin', Math.min(1, 0.4 + 0.15 * run.chain) * focus * (0.75 + 0.25 * Math.sin(run.age * 14)));
+    }
+    if (!done) {
+      const beat = reduceMotion ? 1 : 1 + 0.07 * Math.sin(run.age * 14) * (1 + 0.15 * run.chain);
+      drawText(list, S.casino.chainTimes(riding), v(rest.x, stage.minY + 28), 22 * beat, 'coin', { weight: 'bold', align: 'center', opacity: enter });
+    }
+
     list.s(rect(v(rest.x, rest.y + radius + 14), v(radius * 1.6 * (1 - 0.4 * (jump / 90)), 8), 4), 'shadow', 0.6 * enter);
-    list.s(rect(center, v(2 * radius * squeeze + 4, 2 * radius + 4), Math.min(radius * squeeze + 2, radius + 2)), 'coin', enter);
-    list.s(rect(center, v(2 * radius * squeeze, 2 * radius), Math.min(radius * squeeze, radius)), tint, enter);
+    const fade = done && !won && !reduceMotion ? 1 - Ease.clamp01(since / 0.25) : 1;
+    if (!reduceMotion) {
+      MenuKit.glow(list, center, radius * (done ? 2.2 : 1.7), hue, (0.22 + 0.07 * Math.min(run.chain, 5)) * enter * fade);
+      if (!done) {
+        for (let k = 1; k <= 6; k++) {
+          const p = pose(Math.max(0, run.age - k * 0.025));
+          list.s(rect(add(rest, v(0, -p.jump)), v(2 * radius * p.squeeze, 2 * radius), Math.min(radius * p.squeeze, radius)), 'coin', 0.16 * (1 - k / 7) * enter);
+        }
+      }
+    }
+    list.s(rect(center, v(2 * radius * squeeze + 4, 2 * radius + 4), Math.min(radius * squeeze + 2, radius + 2)), 'coin', enter * fade);
+    list.s(rect(center, v(2 * radius * squeeze, 2 * radius), Math.min(radius * squeeze, radius)), tint, enter * fade);
     if (squeeze > 0.55) {
-      const o = enter * Ease.clamp01((squeeze - 0.55) / 0.3);
+      const o = enter * fade * Ease.clamp01((squeeze - 0.55) / 0.3);
       if (face === 'win') CasinoPage.vehicle(list, 'car', null, center, radius * 1.1 * squeeze, 0, o);
       else for (let i = 0; i < 8; i++) {
         const a = (i / 8) * TAU;
         list.s(line(add(center, v(Math.cos(a) * radius * 0.2 * squeeze, Math.sin(a) * radius * 0.2)), add(center, v(Math.cos(a) * radius * 0.6 * squeeze, Math.sin(a) * radius * 0.6)), 4), 'accentInk', o);
       }
     }
-    const since = run.age - TIMES.flip;
+    // Every time the coin shows its face it glints.
+    if (!done && !reduceMotion && squeeze > 0.9) {
+      const g = add(center, v(-radius * 0.45, -radius * 0.45));
+      const s = radius * 0.3 * Ease.clamp01((squeeze - 0.9) / 0.1);
+      list.s(line(add(g, v(-s, 0)), add(g, v(s, 0)), 2.5), 'fireCore', enter);
+      list.s(line(add(g, v(0, -s)), add(g, v(0, s)), 2.5), 'fireCore', enter);
+    }
+
     CasinoPage.addStack(list, run, v(rest.x - radius - Math.min(64, R.width(stage) * 0.18), rest.y + radius + 14), done, since, reduceMotion, enter);
-    // It lands flat: a little dust puffs out to both sides.
-    if (done && !reduceMotion && since < 0.4) {
-      const e = Ease.outCubic(since / 0.4);
+    // It lands flat: a shockwave runs out and a little dust puffs to both sides.
+    if (done && !reduceMotion && since < 0.6) {
+      const e = Ease.outCubic(since / 0.6);
+      list.s(arc(rest, radius + 130 * e, 3 * (1 - e) + 0.5, 0, TAU), hue, 0.7 * (1 - e) * enter);
       for (const side of [-1, 1]) {
         for (let k = 0; k < 3; k++) {
           const p = v(rest.x + side * (radius * 0.5 + (30 + 14 * k) * e), rest.y + radius + 12 - (4 + 3 * k) * e);
@@ -822,19 +901,39 @@ export const CasinoGames = {
         }
       }
     }
-    const below = v(rest.x, stage.maxY - 40);
+    // The lost coin breaks apart; the display flashes red.
+    if (done && !won && !reduceMotion) {
+      if (since < 0.28) {
+        const vp = list.camera.viewport;
+        list.s(rect(mul(vp, 0.5), vp), 'destructive', 0.4 * (1 - since / 0.28));
+      }
+      if (since < 0.8) CasinoPage.edgeGlow(list, 'destructive', 0.8 * (1 - since / 0.8));
+      if (since < 1) {
+        for (let k = 0; k < 14; k++) {
+          const dir = unit(k, 76) * TAU;
+          const speed = 90 + 150 * unit(k, 77);
+          const p = v(rest.x + Math.cos(dir) * speed * since, rest.y + Math.sin(dir) * speed * since + 300 * since * since);
+          list.s(rect(p, v(6 + 6 * unit(k, 78), 4 + 4 * unit(k, 79)), 1, dir + since * 9 * (unit(k, 80) - 0.5)), k % 2 === 0 ? 'coin' : 'destructive', (1 - since) * enter);
+        }
+      }
+    }
+    const counted = won && !run.items;
+    const below = v(rest.x, stage.maxY - (counted ? 48 : 40));
     if (!done) {
       drawText(list, S.casino.flipping, below, 13, 'muted', { align: 'center', opacity: enter });
       return;
     }
     const pop = reduceMotion ? 1 : land(since / 0.4, 0.3);
-    if (run.flip.won) {
-      const text = run.items ? S.casino.doubledSkin(S.shop.item(run.flip.item ?? '')) : S.casino.doubled(money(Fmt.number(run.flip.money)));
-      drawText(list, text, below, 18 * pop, 'accent', { weight: 'bold', align: 'center', opacity: enter });
-      CasinoPage.celebrate(list, stage, rest, since, payTier(2 ** run.chain, run.flip.money), 'accent', reduceMotion);
+    if (won) {
+      CasinoPage.celebrate(list, stage, rest, since, tier, 'accent', reduceMotion, `×${riding}`);
+      if (!reduceMotion) CasinoPage.coinFountain(list, rest, since, CasinoPage.fountain(tier));
+      if (counted) {
+        CasinoPage.winCount(list, below, run.flip.money, since, tier, 22, R.width(stage) - 24, 'accent', reduceMotion, enter);
+        drawText(list, S.casino.doubled(money(Fmt.number(run.flip.money))), v(below.x, below.y + 22), 12, 'muted', { align: 'center', opacity: enter });
+      } else drawText(list, S.casino.doubledSkin(S.shop.item(run.flip.item ?? '')), below, 18 * pop, 'accent', { weight: 'bold', align: 'center', opacity: enter });
     } else drawText(list, run.items ? S.casino.flipLostSkin : S.casino.flipLost, below, 16, 'destructive', { weight: 'bold', align: 'center', opacity: enter });
     const p = career.casinoPending;
-    if (p?.k === 'win') drawText(list, S.casino.flipsLeft(baseConfig.doubleMaxChain - p.flips), v(below.x, below.y + 22), 11, 'muted', { align: 'center', opacity: enter });
+    if (p?.k === 'win') drawText(list, S.casino.flipsLeft(baseConfig.doubleMaxChain - p.flips), v(below.x, stage.maxY - (counted ? 12 : 18)), 11, 'muted', { align: 'center', opacity: enter });
   },
 
   /** The picture of a game for the sheet. */

@@ -45,6 +45,8 @@ export default (S: Strings): Words<Strings> => ({
     clutchSaved: (s) => `충돌 ${s}초 전에 탈출`,
     slotsHint: '라인에 세 개가 같으면 지급 · 확률은 창에서 확인',
     noWin: '이번에는 당첨 없음',
+    soClose: '아깝다!',
+    flewOn: (x) => `${x}까지 갔어요`,
     slotRule(rule, pay, line) {
       if (rule === 'triple') return `${S.casino.symbol(line[0])} 세 개 · ${pay}×`;
       if (rule === 'bossPair') return `보스 두 개 · ${pay}×`;

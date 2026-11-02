@@ -51,6 +51,28 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-11-02',
+    date: '2 November 2026',
+    title: 'More heat in the Arcade',
+    impact: 'minor',
+    summary: [
+      'Arcade: win rounds in a row and a flame keeps count. The Play button now glows and beckons.',
+      'Lost by a hair? "So close!" lights the row, exit or cells that almost paid.',
+      'Double or nothing is a show now: spotlight, afterimages, a bigger burst with every doubling.',
+    ],
+    items: [
+      'Arcade: every table is framed by a neon tube in its own colours, with two comets chasing round it: slow at rest, fast during a round, gold and white-hot on a win.',
+      'Arcade: the Play button wears its own neon edge, and big wins light the whole display\'s edge in gold and pink.',
+      'Slots: the bulbs round the reels chase in the table\'s colours, and flash gold on a win.',
+      'Arcade: a flame next to Odds counts your wins in a row, and bumps with every new one.',
+      'Arcade: the Play button breathes and shines, and Double or nothing pulses while a win is open.',
+      'Slots, Roulette, Scratch Card and Skin Upgrade: a near miss now lights what almost paid, stamps "So close!" and ticks low.',
+      'Double or nothing: the coin now flies longer in a spotlight with afterimages and glints, and ×2, ×4, ×8 hangs over it.',
+      'Double or nothing: a win bursts bigger with every doubling, with a count-up and a coin fountain; a loss shatters the coin.',
+      'Crash: cash out early and the table shows how far the drive flew on.',
+    ],
+  },
+  {
     id: '2026-11-01',
     date: '1 November 2026',
     title: 'Longer careers, fairer chest auctions, Perfects that count',
