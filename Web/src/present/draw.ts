@@ -107,8 +107,10 @@ export class CanvasDrawer {
     this.dpr = dpr;
     this.width = width;
     this.height = height;
-    this.canvas.width = Math.round(width * dpr);
-    this.canvas.height = Math.round(height * dpr);
+    const [w, h] = [Math.round(width * dpr), Math.round(height * dpr)];
+    if (this.canvas.width === w && this.canvas.height === h) return;
+    this.canvas.width = w;
+    this.canvas.height = h;
     this.font = '';
   }
 

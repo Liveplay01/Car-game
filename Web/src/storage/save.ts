@@ -78,7 +78,7 @@ function readCareer(raw: unknown): Career {
       if (steps > 0) upgrades[u] = Math.min(steps, upgradeMaxSteps[u]);
     }
   }
-  const armSlots = [...new Set([0, ...strings([]).map(Number), ...(Array.isArray(raw.armSlots) ? raw.armSlots : [])])]
+  const armSlots = [...new Set([0, ...(Array.isArray(raw.armSlots) ? raw.armSlots : [])])]
     .filter((x): x is number => typeof x === 'number' && Number.isInteger(x) && x >= 0 && x < 16)
     .sort((a, b) => a - b);
   const modules: Record<number, RoadModule> = {};

@@ -453,8 +453,17 @@ export class Shell {
     this.bindInput(canvas);
     if (!inPortal) installBackGesture(() => this.stepBack());
     this.resize();
-    window.addEventListener('resize', () => this.resize());
-    window.visualViewport?.addEventListener('resize', () => this.resize());
+    let resizeQueued = false;
+    const queueResize = (): void => {
+      if (resizeQueued) return;
+      resizeQueued = true;
+      requestAnimationFrame(() => {
+        resizeQueued = false;
+        this.resize();
+      });
+    };
+    window.addEventListener('resize', queueResize);
+    window.visualViewport?.addEventListener('resize', queueResize);
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       this.installPrompt = e as InstallPromptEvent;

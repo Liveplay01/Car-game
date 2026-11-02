@@ -1820,7 +1820,7 @@ export const ReadyBanner = {
     const pills = (strip ? DailyStrip.height + 8 : pillText ? 31 : 0) + (o.adRow ? AdPill.row : 0);
     const introTop = frame.maxY + list.topGrow - list.topIntro;
     const intro = o.intro && o.intro.length > 0 && o.time >= ReadyBanner.introDelay ? ReadyBanner.introLayout(o.intro, frame, introTop, bottomLimit - pills, o.textScale ?? 1) : null;
-    const breath = o.reduceMotion ? 1 : 0.7 + 0.3 * (0.5 + 0.5 * Math.cos(o.time * 2.4));
+    const breath = o.reduceMotion ? 1 : 0.82 + 0.18 * (0.5 + 0.5 * Math.cos(o.time * 2.4));
     islandStack(list, o.island, [
       run?.line ? { s: run.line, size: 14, color: run.color, opacity, weight: 'bold' } : null,
       o.prompt ? { s: o.prompt, size: 17, color: 'primary', opacity: breath * opacity, weight: 'bold' } : null,

@@ -170,6 +170,8 @@ function addCardNotice(list: RenderList, notice: ShownNotice, o: { textScale: nu
   const fit = TopBar.fitBrief(notice.text, NoticeIsland.room(bar), o.textScale);
   const lineHeight = fit.size * 1.25;
   const x = R.center(bar).x;
+  const backing = v(Math.min(NoticeIsland.room(bar), Math.max(...fit.lines.map((ln) => textWidth(ln, fit.size))) + 24), fit.lines.length * lineHeight + 8);
+  MenuKit.chromePill(list, v(x, top + (fit.lines.length * lineHeight) / 2), backing, words);
   fit.lines.forEach((ln, i) => list.s(text(ln, v(x, top + lineHeight * (i + 0.5)), fit.size, 'center', 'bold'), 'primary', words));
 }
 
