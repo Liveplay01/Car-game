@@ -318,9 +318,9 @@
     "semantic_hash": ""
   },
   "Web/e2e/game.spec.ts": {
-    "mtime": 1793457266.3842793,
-    "seen": 1793457848.841881,
-    "ast_hash": "e0be8cca1c472ab47e80d258dffef5c7",
+    "mtime": 1793647192.9268377,
+    "seen": 1793647249.5835385,
+    "ast_hash": "6f0d4a1ebba681b0439b105351165e0c",
     "semantic_hash": ""
   },
   "Web/icon/make_pwa_icons.py": {
@@ -432,9 +432,9 @@
     "semantic_hash": "56f43e4f78d980973e68cabecfa04b85"
   },
   "Web/src/audio/player.ts": {
-    "mtime": 1793457700.6316428,
-    "seen": 1793457848.841881,
-    "ast_hash": "83541ec921f2b310df6f2a444457239a",
+    "mtime": 1793647192.9475489,
+    "seen": 1793647249.5835385,
+    "ast_hash": "5385c86795a68ce1276afe9aaa06b4b5",
     "semantic_hash": ""
   },
   "Web/src/core/achievements.ts": {
@@ -480,9 +480,9 @@
     "semantic_hash": ""
   },
   "Web/src/core/config.ts": {
-    "mtime": 1793565437.9830463,
-    "seen": 1793566140.6685166,
-    "ast_hash": "5b311e5e55f74822715342d7c584e119",
+    "mtime": 1793647192.971546,
+    "seen": 1793647249.5835385,
+    "ast_hash": "0153efec5b05e6d6003ca5736a96e2e5",
     "semantic_hash": ""
   },
   "Web/src/core/crash.ts": {
@@ -852,28 +852,28 @@
     "semantic_hash": ""
   },
   "Web/src/present/casino.ts": {
-    "mtime": 1793269962.9517622,
-    "seen": 1793270235.1251123,
-    "ast_hash": "9a117d1ba9d7b1a01547f55659493bb9",
+    "mtime": 1793647192.9986482,
+    "seen": 1793647249.5840447,
+    "ast_hash": "f218eb09e835f5d2fbd869cfb28592be",
     "semantic_hash": ""
   },
   "Web/src/present/casinoFlow.ts": {
-    "mtime": 1792432808.277397,
-    "seen": 1792653511.3041549,
-    "ast_hash": "54cfa757b0fa25b325e4e4e4fb3bb798",
-    "semantic_hash": "54cfa757b0fa25b325e4e4e4fb3bb798"
+    "mtime": 1793647193.0179026,
+    "seen": 1793647249.5840447,
+    "ast_hash": "0c8643070940f6567a302e714820ed19",
+    "semantic_hash": ""
   },
   "Web/src/present/casinoGames.ts": {
-    "mtime": 1793269962.748712,
-    "seen": 1793270235.1251123,
-    "ast_hash": "889b773e674857d10769c14cee69e987",
+    "mtime": 1793647193.0426042,
+    "seen": 1793647249.5840447,
+    "ast_hash": "9cce351823051b94bada6a150309d09d",
     "semantic_hash": ""
   },
   "Web/src/present/casinoKit.ts": {
-    "mtime": 1792069284.234083,
-    "seen": 1792653511.3041549,
-    "ast_hash": "c600d9de64a4dddd3b685d666023d8e7",
-    "semantic_hash": "c600d9de64a4dddd3b685d666023d8e7"
+    "mtime": 1793647193.0692425,
+    "seen": 1793647249.5840447,
+    "ast_hash": "d33f7ce402a30dbfaf19350d9d8430fc",
+    "semantic_hash": ""
   },
   "Web/src/present/casinoLoader.ts": {
     "mtime": 1790755077.198426,
@@ -912,9 +912,9 @@
     "semantic_hash": ""
   },
   "Web/src/present/draw.ts": {
-    "mtime": 1793567064.821687,
-    "seen": 1793567342.7708533,
-    "ast_hash": "4252431327759eabfcf76c9be3950d22",
+    "mtime": 1793612319.8220391,
+    "seen": 1793612914.967504,
+    "ast_hash": "a6383281b4fbbae8d1161355577caa93",
     "semantic_hash": ""
   },
   "Web/src/present/effects.ts": {
@@ -954,9 +954,9 @@
     "semantic_hash": ""
   },
   "Web/src/present/hud.ts": {
-    "mtime": 1793567027.73557,
-    "seen": 1793567342.7708533,
-    "ast_hash": "6632e40d2c80e3cb99b5d47e6a396527",
+    "mtime": 1793647193.0965521,
+    "seen": 1793647249.5840447,
+    "ast_hash": "a0c80113d545d7672a53551593ba39f9",
     "semantic_hash": ""
   },
   "Web/src/present/i18n.ts": {
@@ -1020,9 +1020,9 @@
     "semantic_hash": ""
   },
   "Web/src/present/lang/de/p5.ts": {
-    "mtime": 1793565600.2891114,
-    "seen": 1793566140.6685166,
-    "ast_hash": "fddaba253463b6331aa4ba816c1a5dc4",
+    "mtime": 1793647193.1200147,
+    "seen": 1793647249.5840447,
+    "ast_hash": "894fc9449c6a91eb0540bb25a55e19d9",
     "semantic_hash": ""
   },
   "Web/src/present/lang/de/p6.ts": {
@@ -1068,9 +1068,9 @@
     "semantic_hash": ""
   },
   "Web/src/present/lang/es/p5.ts": {
-    "mtime": 1793565600.2908425,
-    "seen": 1793566140.6685166,
-    "ast_hash": "d10e6aaa6dcb98721833e60027b01325",
+    "mtime": 1793647193.1386206,
+    "seen": 1793647249.5840447,
+    "ast_hash": "bb0802353676a736173b1bfb88b0a8f5",
     "semantic_hash": ""
   },
   "Web/src/present/lang/es/p6.ts": {
@@ -1116,9 +1116,9 @@
     "semantic_hash": ""
   },
   "Web/src/present/lang/fr/p5.ts": {
-    "mtime": 1793565600.2920609,
-    "seen": 1793566140.6685166,
-    "ast_hash": "1c4753403a73928019578b4848deb129",
+    "mtime": 1793647193.164966,
+    "seen": 1793647249.5840447,
+    "ast_hash": "a107f1903b9597140d0de005e9506cb1",
     "semantic_hash": ""
   },
   "Web/src/present/lang/fr/p6.ts": {
@@ -1164,9 +1164,9 @@
     "semantic_hash": ""
   },
   "Web/src/present/lang/it/p5.ts": {
-    "mtime": 1793565600.2945905,
-    "seen": 1793566140.6685166,
-    "ast_hash": "a0e1f8c72f4fbce07590362a30598ed5",
+    "mtime": 1793647193.184548,
+    "seen": 1793647249.5840447,
+    "ast_hash": "b9a6289f89435da2099e67b9b1704a4c",
     "semantic_hash": ""
   },
   "Web/src/present/lang/it/p6.ts": {
@@ -1212,9 +1212,9 @@
     "semantic_hash": ""
   },
   "Web/src/present/lang/ja/p5.ts": {
-    "mtime": 1793565600.3000765,
-    "seen": 1793566140.6685166,
-    "ast_hash": "9c845645a1e7befcb388e65c5899ba36",
+    "mtime": 1793647193.2082496,
+    "seen": 1793647249.5840447,
+    "ast_hash": "6a42eacd84c538b8e216f9afa5f703a9",
     "semantic_hash": ""
   },
   "Web/src/present/lang/ja/p6.ts": {
@@ -1260,9 +1260,9 @@
     "semantic_hash": ""
   },
   "Web/src/present/lang/ko/p5.ts": {
-    "mtime": 1793565600.3098924,
-    "seen": 1793566140.6685166,
-    "ast_hash": "d52e78063eb9b3f923ffe007ecd10c16",
+    "mtime": 1793647193.247655,
+    "seen": 1793647249.5840447,
+    "ast_hash": "31b1b6f75e8d18a78e9a261c8f464b90",
     "semantic_hash": ""
   },
   "Web/src/present/lang/ko/p6.ts": {
@@ -1308,9 +1308,9 @@
     "semantic_hash": ""
   },
   "Web/src/present/lang/zh/p5.ts": {
-    "mtime": 1793565600.3119006,
-    "seen": 1793566140.6685166,
-    "ast_hash": "0040efd85edcb0923e721c943793b57e",
+    "mtime": 1793647193.2684045,
+    "seen": 1793647249.5840447,
+    "ast_hash": "28a091f43e4a81774925b136a5f3eadf",
     "semantic_hash": ""
   },
   "Web/src/present/lang/zh/p6.ts": {
@@ -1428,9 +1428,9 @@
     "semantic_hash": "ad6fb39b455e8646d559227bb23dc156"
   },
   "Web/src/present/patchNotes.ts": {
-    "mtime": 1793567203.1368115,
-    "seen": 1793567342.7708533,
-    "ast_hash": "cb5acd74c5213f5975098cc18803a7e8",
+    "mtime": 1793647193.2894216,
+    "seen": 1793647249.5840447,
+    "ast_hash": "c9b9cb8f3f80f3f45e931711b2ede7f3",
     "semantic_hash": ""
   },
   "Web/src/present/perspective.ts": {
@@ -1452,9 +1452,9 @@
     "semantic_hash": ""
   },
   "Web/src/present/readyScreen.ts": {
-    "mtime": 1793043640.2913618,
-    "seen": 1793055677.4560719,
-    "ast_hash": "512ee7798967c0ce6bad7bcbcb567546",
+    "mtime": 1793612754.5192761,
+    "seen": 1793612914.967504,
+    "ast_hash": "a8735c1622bb6509a42311ffced6c0db",
     "semantic_hash": ""
   },
   "Web/src/present/render.ts": {
@@ -1548,9 +1548,9 @@
     "semantic_hash": "4694b25587a83e0a5d1b1ba67ccbeff5"
   },
   "Web/src/present/strings.ts": {
-    "mtime": 1793565600.3164175,
-    "seen": 1793566140.6685166,
-    "ast_hash": "7adeb3d65b704dd5477da14ac805caee",
+    "mtime": 1793647193.323314,
+    "seen": 1793647249.5840447,
+    "ast_hash": "c1d5ed64092c2ce4949cabbb98b1f62f",
     "semantic_hash": ""
   },
   "Web/src/present/svg.ts": {
@@ -1626,9 +1626,9 @@
     "semantic_hash": "afe16f38605088fee0bc9d4980991550"
   },
   "Web/src/storage/save.ts": {
-    "mtime": 1793457700.6158204,
-    "seen": 1793457848.842396,
-    "ast_hash": "a718b1cd8e27c55cbdcc27dfb06c5606",
+    "mtime": 1793612309.7709112,
+    "seen": 1793612914.967504,
+    "ast_hash": "7f25e5580b771a9070363e5a5e73538a",
     "semantic_hash": ""
   },
   "Web/src/storage/seal.ts": {
@@ -1680,10 +1680,10 @@
     "semantic_hash": ""
   },
   "Web/src/ui/clubPanel.ts": {
-    "mtime": 1792500742.6485069,
-    "seen": 1792653511.304651,
-    "ast_hash": "65cba7ae610c2963cfb5a0cc3e53e6ec",
-    "semantic_hash": "65cba7ae610c2963cfb5a0cc3e53e6ec"
+    "mtime": 1793647193.3509552,
+    "seen": 1793647249.5840447,
+    "ast_hash": "8e895bd678f14f07dd7ea67278a16bdf",
+    "semantic_hash": ""
   },
   "Web/src/ui/crazygames.ts": {
     "mtime": 1791904600.3088686,
@@ -1692,9 +1692,9 @@
     "semantic_hash": "11e072751ea4a278c6da1acbf29ec59f"
   },
   "Web/src/ui/crewPanel.ts": {
-    "mtime": 1792863546.9205213,
-    "seen": 1792869924.3778582,
-    "ast_hash": "97d2f4060d50bbd147315dc939c4b720",
+    "mtime": 1793647193.3841624,
+    "seen": 1793647249.5840447,
+    "ast_hash": "05a29de7c87d8329b79c86e51b75ee8c",
     "semantic_hash": ""
   },
   "Web/src/ui/detailSheet.ts": {
@@ -1704,9 +1704,9 @@
     "semantic_hash": ""
   },
   "Web/src/ui/devProbe.ts": {
-    "mtime": 1793285927.9262903,
-    "seen": 1793286797.3129127,
-    "ast_hash": "f1b0e507851446d864742e0454431e70",
+    "mtime": 1793647193.4107885,
+    "seen": 1793647249.5840447,
+    "ast_hash": "33daea27eed45aa3d4c5be0fe8e62831",
     "semantic_hash": ""
   },
   "Web/src/ui/dom.ts": {
@@ -1734,10 +1734,10 @@
     "semantic_hash": "f764a432f2551690ff8f92af8ea7b496"
   },
   "Web/src/ui/mafiaPanel.ts": {
-    "mtime": 1792500718.687815,
-    "seen": 1792653511.304651,
-    "ast_hash": "53323674fd8f20d0c8cb93bc2056907f",
-    "semantic_hash": "53323674fd8f20d0c8cb93bc2056907f"
+    "mtime": 1793647193.4425414,
+    "seen": 1793647249.5840447,
+    "ast_hash": "5d48d2a0de5ab7aae9bc4ce2254347e3",
+    "semantic_hash": ""
   },
   "Web/src/ui/photo.ts": {
     "mtime": 1792837457.7639093,
@@ -1758,9 +1758,9 @@
     "semantic_hash": "b978b5ce4abb1f6b586d4488733c3b9e"
   },
   "Web/src/ui/ranksPanel.ts": {
-    "mtime": 1793565604.3275354,
-    "seen": 1793566140.6685166,
-    "ast_hash": "037b90fd5d41ba991f08ea4843edc7cf",
+    "mtime": 1793647193.4589183,
+    "seen": 1793647249.5840447,
+    "ast_hash": "cd80b516c1700b087e46ba621b2e1522",
     "semantic_hash": ""
   },
   "Web/src/ui/share.ts": {
@@ -1770,15 +1770,15 @@
     "semantic_hash": "d16702ac0a99fbc4dd7b3627e6aa403f"
   },
   "Web/src/ui/sheets.ts": {
-    "mtime": 1793536945.6701794,
-    "seen": 1793537139.3752375,
-    "ast_hash": "ce0077a3afbfa3bb18f63c6dd54caf5c",
+    "mtime": 1793647193.4935243,
+    "seen": 1793647249.5840447,
+    "ast_hash": "49c78946fc0d0405fe57aaf7e8d6f9e1",
     "semantic_hash": ""
   },
   "Web/src/ui/shell.ts": {
-    "mtime": 1793536966.3295496,
-    "seen": 1793537139.3752375,
-    "ast_hash": "adae4dc4359d2def611b5ea4f92888fe",
+    "mtime": 1793647193.5180042,
+    "seen": 1793647249.5840447,
+    "ast_hash": "7a18ae8956ecbee96182ec50faedc603",
     "semantic_hash": ""
   },
   "Web/src/ui/socialPage.ts": {
@@ -2621,30 +2621,6 @@
     "ast_hash": "a60a8c5f122fb05e895672dd5512a293",
     "semantic_hash": ""
   },
-  ".playwright-mcp/page-2026-10-12T19-55-53-253Z.yml": {
-    "mtime": 1793270960.341803,
-    "seen": 1793271086.8706055,
-    "ast_hash": "84532c9d84c936b95acd609169b5bea7",
-    "semantic_hash": ""
-  },
-  ".playwright-mcp/page-2026-10-12T19-56-03-772Z.yml": {
-    "mtime": 1793270960.3432908,
-    "seen": 1793271086.8706055,
-    "ast_hash": "b6f5998e8ad302363b6905003428ffaf",
-    "semantic_hash": ""
-  },
-  ".playwright-mcp/page-2026-10-12T19-56-55-101Z.yml": {
-    "mtime": 1793270960.3457034,
-    "seen": 1793271086.8706055,
-    "ast_hash": "dbdbbe03740f42f6cc4f814937703fb4",
-    "semantic_hash": ""
-  },
-  ".playwright-mcp/page-2026-10-12T19-57-01-569Z.yml": {
-    "mtime": 1793270960.3481915,
-    "seen": 1793271086.8706055,
-    "ast_hash": "f78a51afd8bbbe336b3da96917b33052",
-    "semantic_hash": ""
-  },
   "Marketing/trailer/README.md": {
     "mtime": 1791203171.1523833,
     "seen": 1792659884.0938137,
@@ -2688,9 +2664,9 @@
     "semantic_hash": ""
   },
   "Web/index.html": {
-    "mtime": 1793355749.0712423,
-    "seen": 1793356050.108149,
-    "ast_hash": "3ee800a6b19fee8f360f894d0076a73d",
+    "mtime": 1793647192.934643,
+    "seen": 1793647249.584989,
+    "ast_hash": "2a951613cc563abc59ed69694f51354d",
     "semantic_hash": ""
   },
   "Web/itch/index.html": {
@@ -4863,24 +4839,6 @@
     "mtime": 1793105204.2136943,
     "seen": 1793108192.7825537,
     "ast_hash": "02221b2c8134efd09a47a4da046ae35f",
-    "semantic_hash": ""
-  },
-  "Kreisverkehr Ladeanimation(1)/export/Web/src/present/bootZoom.ts": {
-    "mtime": 1793105903.3304222,
-    "seen": 1793267481.6444173,
-    "ast_hash": "f06e2e6dad25776fced73c06d51b3bcb",
-    "semantic_hash": ""
-  },
-  "Kreisverkehr Ladeanimation(1)/export/EINBAU.md": {
-    "mtime": 1793114244.1503134,
-    "seen": 1793267481.6449134,
-    "ast_hash": "8059ec6979adcef3be8a55ba0a8213bf",
-    "semantic_hash": ""
-  },
-  "Kreisverkehr Ladeanimation(1)/export/KONZEPT.md": {
-    "mtime": 1793114244.151306,
-    "seen": 1793267481.6449134,
-    "ast_hash": "bb0194264fa34802310c54598f68d42a",
     "semantic_hash": ""
   },
   "Web/public/og-image.png": {
