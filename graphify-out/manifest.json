@@ -708,9 +708,9 @@
     "semantic_hash": "51d1fa2238de12f29f4caa3a1efcf16d"
   },
   "Web/src/core/world.ts": {
-    "mtime": 1793271897.7932856,
-    "seen": 1793286797.3129127,
-    "ast_hash": "de1aefff13249736d5e3baf208d0ff05",
+    "mtime": 1793568254.3539312,
+    "seen": 1793568542.191502,
+    "ast_hash": "bf109f7fbfd68977224c3a76b2513ee5",
     "semantic_hash": ""
   },
   "Web/src/main.ts": {
