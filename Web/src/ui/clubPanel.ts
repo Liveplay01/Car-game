@@ -95,7 +95,12 @@ function bar(share: number, from = share): { el: HTMLElement; go(): void } {
           if (share < 1 || from >= 1) return;
           // Reaching the goal turns it gold and sends the one wave once the glide lands (`present/meter.ts`).
           if (matchMedia('(prefers-reduced-motion: reduce)').matches) el.classList.add('done');
-          else fill.addEventListener('transitionend', () => el.classList.add('done', 'arrived'), { once: true });
+          else {
+            const arrive = (): void => el.classList.add('done', 'arrived');
+            fill.addEventListener('transitionend', arrive, { once: true });
+            // No glide (the bar already sat at the goal) means no transitionend.
+            window.setTimeout(arrive, 1200);
+          }
         }),
       ),
   };

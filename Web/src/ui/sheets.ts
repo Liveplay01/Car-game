@@ -286,18 +286,22 @@ export function glideHeight(body: HTMLElement, content: HTMLElement): void {
     if (sheet.style.height) return;
     const after = sheet.offsetHeight;
     if (before > 0 && after !== before) {
-      const done = (e: TransitionEvent): void => {
-        if (e.target !== sheet || e.propertyName !== 'height') return;
+      const settle = (): void => {
         sheet.removeEventListener('transitionend', done);
         sheet.style.height = '';
         sheet.style.transition = '';
         before = sheet.offsetHeight;
+      };
+      const done = (e: TransitionEvent): void => {
+        if (e.target === sheet && e.propertyName === 'height') settle();
       };
       sheet.style.height = `${before}px`;
       sheet.getBoundingClientRect();
       sheet.style.transition = 'height 240ms var(--ease-drawer)';
       sheet.style.height = `${after}px`;
       sheet.addEventListener('transitionend', done);
+      // A cancelled transition (sheet hidden mid-glide) never ends; without this the height stays pinned.
+      window.setTimeout(settle, 400);
       return;
     }
     before = after;

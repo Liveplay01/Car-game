@@ -326,6 +326,7 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
   let board: BoardId = boards.some((b) => b.id === lastBoard) ? lastBoard : 'shift-level';
   /** Which request's answer may still be shown: a newer one (another board) wins. */
   let asked = 0;
+  let offline: AbortController | null = null;
   const list = h('div', { class: 'list board-list', role: 'list', 'aria-label': scope === 'crew' ? S.ranks.listCrew : S.ranks.list, 'aria-busy': 'false' });
   const tabs = tabsControl(S.ranks.boardsLabel, boards, choose);
   const el = h('div', { class: 'board' }, tabs.el, list);
@@ -404,7 +405,9 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
       if (cached) list.prepend(problem);
       else list.replaceChildren(problem);
       // Back online: it tries again by itself.
-      window.addEventListener('online', () => list.isConnected && ticket === asked && void load(), { once: true });
+      offline?.abort();
+      offline = new AbortController();
+      window.addEventListener('online', () => list.isConnected && ticket === asked && void load(), { once: true, signal: offline.signal });
     }
     if (host.account() && !loadAccount()) host.signedOut?.();
   }

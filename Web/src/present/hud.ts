@@ -1286,6 +1286,10 @@ export class RingSignals {
     list.w(arc(v(0, 0), rim, 16, 0, TAU), 'destructive', (0.07 + 0.04 * swell) * appear);
     list.w(arc(v(0, 0), rim, 6, 0, TAU), 'destructive', (0.16 + 0.08 * swell) * appear);
     list.w(arc(v(0, 0), rim, 2.5, 0, TAU), 'destructive', (0.5 + 0.15 * swell) * appear);
+    // The breather counts itself down: a brighter line runs round the rim, and taps work again when it closes.
+    const fill = Ease.clamp01(age / ResultBanner.breath);
+    const gone = 1 - Ease.smoothstep((age - ResultBanner.breath) / 0.25);
+    if (!reduceMotion && fill > 0.002 && gone > 0.001) list.w(arc(v(0, 0), rim, 4, -Math.PI / 2, -Math.PI / 2 + TAU * fill, true), 'destructive', 0.9 * opacity * gone);
   }
 
   static readonly eliteFill = 1.1;

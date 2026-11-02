@@ -1242,6 +1242,9 @@ export const baseConfig = {
   versusShieldImpact: 60,
 };
 
+/** Picture, not rules: the most frames a second drawn and the pixel-ratio cap, normally and with the battery saver. */
+export const displayConfig = { drawRate: 70, saverRate: 30, saverDpr: 1.5 };
+
 export type Config = typeof baseConfig;
 
 export const cloneConfig = (c: Config): Config => ({

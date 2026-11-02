@@ -202,6 +202,7 @@ export function mafiaPanel(host: MafiaHost): MafiaPanel {
       bit.style.setProperty('--t', `${700 + Math.random() * 500}ms`);
       bit.style.animationDelay = `${Math.random() * 120}ms`;
       bit.addEventListener('animationend', () => bit.remove());
+      window.setTimeout(() => bit.remove(), 1600);
       layer.append(bit);
     }
   }

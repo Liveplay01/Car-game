@@ -47,7 +47,7 @@ import { BackdropLayer, backdropSheet } from './backdrop';
 import { loadBackdrop, saveBackdrop } from '../storage/backdrop';
 import { BIG_SCREEN } from '../core/loot';
 import { Careers } from '../core/career';
-import { baseConfig } from '../core/config';
+import { baseConfig, displayConfig } from '../core/config';
 import { INTROS, INTRO_PLACE, Intros } from '../present/intros';
 
 interface InstallPromptEvent extends Event {
@@ -436,6 +436,7 @@ export class Shell {
       if (this.session.reduceMotion) return;
       const tracks = h('div', { class: `rumble ${way > 0 ? 'right' : 'left'}`, 'aria-hidden': 'true' });
       tracks.addEventListener('animationend', () => tracks.remove(), { once: true });
+      window.setTimeout(() => tracks.remove(), 700);
       app.append(tracks);
     };
     this.session.onStep = (step, data) => {
@@ -767,7 +768,7 @@ export class Shell {
     nav.append(this.tabIndicator);
     this.holdDock(nav, magnet);
     for (const tab of TAB_BAR) {
-      const badge = h('span', { class: 'badge-dot', hidden: true });
+      const badge = h('span', { class: 'badge-dot', hidden: true, 'aria-hidden': 'true' });
       const button = h(
         'button',
         { class: 'tab', type: 'button', 'data-tab': tab, 'aria-label': TAB_LABEL[tab], onclick: () => this.push({ k: 'selectTab', tab }), ondblclick: () => { if (tab === 'progress' || tab === 'shop' || tab === 'social') this.session.readAllNews(tab); } },
@@ -898,6 +899,7 @@ export class Shell {
       // A dot is news for a tab you are not on; the open tab has been seen (a count stays, it is a number, not news).
       el.hidden = b === null || (b === 'dot' && tab === selected);
       el.textContent = b && b !== 'dot' ? (b.count > 99 ? '99+' : String(b.count)) : '';
+      el.parentElement?.setAttribute('aria-label', b && b !== 'dot' ? `${TAB_LABEL[tab]} (${b.count})` : TAB_LABEL[tab]);
       el.style.minWidth = b === 'dot' ? '10px' : '';
       el.style.height = b === 'dot' ? '10px' : '';
     }
@@ -1694,7 +1696,7 @@ export class Shell {
     document.documentElement.style.setProperty('--safe-bottom', cutBottom ? '0px' : null);
     // Above 2× the eye sees no difference, but a 3× phone would fill 2.25 times the pixels;
     // a device that struggles gets less (`adaptQuality`).
-    const cap = this.session.save.settings.batterySaver ? Math.min(this.dprCap, Shell.saverDpr) : this.dprCap;
+    const cap = this.session.save.settings.batterySaver ? Math.min(this.dprCap, displayConfig.saverDpr) : this.dprCap;
     this.drawer.resize(w, hgt, Math.min(window.devicePixelRatio || 1, cap));
     this.drawer.offset = v(this.safe.left, this.safe.top);
     this.size = v(Math.max(1, w - this.safe.left - this.safe.right), Math.max(1, hgt - this.safe.top - this.safe.bottom));
@@ -1736,9 +1738,6 @@ export class Shell {
   private refreshAt = 0;
   private readonly refreshGaps: number[] = [];
   /** The most frames a second the picture is drawn at; the battery saver's. */
-  private static readonly drawRate = 70;
-  private static readonly saverRate = 30;
-  private static readonly saverDpr = 1.5;
 
   /**
    * The screen's refresh rate from the gaps between frames: the fast tenth of the last 90, so slow frames of our own
@@ -1752,7 +1751,7 @@ export class Shell {
     gaps.push(gap);
     if (gaps.length !== 20 && gaps.length < 90) return;
     const hz = 1000 / [...gaps].sort((a, b) => a - b)[Math.floor(gaps.length / 10)];
-    const rate = this.session.save.settings.batterySaver ? Shell.saverRate : Shell.drawRate;
+    const rate = this.session.save.settings.batterySaver ? displayConfig.saverRate : displayConfig.drawRate;
     this.every = Math.max(1, Math.round(hz / rate));
     if (gaps.length >= 90) gaps.length = 0;
   }

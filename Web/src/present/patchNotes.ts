@@ -61,6 +61,9 @@ export const PATCH_NOTES: PatchNote[] = [
       'Double or nothing is a show now: spotlight, afterimages, a bigger burst with every doubling.',
     ],
     items: [
+      'After a lost shift a red line runs round the ring and closes when your taps work again.',
+      'Screen readers now hear how many things wait behind a tab badge.',
+      'The heading font loads with the page, so titles do not swap a moment later.',
       'Arcade: every table is framed by a neon tube in its own colours, with two comets chasing round it: slow at rest, fast during a round, gold and white-hot on a win.',
       'Arcade: the Play button wears its own neon edge, and big wins light the whole display\'s edge in gold and pink.',
       'Slots: the bulbs round the reels chase in the table\'s colours, and flash gold on a win.',

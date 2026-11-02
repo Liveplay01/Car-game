@@ -101,6 +101,7 @@ export function crewPanel(host: CrewHost): HTMLElement {
   /** What the last action said, under its rows; shown once. */
   let message: { text: string; error: boolean } | null = null;
   let asked = 0;
+  let offline: AbortController | null = null;
 
   /** Shows the crew: `given` when a call just answered with it, else asked for. */
   async function render(given?: CrewView): Promise<void> {
@@ -117,7 +118,9 @@ export function crewPanel(host: CrewHost): HTMLElement {
       if (ticket !== asked) return;
       body.replaceChildren(note(describeError(error), true), h('button', { class: 'btn block', type: 'button', onclick: () => void render() }, S.friends.tryAgain));
       // Back online: it tries again by itself.
-      window.addEventListener('online', () => body.isConnected && ticket === asked && void render(), { once: true });
+      offline?.abort();
+      offline = new AbortController();
+      window.addEventListener('online', () => body.isConnected && ticket === asked && void render(), { once: true, signal: offline.signal });
       return;
     }
     invite = await inviteAsked;

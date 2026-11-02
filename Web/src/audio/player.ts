@@ -136,6 +136,7 @@ export class AudioPlayer {
   private stemBuffers = new Map<MusicLayer, AudioBuffer>();
   private volumes = new Map<MusicLayer, number>();
   private loading: Promise<void> | null = null;
+  private pausedByUs = false;
   private master: GainNode | null = null;
   private level = 1;
   /** The merge melody: music on, the combo the last frame saw, the highest phrase played this run, when the phrase now sounding ends, and the notes still ringing. */
@@ -1146,8 +1147,14 @@ export class AudioPlayer {
   setSuspended(suspended: boolean): void {
     const ctx = this.ctx;
     if (!ctx) return;
-    if (suspended && ctx.state === 'running') ctx.suspend().catch(() => undefined);
-    else if (!suspended && ctx.state === 'suspended') ctx.resume().catch(() => undefined);
+    if (suspended && ctx.state === 'running') {
+      this.pausedByUs = true;
+      ctx.suspend().catch(() => undefined);
+    } else if (!suspended && this.pausedByUs && ctx.state === 'suspended') {
+      // Only what we paused; a context the browser still holds back waits for `unlock` in a gesture.
+      this.pausedByUs = false;
+      ctx.resume().catch(() => undefined);
+    }
   }
 
   /** Done once every sample and stem is loaded and decoded (or failed); resolved at once without audio. */

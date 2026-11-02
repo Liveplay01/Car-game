@@ -25,6 +25,10 @@ export function installProbe(shell: Shell): void {
     return { phase: veh?.phase.kind ?? 'gone', slip: Math.round((d.slip * 180) / Math.PI), steer: Math.round((d.steer * 180) / Math.PI), throttle: d.throttle, lifts: d.lifts, calming: d.calming >= 0 };
   };
 
+  /** Main-thread stalls over 50 ms since the page opened (`startTime` as `performance.now()`), for hunting a hitch. */
+  const stalls: Stall[] = [];
+  new PerformanceObserver((list) => list.getEntries().forEach((e) => stalls.push({ at: Math.round(e.startTime), ms: Math.round(e.duration) }))).observe({ type: 'longtask', buffered: true });
+
   const state = (): Snapshot => {
     const { screen, world, save } = game;
     const shift = world.shift;
@@ -109,6 +113,7 @@ export function installProbe(shell: Shell): void {
       return state();
     },
     /** Milliseconds per frame, building the scene and drawing it, on whatever is showing (a shift is started if the game waits). */
+    stalls: () => stalls,
     perf: (frames = 300) => {
       if (game.screen.k === 'ready') game.perform({ k: 'startShift' });
       const drawer = shell['drawer'];
@@ -132,6 +137,11 @@ export function installProbe(shell: Shell): void {
       return { screen: game.screen.k, items: Math.round(items / frames), build: spread(built), draw: spread(drawn) };
     },
   };
+}
+
+export interface Stall {
+  at: number;
+  ms: number;
 }
 
 export interface Spread {
@@ -169,5 +179,6 @@ export interface Probe {
   perform(action: Parameters<Shell['game']['perform']>[0]): Snapshot;
   say(text: string): Snapshot;
   ducks(): Snapshot;
+  stalls(): Stall[];
   perf(frames?: number): { screen: string; items: number; build: Spread; draw: Spread };
 }

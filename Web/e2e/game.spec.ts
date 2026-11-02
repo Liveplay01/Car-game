@@ -89,6 +89,12 @@ test('the game starts on a phone without errors', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test('a frame stays cheap: building and drawing the ring take under 12 ms at p95', async ({ page }) => {
+  await start(page, 'level=12');
+  const perf = await page.evaluate(() => (window as unknown as { __probe: Probe }).__probe.perf(200));
+  expect(perf.build.p95 + perf.draw.p95).toBeLessThan(12);
+});
+
 test('the probe plays a whole shift to its result without errors', async ({ page }) => {
   const { errors } = await start(page, 'level=3');
   const end = await page.evaluate(() => (window as unknown as { __probe: Probe }).__probe.play('careful'));
