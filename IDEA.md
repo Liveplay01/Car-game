@@ -69,15 +69,6 @@ Offen, grob nach Wirkung:
 
 ---
 
-## Fehlerberichte: nur noch der Dienst fehlt (Leo, 03.11.2026)
-
-Das Spiel sendet Fehler schon (`ui/errors.ts`, Absatz in `legal.ts`, CSP in `nginx.conf`). Offen, von Hand:
-1. GlitchTip in Coolify anlegen, Adresse `errors.timing.love`, Projekt „Roundabout Timing“.
-2. Den DSN als Build-Argument `VITE_ERROR_DSN` in Coolify setzen und neu bauen.
-3. Data-Safety-Formular in der Play Console angleichen (Absturzprotokolle, nicht mit Person verknüpft).
-
----
-
 ## Wachstum: mehr Spieler erreichen (Leo, 04.10.2026)
 
 Gebaut ist die Einladung per Link (beide bekommen bei Level 5 eine Chest). Was darüber hinaus am meisten

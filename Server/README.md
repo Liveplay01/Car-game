@@ -63,7 +63,7 @@ only erasable syntax is allowed (no `enum`, no constructor parameter properties)
 | `POST /v1/ideas` `{text}` | (token) Suggest an idea, 10 to 500 characters, one a day (`429 once_a_day`). It waits as `pending`. **One system (Leo, 24.10.2026):** every feature idea, from the game and from `POST /v1/feedback` (`kind: idea`, source `feedback`), is a row of `ideas`; `feedback` holds bug reports only |
 | `POST /v1/ideas/:id/gifts` `{amount}` | (token) Give to an open idea, same limits as the City Fund (`DAILY_LIMIT` counts both); `409 idea_funded` once it has its goal |
 | `GET/PATCH/DELETE /v1/admin/ideas` | Moderation: reword (`title` up to 60, `text` up to 600) and set `status` `pending` / `open` (published) / `built` / `rejected`. In `/admin` the violet **Game Fund ideas** button |
-| `GET /admin` | (with `ADMIN_TOKEN`) The inbox page for bug reports (ideas under **Game Fund ideas**): filter, mark seen / done / won't fix, delete, give a reward by friend code |
+| `GET /admin` | (with `ADMIN_TOKEN`) The moderator page, four tabs: **Bugs** (filter, mark seen / done / won't fix, delete), **Ideas** (Game Fund), **Errors**, **Players** (rewards by friend code, messages) |
 
 The token travels as `Authorization: Bearer <token>`. Errors are `{error: {code, message}}`.
 
@@ -143,6 +143,7 @@ with DevTools can post a believable fake, so look at the lists now and then and 
 | Public reads: `/boards` | 120 a minute per address (`/profiles/:name` 120, `/fund` 60, `/ideas` 60, `/rtc/ice` 30, `/tuning` 30, `/crews/preview` 30) |
 | Link pages `/k/`, `/i/`, `/c/` | 60 a minute per address (the challenge picture draws at most `DRAWS_PER_MINUTE`) |
 | Friends, crews, rewards | 120 / 240 / 60 a minute per player, tighter on the routes that guess codes or give things away (join 10, add a friend 20, gifts 20) |
+| Error reports from the game (`POST /v1/errors`, listed in `/admin` → Errors, 30 days) | 20 a minute per address |
 | Bug reports and ideas | 10 a minute per address, one of each a day per address (and per friend code for bugs) |
 | Ideas in the game, fund gifts | 10 and 30 a minute per player, one idea a day, 20,000,000 in gifts a day |
 | Cloud sync | 120 a minute per address; 10 new copies an hour per address, 300 an hour for all addresses together |

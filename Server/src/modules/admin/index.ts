@@ -15,6 +15,7 @@ import { IDEA_STATUSES, IdeaStore, PUBLIC_TEXT_MAX, TITLE_MAX, type IdeaStatus }
 import { cleanText } from '../../http.ts';
 import { TuningStore } from '../tuning/index.ts';
 import { MESSAGE_AUDIENCES, MESSAGE_BODY_MAX, MESSAGE_TITLE_MAX, MessageStore, type MessageAudience } from '../messages/index.ts';
+import { ErrorStore } from '../errors/index.ts';
 import { ADMIN_PAGE } from './page.ts';
 
 /**
@@ -36,7 +37,9 @@ import { ADMIN_PAGE } from './page.ts';
  *   GET    /v1/admin/messages                        messages to players (`modules/messages`), newest first
  *   POST   /v1/admin/messages  {audience, title, body, friendCode?}   audience: all · play · player (needs friendCode)
  *   DELETE /v1/admin/messages/:id                    withdraw one
- *   GET    /v1/admin/tuning                          the remote tuning values (`modules/tuning`)
+ *   GET    /v1/admin/errors                          errors from the game in the field (`modules/errors`), most recent first
+ *   DELETE /v1/admin/errors/:id                      dismiss one
+ *   GET    /v1/admin/tuning                        the remote tuning values (`modules/tuning`)
  *   PUT    /v1/admin/tuning  {values}                replace them all; the game takes them from its next start
  *
  * `/admin` is a small page for all of the feedback part; the token is typed there, never stored on the server.
@@ -55,6 +58,7 @@ export function adminModule(): ServerModule {
       const ideas = new IdeaStore(ctx.db);
       const tuning = new TuningStore(ctx.db);
       const messages = new MessageStore(ctx.db);
+      const errors = new ErrorStore(ctx.db);
 
       const admin = new Hono<AppEnv>();
       // Every try counts, right or wrong: the token cannot be guessed at this speed.
@@ -194,6 +198,13 @@ export function adminModule(): ServerModule {
 
       admin.delete('/messages/:id', (c) => {
         if (!messages.delete(c.req.param('id'))) throw new ApiError(404, 'not_found', 'No such message.');
+        return c.body(null, 204);
+      });
+
+      admin.get('/errors', (c) => c.json({ items: errors.all() }));
+
+      admin.delete('/errors/:id', (c) => {
+        if (!errors.delete(c.req.param('id'))) throw new ApiError(404, 'not_found', 'No such error.');
         return c.body(null, 204);
       });
 

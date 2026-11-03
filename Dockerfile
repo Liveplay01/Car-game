@@ -17,9 +17,6 @@ ENV VITE_TURN_URL=$VITE_TURN_URL VITE_TURN_USERNAME=$VITE_TURN_USERNAME VITE_TUR
 # Empty by default: the game then has no leaderboard. nginx.conf must allow it in connect-src.
 ARG VITE_API_URL=""
 ENV VITE_API_URL=$VITE_API_URL
-# Optional: DSN of our GlitchTip project (https://<key>@errors.timing.love/<id>). Empty: no error reports.
-ARG VITE_ERROR_DSN=""
-ENV VITE_ERROR_DSN=$VITE_ERROR_DSN
 RUN npm run build
 
 # Stage 2: only the built files and nginx.

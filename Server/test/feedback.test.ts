@@ -97,7 +97,7 @@ test('feedback: one bug report and one idea a day, a honeypot, and a bug hunter 
   // The inbox page exists for the moderator.
   const page = await call('GET', '/admin');
   assert.equal(page.status, 200);
-  assert.match(page.text, /Build with us · Inbox/);
+  assert.match(page.text, /RAT Admin/);
 });
 
 test('feedback: the webhook post never pings anyone, whatever the text says', async () => {
