@@ -45,7 +45,7 @@ Rückenwind, **Heat** (freiwillige Schwierigkeit ab Level 50), Bestenlisten **Da
 - **Teams:** Teamcode wie der Freundescode, Team-Ranking und ein wöchentliches Gemeinschaftsziel mit Truhe für alle.
   Ein neuer Baustein im Dienst (`teams`).
 - **Neue Elemente für späte Level:** z. B. Falschfahrer, Traktor oder eine zusätzliche Boss-Runde ab ★5. Regeln,
-  Grafik und Museum. Der Hochzeitskorso (Level 100) ist gebaut. Der Hochzeitskorso (Level 100) ist gebaut.
+  Grafik und Museum. Der Hochzeitskorso (Level 100) ist gebaut.
 - **Endowed Progress:** bewusst nicht als Fake-Vorsprung gebaut; echte Vorsprünge gibt es schon.
 
 **Bewusst nicht gebaut (nicht neu vorschlagen):**
@@ -69,11 +69,12 @@ Offen, grob nach Wirkung:
 
 ---
 
-## Später: Fehlerberichte (Leo, 02.10.2026)
+## Fehlerberichte: nur noch der Dienst fehlt (Leo, 03.11.2026)
 
-Umami läuft seit 07.10.2026 (`ui/analytics.ts`). Offen ist nur noch GlitchTip als Coolify-Dienst für
-Fehlerberichte aus dem Feld. Es braucht wie jeder Dienst einen Absatz in `Web/src/present/legal.ts`, ein
-neues `LEGAL_UPDATED` und muss zum Data-Safety-Formular in der Play Console passen.
+Das Spiel sendet Fehler schon (`ui/errors.ts`, Absatz in `legal.ts`, CSP in `nginx.conf`). Offen, von Hand:
+1. GlitchTip in Coolify anlegen, Adresse `errors.timing.love`, Projekt „Roundabout Timing“.
+2. Den DSN als Build-Argument `VITE_ERROR_DSN` in Coolify setzen und neu bauen.
+3. Data-Safety-Formular in der Play Console angleichen (Absturzprotokolle, nicht mit Person verknüpft).
 
 ---
 

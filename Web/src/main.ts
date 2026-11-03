@@ -6,6 +6,7 @@ import { startTuning } from './net/tuning';
 import { S } from './present/strings';
 import { currentLanguage } from './present/i18n';
 import { startAnalytics } from './ui/analytics';
+import { startErrorReports } from './ui/errors';
 import { Casino } from './core/casino';
 import { forgetMeasures } from './present/measure';
 import { Careers, newSave } from './core/career';
@@ -177,6 +178,7 @@ const shell = new Shell(app, canvas, layers);
 if (!firstVisit) requestAnimationFrame(() => boot?.classList.add('live'));
 // Visit statistics load while the boot screen stands too, so nothing arrives once the game shows (Leo, 22.10.2026).
 startAnalytics();
+startErrorReports();
 // The boot screen stands until the sounds are in, while the scene already draws behind it, so the first seconds of
 // play do not stutter (Leo, 22.10.2026). The first visit's lesson plays once through (then a skip button, until the game is ready); a tap
 // goes on at once on later visits, and a slow network never holds the game back longer than `BOOT_WAIT_MS`.
