@@ -367,7 +367,7 @@ export const S = {
     linkReady: 'Link ready. Tap Challenge a friend again to share it.',
     /** The pill on the Game tab that leads to the Chests page while chests wait. */
     openChest: (n: number): string => (n > 1 ? `${n} chests ready` : 'Chest ready'),
-    openChestLabel: (n: number): string => (n > 1 ? `Your chests: ${n} ready to open` : 'Your chest: ready to open'),
+    openChestLabel: (n: number): string => (n > 1 ? `${n} chests ready, open them` : 'Chest ready, open it'),
     pictureText: 'My shift in Roundabout Timing',
     pictureSaved: 'Picture saved',
     pictureCopied: 'Picture copied',

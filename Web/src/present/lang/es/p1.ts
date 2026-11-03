@@ -314,7 +314,7 @@ export default (_s: Strings): Words<Strings> => ({
     copied: 'Enlace del desafío copiado',
     linkReady: 'Enlace listo. Toca «Desafiar a un amigo» de nuevo para compartirlo.',
     openChest: (n) => (n > 1 ? `${n} cofres listos` : 'Cofre listo'),
-    openChestLabel: (n) => (n > 1 ? `Tus cofres: ${n} listos para abrir` : 'Tu cofre: listo para abrir'),
+    openChestLabel: (n) => (n > 1 ? `${n} cofres listos, para abrir` : 'Cofre listo, para abrir'),
     pictureText: 'Mi turno en Roundabout Timing',
     pictureSaved: 'Imagen guardada',
     pictureCopied: 'Imagen copiada',

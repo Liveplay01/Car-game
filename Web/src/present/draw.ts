@@ -140,8 +140,9 @@ export class CanvasDrawer {
     const c = list.camera;
     const room = Math.ceil(CanvasDrawer.shakeRoom * this.dpr);
     const s = list.shake;
-    const dx = Math.round(s.x * this.dpr);
-    const dy = Math.round(s.y * this.dpr);
+    // Not rounded: the idle sway moves under 2 points a second, whole device pixels would step visibly.
+    const dx = s.x * this.dpr;
+    const dy = s.y * this.dpr;
     if (Math.abs(dx) > room || Math.abs(dy) > room) return { cam: c, dx: 0, dy: 0, room };
     const snap = (x: number): number => Math.round(x * 1024) / 1024;
     return { cam: { ...c, focus: v(snap(c.focus.x - s.x), snap(c.focus.y - s.y)) }, dx, dy, room };

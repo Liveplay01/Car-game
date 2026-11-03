@@ -1,6 +1,6 @@
 /**
  * Applixir's rewarded ad on the normal site and in the Play app (`storage/device.ts`). The SDK is
- * a script in `index.html` that adds `initializeAndOpenPlayer`; it draws into `#applixir-player`.
+ * a script (injected below) that adds `initializeAndOpenPlayer`; it draws into `#applixir-player`.
  * The reward comes only with `complete` followed by the end of the ad (`allAdsCompleted`,
  * `skipped`, `manuallyEnded`); a closed or failed ad pays nothing.
  */
@@ -20,6 +20,15 @@ type Initialize = (options: {
 }) => void;
 
 const ENDED = ['allAdsCompleted', 'skipped', 'manuallyEnded'];
+
+// Ads only run behind `?werbung` for now (`adReady`), so the SDK and its partner scripts load only then.
+// Drop the `testAds` check when ads go live for everyone.
+if (testAds) {
+  const script = document.createElement('script');
+  script.src = 'https://cdn.applixir.com/applixir.app.v6.1.0.js';
+  script.async = true;
+  document.head.append(script);
+}
 
 function sdk(): Initialize | null {
   const init = (window as Window & { initializeAndOpenPlayer?: Initialize }).initializeAndOpenPlayer;

@@ -380,3 +380,50 @@ test('A sideways swipe changes the segment of Progress, Shop, Social and Build; 
   await expect.poll(async () => (await places(page)).tab).toBe('upgrades');
   expect(errors).toEqual([]);
 });
+
+test('Edge cases: the scene fits after a resize and a turn to landscape, with no errors', async ({ page }) => {
+  const { errors } = await start(page, 'level=3');
+  for (const [width, height] of [[320, 480], [780, 360], [1280, 720], [360, 780]]) {
+    await page.setViewportSize({ width, height });
+    await page.waitForTimeout(250);
+    const box = await page.locator('#scene').boundingBox();
+    expect(box?.width).toBeLessThanOrEqual(width + 1);
+    expect(box?.height).toBeLessThanOrEqual(height + 1);
+  }
+  expect(errors).toEqual([]);
+});
+
+test('Edge cases: a shift is played offline and with a full storage without errors', async ({ page, context }) => {
+  const { errors } = await start(page, 'level=3');
+  await context.setOffline(true);
+  await page.evaluate(() => {
+    Storage.prototype.setItem = () => {
+      throw new DOMException('full', 'QuotaExceededError');
+    };
+  });
+  const end = await page.evaluate(() => (window as unknown as { __probe: Probe }).__probe.play('careful'));
+  expect(end.screen).toBe('result');
+  expect(errors).toEqual([]);
+});
+
+test('Edge cases: a held Space, a double tap and a multi-touch do not break the game', async ({ page }) => {
+  const { errors } = await start(page, 'level=3');
+  for (let i = 0; i < 20; i++) await page.keyboard.down('Space');
+  await page.keyboard.up('Space');
+  const scene = page.locator('#scene');
+  await scene.dispatchEvent('pointerdown', { pointerId: 1, pointerType: 'touch', isPrimary: true });
+  await scene.dispatchEvent('pointerdown', { pointerId: 2, pointerType: 'touch', isPrimary: false });
+  await scene.dispatchEvent('pointerdown', { pointerId: 1, pointerType: 'touch', isPrimary: true });
+  await page.waitForTimeout(500);
+  expect(errors).toEqual([]);
+});
+
+test('Reduced motion: a shift and the shop open without errors', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const { errors } = await start(page, 'level=12');
+  const end = await page.evaluate(() => (window as unknown as { __probe: Probe }).__probe.play('careful'));
+  expect(end.screen).toBe('result');
+  await page.evaluate(() => (window as unknown as { __game: Game }).__game.game.perform({ k: 'showShop', section: 0 }));
+  await page.waitForTimeout(600);
+  expect(errors).toEqual([]);
+});

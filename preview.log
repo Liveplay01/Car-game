@@ -1,0 +1,6 @@
+
+> car-game-web@1.0.0 preview
+> vite preview --host
+
+  ➜  Local:   http://localhost:5050/
+  ➜  Network: http://10.20.222.10:5050/  WLAN

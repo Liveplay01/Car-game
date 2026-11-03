@@ -314,7 +314,7 @@ export default (_s: Strings): Words<Strings> => ({
     copied: '挑战链接已复制',
     linkReady: '链接已准备好。再点一次“挑战朋友”即可分享。',
     openChest: (n) => (n > 1 ? `${n} 个宝箱待开` : '宝箱待开'),
-    openChestLabel: (n) => (n > 1 ? `你的宝箱：${n} 个可以开启` : '你的宝箱：可以开启'),
+    openChestLabel: (n) => (n > 1 ? `${n} 个宝箱待开，点击开启` : '宝箱待开，点击开启'),
     pictureText: '我在 Roundabout Timing 里的班次',
     pictureSaved: '图片已保存',
     pictureCopied: '图片已复制',

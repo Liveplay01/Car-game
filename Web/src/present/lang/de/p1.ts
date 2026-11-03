@@ -314,7 +314,7 @@ export default (_s: Strings): Words<Strings> => ({
     copied: 'Herausforderungslink kopiert',
     linkReady: 'Link bereit. Tippe erneut auf „Freund herausfordern“, um ihn zu teilen.',
     openChest: (n) => (n > 1 ? `${n} Truhen bereit` : 'Truhe bereit'),
-    openChestLabel: (n) => (n > 1 ? `Deine Truhen: ${n} zum Öffnen bereit` : 'Deine Truhe: bereit zum Öffnen'),
+    openChestLabel: (n) => (n > 1 ? `${n} Truhen bereit, zum Öffnen` : 'Truhe bereit, zum Öffnen'),
     pictureText: 'Meine Schicht in Roundabout Timing',
     pictureSaved: 'Bild gespeichert',
     pictureCopied: 'Bild kopiert',

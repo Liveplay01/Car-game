@@ -519,7 +519,7 @@ manifest shortcuts copied at build time) still require a new Play Store build. S
 
 ## Applixir
 
-`index.html` loads the Applixir SDK (`cdn.applixir.com`) and holds the `#applixir-player` container.
+`ui/applixir.ts` injects the Applixir SDK (`cdn.applixir.com`) only with `?werbung`; `index.html` holds the `#applixir-player` container.
 `src/ui/applixir.ts` starts a rewarded ad with the game's app key. No consent message and no other
 ad network: Applixir is the only ad provider. The default Content-Security-Policy in `nginx.conf`
 lets the SDK, its player and the ad frames through; the CrazyGames policy and the `?itch` policy
