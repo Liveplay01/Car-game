@@ -140,6 +140,10 @@ export const Skins = {
       abyssal: 'skinLagoon',
       regalia: 'skinRuby',
       apotheosis: 'skinPearl',
+      paragon: 'skinOcean',
+      pinnacle: 'skinObsidian',
+      ascendant: 'skinPlum',
+      eternum: 'skinChrome',
       chrono: 'skinChrome',
       biolume: 'skinLagoon',
       dragon: 'skinRuby',
@@ -274,7 +278,12 @@ export const Skins = {
       case 'abyssal':
         return 'mapGlowtide';
       case 'apotheosis':
+      case 'ascendant':
         return 'horizonViolet';
+      case 'paragon':
+      case 'pinnacle':
+      case 'eternum':
+        return 'skinGold';
       case 'biolume':
         return 'mapGlowtide';
       case 'dragon':
@@ -334,6 +343,10 @@ export const Skins = {
       abyssal: 'crystal',
       regalia: 'laurel',
       apotheosis: 'nova',
+      paragon: 'aurora',
+      pinnacle: 'nova',
+      ascendant: 'halo',
+      eternum: 'rainbow',
       chrono: 'chrono',
       biolume: 'biolume',
       dragon: 'dragon',
@@ -489,6 +502,10 @@ export const Skins = {
       case 'solstice':
       case 'regalia':
       case 'apotheosis':
+      case 'paragon':
+      case 'pinnacle':
+      case 'ascendant':
+      case 'eternum':
         return 'shinyGlitter';
       case 'monolith':
       case 'abyssal':

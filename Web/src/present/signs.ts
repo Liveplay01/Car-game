@@ -126,7 +126,7 @@ export const Signs = {
     list.s(softPolygon(octagon(at, 18), 4), 'coin', o);
     list.s(softPolygon(octagon(at, 15.5), 3), 'card', o);
     drawText(list, '★', v(at.x, at.y - 5.5), 10, 'coin', { opacity: o, weight: 'display', align: 'center' });
-    drawText(list, String(rank), v(at.x, at.y + 6), 12, 'primary', { opacity: o, weight: 'display', align: 'center' });
+    drawText(list, String(rank), v(at.x, at.y + 6), rank > 9 ? 11 : 12, 'primary', { opacity: o, weight: 'display', align: 'center' });
   },
 
   /** A Landmark: the brown tourist sign, with the three arrows of a roundabout. */

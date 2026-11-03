@@ -172,7 +172,7 @@ export default (S: Strings): Words<Strings> => ({
     ascensionHint: '프레스티지 랭크마다 트라이얼 하나. 게임에서 가장 어려운 시프트예요.',
     levelTrials: '레벨 트라이얼',
     levelTrialsHint: (waiting, shown) =>
-      waiting > shown ? `레벨이 오를 때마다 하나씩 늘어요. ${waiting - shown}개가 더 기다리고 있어요: 하나를 통과하면 다음 것이 나타나요.` : '레벨이 오를 때마다 하나씩 늘어요. 레벨 30부터 120까지.',
+      waiting > shown ? `레벨이 오를 때마다 하나씩 늘어요. ${waiting - shown}개가 더 기다리고 있어요: 하나를 통과하면 다음 것이 나타나요.` : '레벨이 오를 때마다 하나씩 늘어요. 레벨 30부터 200까지.',
     bosses: '신디케이트 보스',
     legendary: '레전더리 시프트',
     weeklies: '주간 시프트',

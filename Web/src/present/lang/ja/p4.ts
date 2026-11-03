@@ -172,7 +172,7 @@ export default (S: Strings): Words<Strings> => ({
     ascensionHint: 'プレステージのランクごとに1つのトライアル。ゲームで最も難しいシフトです。',
     levelTrials: 'レベルトライアル',
     levelTrialsHint: (waiting, shown) =>
-      waiting > shown ? `レベルが上がるごとに1つ増えます。あと${waiting - shown}件が待機中: 1つ合格すると次が現れます。` : 'レベルが上がるごとに1つ増えます。レベル30から120まで。',
+      waiting > shown ? `レベルが上がるごとに1つ増えます。あと${waiting - shown}件が待機中: 1つ合格すると次が現れます。` : 'レベルが上がるごとに1つ増えます。レベル30から200まで。',
     bosses: 'シンジケートのボス',
     legendary: 'レジェンダリーシフト',
     weeklies: 'ウィークリーシフト',

@@ -51,6 +51,35 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-11-03',
+    date: '3 November 2026',
+    title: 'The long climb',
+    impact: 'minor',
+    summary: [
+      'Ascension trials now run from rank 1 to 30, each with its own one-time payout.',
+      'Level trials go on to Level 200. Four new Elite skins and gold rings round your Elite card.',
+      'New: the Tractor from ★5, and Black Ice and Ashfall weather from Level 80.',
+      'Four more Syndicate bosses on ★2: the Trio, the Bulwark, the Mirage and the Wall.',
+    ],
+    items: [
+      'Titles on the ranks and in the crew show their rarity: the rarest glow gold with a slow shine. Plain titles stay as they were.',
+      'Unlimited has three new tiers after Master: Champion (750 cars), Legend (1000) and Titan (1500). Each lights the ring, pays Elite XP once and earns a title.',
+      'Unlimited runs now go on past 10 minutes: Oversize loads, Street Racers and the Wedding convoy join, each announced at the top.',
+      'Heat now goes up to 30. Traffic stops getting harder at Heat 8, pay and Elite XP keep rising. Heat 10, 20 and 30 earn the titles Blazing, Wildfire and Sunborn.',
+      'Ascension ★11 to ★30: the ten shapes come round again, harder every rank, up to Level 200.',
+      'Level trials continue from Level 121 to Level 200, same nine shapes in turn.',
+      'New Elite skins: Paragon (Elite 125), Pinnacle (150), Ascendant (175) and Eternum (200). Looks only.',
+      'Elite 150 puts one gold ring round your Elite card, Elite 200 a second.',
+      'Tractor from ★5: slow and rare. Keep your cars out of the amber band around it and it pays and extends your chain.',
+      'Black Ice from Level 80: almost no grip, weak brakes, a big payout. Ashfall from Level 90: grey cloud, less view and grip, more traffic.',
+      'The Trio (Level 30 on ★2): three pick-ups, one after the other, no escorts. Each arrest calls the next.',
+      'The Bulwark (Level 45 on ★2): armour for three rams and one escort, so line up four police cars.',
+      'The Mirage (Level 60 on ★2): the Decoy in a blackout. Escorts wear the boss paint; the boss is the pick-up with the ring.',
+      'The Wall (Level 75 on ★2): four armoured escorts bumper to bumper behind the boss. Wait for a gap in the line.',
+      'Each new boss has a Museum page, a rematch and a place in Boss Rush. The title Syndicate’s End now asks for all twelve.',
+    ],
+  },
+  {
     id: '2026-11-02',
     date: '2 November 2026',
     title: 'More heat in the Arcade',

@@ -172,7 +172,7 @@ export default (S: Strings): Words<Strings> => ({
     ascensionHint: 'Una prueba por cada rango de prestigio: los turnos más duros del juego.',
     levelTrials: 'Pruebas de nivel',
     levelTrialsHint: (waiting, shown) =>
-      waiting > shown ? `Una más con cada nivel. ${waiting - shown} más en espera: supera una y aparecerá la siguiente.` : 'Una más por nivel, del nivel 30 al 120.',
+      waiting > shown ? `Una más con cada nivel. ${waiting - shown} más en espera: supera una y aparecerá la siguiente.` : 'Una más por nivel, del nivel 30 al 200.',
     bosses: 'Jefes del sindicato',
     legendary: 'Turnos legendarios',
     weeklies: 'Turnos semanales',

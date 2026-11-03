@@ -58,7 +58,13 @@ export type TitleId =
   | 'crewPodium'
   | 'crewChampion'
   | 'collector'
-  | 'completionist';
+  | 'completionist'
+  | 'champion'
+  | 'legend'
+  | 'titan'
+  | 'blazing'
+  | 'wildfire'
+  | 'sunborn';
 
 export const TITLES: TitleId[] = [
   'eliteDriver',
@@ -119,6 +125,13 @@ export const TITLES: TitleId[] = [
   'crewChampion',
   'collector',
   'completionist',
+  // Unlimited tiers past Master (core/tiers.ts) and Heat 10, 20 and 30.
+  'champion',
+  'legend',
+  'titan',
+  'blazing',
+  'wildfire',
+  'sunborn',
 ];
 
 /** What earns a title. */
@@ -135,6 +148,8 @@ export type TitleRule =
   | { k: 'heat'; level: number }
   /** Everything given to the Game fund adds up to this much. */
   | { k: 'fund'; amount: number }
+  /** An Unlimited run sent this many cars. */
+  | { k: 'cars'; cars: number }
   /** Every mastery goal at its last tier. */
   | { k: 'masteries' }
   /** The crew finished a week at this place or better (1 = top of the league). */
@@ -193,6 +208,75 @@ export const TITLE_RULES: Record<TitleId, TitleRule> = {
   crewChampion: { k: 'crew', place: 1 },
   collector: { k: 'collector' },
   completionist: { k: 'completionist' },
+  champion: { k: 'cars', cars: 750 },
+  legend: { k: 'cars', cars: 1000 },
+  titan: { k: 'cars', cars: 1500 },
+  blazing: { k: 'heat', level: 10 },
+  wildfire: { k: 'heat', level: 20 },
+  sunborn: { k: 'heat', level: 30 },
+};
+
+/**
+ * How rare a title looks on the ranks and in the crew (Leo, 03.11.2026): 1 plain, 2 bright,
+ * 3 blue and bold, 4 gold with a slow glint. Typed per id, so a new title needs its tier.
+ */
+export type TitleTier = 1 | 2 | 3 | 4;
+
+export const TITLE_TIER: Record<TitleId, TitleTier> = {
+  eliteDriver: 1,
+  roadVeteran: 1,
+  ringMaster: 1,
+  ironNerves: 1,
+  roadRoyalty: 1,
+  livingLegend: 2,
+  precisionDriver: 2,
+  comboMaster: 2,
+  closeCallArtist: 2,
+  syndicateBreaker: 1,
+  nightOwl: 1,
+  stormChaser: 1,
+  legendHunter: 2,
+  starDriver: 1,
+  ascended: 2,
+  eternal: 3,
+  grandmaster: 3,
+  centurion: 3,
+  immortal: 3,
+  roadWarden: 1,
+  gridlord: 1,
+  ringbearer: 2,
+  unstoppable: 2,
+  timekeeper: 2,
+  paragon: 2,
+  mythic: 4,
+  ringEternal: 4,
+  mastermind: 3,
+  summit: 3,
+  syndicateEnd: 3,
+  marathoner: 1,
+  overdriver: 1,
+  endless: 1,
+  scorcher: 1,
+  inferno: 1,
+  meltdown: 2,
+  patron: 1,
+  benefactor: 2,
+  philanthropist: 3,
+  visionary: 4,
+  sovereign: 3,
+  timeless: 4,
+  apex: 4,
+  boundless: 4,
+  crewPodium: 1,
+  crewChampion: 2,
+  collector: 2,
+  completionist: 4,
+  champion: 2,
+  legend: 3,
+  titan: 4,
+  blazing: 2,
+  wildfire: 3,
+  sunborn: 4,
 };
 
 
@@ -253,6 +337,9 @@ export const Elite = {
     while (c.eliteXp >= Elite.xpTo(level + 1, config)) level++;
     return Math.max(level, c.eliteClaimed);
   },
+
+  /** Gold rings round the player's Elite card: one at Elite 150, two at 200 (every 50 levels past 100). */
+  frame: (c: Career, config: Config = baseConfig): number => Math.max(0, Math.floor(Elite.level(c, config) / 50) - 2),
 
   /** XP into the current Elite level, and what the next one needs. */
   progress(c: Career, config: Config = baseConfig): { into: number; need: number } {
@@ -347,6 +434,8 @@ export const Elite = {
         return c.prestige >= rule.rank;
       case 'heat':
         return c.heatCleared >= rule.level;
+      case 'cars':
+        return c.unlimitedCars >= rule.cars;
       case 'fund':
         return c.fundGiven >= rule.amount;
       case 'item':

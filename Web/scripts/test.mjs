@@ -1670,18 +1670,24 @@ test('Unlimited milestones come with the run that reaches them, and with an old 
   assert.deepEqual(Careers.claimUnlimited(read.career, 1000), [], 'once');
 });
 
-test('Eight syndicate bosses take turns; a rematch is its own boss one round on; the twins need two arrests', async () => {
+test('Twelve syndicate bosses take turns; a rematch is its own boss one round on; the twins need two arrests', async () => {
   const { bossAt, forLevel: atLevel } = await load('/src/core/levels.ts');
   const { rematch, trialConfig } = await load('/src/core/trials.ts');
   const { criminalCaught } = await load('/src/core/specials.ts');
   const { ScoreBoard } = await load('/src/core/scoring.ts');
-  const kinds = [15, 30, 45, 60, 75, 90, 105, 120].map((l) => bossAt(l, baseConfig).kind);
-  assert.deepEqual(kinds, ['convoy', 'getaway', 'armoured', 'phantom', 'twins', 'decoy', 'smuggler', 'kingpin']);
-  assert.deepEqual(bossAt(135, baseConfig), { kind: 'convoy', round: 1 }, 'then the next round');
+  const kinds = [15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180].map((l) => bossAt(l, baseConfig).kind);
+  assert.deepEqual(kinds, ['convoy', 'getaway', 'armoured', 'phantom', 'twins', 'decoy', 'smuggler', 'kingpin', 'trio', 'bulwark', 'mirage', 'wall']);
+  assert.deepEqual(bossAt(195, baseConfig), { kind: 'convoy', round: 1 }, 'then the next round');
   const smuggler = atLevel(baseConfig, 105, 1);
   assert.equal(smuggler.bossArmour, 2);
   assert.equal(smuggler.convoyEscorts, 0);
   assert.ok(atLevel(baseConfig, 90, 1).bossDisguise, 'the decoy dresses its escorts');
+  const trio = atLevel(baseConfig, 135, 1);
+  assert.equal(trio.convoyEscorts, 0);
+  assert.equal(trio.bossCount, 3, 'the trio needs three arrests');
+  assert.equal(atLevel(baseConfig, 150, 1).bossArmour, 3);
+  assert.ok(atLevel(baseConfig, 165, 1).bossDisguise, 'the mirage disguises its escorts');
+  assert.equal(atLevel(baseConfig, 180, 1).convoyEscorts, 4);
   // A rematch keeps its level from before the eight, and still brings its own boss.
   assert.equal(rematch('convoy').level, 75);
   for (const kind of ['convoy', 'phantom', 'twins', 'kingpin']) {
@@ -2026,14 +2032,14 @@ test('Boss Rush: opens when all bosses are down, goes boss by boss, starts over 
   clear(60);
   assert.equal(career.money, money + RUSH_REWARD, 'the first clear pays');
   assert.ok(career.trialsDone.includes(RUSH_ID));
-  assert.equal(career.rushBest, 480, 'eight bosses of 60 s');
+  assert.equal(career.rushBest, 720, 'twelve bosses of 60 s');
   assert.equal(career.rushFurthest, BOSS_KINDS.length);
 
   clear(70);
   assert.equal(career.money, money + RUSH_REWARD, 'a second clear pays nothing');
-  assert.equal(career.rushBest, 480, 'a slower clear keeps the best time');
+  assert.equal(career.rushBest, 720, 'a slower clear keeps the best time');
   clear(50);
-  assert.equal(career.rushBest, 400, 'a faster clear is the new best');
+  assert.equal(career.rushBest, 600, 'a faster clear is the new best');
 
   // A lost round ends the rush: the next shift is the first boss again, with a clean clock.
   let run = newRush();
@@ -2049,7 +2055,7 @@ test('Boss Rush: opens when all bosses are down, goes boss by boss, starts over 
   assert.equal(run.rush.time, 0);
   assert.equal(run.trial.id, rematchId(BOSS_KINDS[0]));
   assert.equal(advanceRush(run), run, 'nothing ended: the run stays');
-  assert.equal(career.rushBest, 400, 'a lost rush does not touch the best time');
+  assert.equal(career.rushBest, 600, 'a lost rush does not touch the best time');
 });
 
 test('a save keeps its Boss Rush record and the landmark, and drops what it does not know', () => {
@@ -2478,9 +2484,12 @@ test('Unlimited tiers climb with the best run, and the run marks the same cars',
   assert.equal(tierOf(24), null);
   assert.equal(tierOf(25), 'bronze');
   assert.equal(tierOf(199), 'gold');
-  assert.equal(tierOf(5000), 'master');
+  assert.equal(tierOf(499), 'diamond');
+  assert.equal(tierOf(750), 'champion');
+  assert.equal(tierOf(5000), 'titan');
   assert.equal(nextTier(0).cars, 25);
-  assert.equal(nextTier(500), null);
+  assert.equal(nextTier(500).cars, 750);
+  assert.equal(nextTier(1500), null);
   for (const t of UNLIMITED_TIERS) assert.ok(UNLIMITED_MARKS.includes(t.cars));
   for (const cars of [250, 1000]) assert.ok(UNLIMITED_MARKS.includes(cars), `the ${cars}-car skin is a mark too`);
   assert.equal(markPassed(0, 24), null);
@@ -2506,7 +2515,7 @@ test('the new Daily, tier and pity texts read well', () => {
   assert.equal(S.modes.mark(100, markReward(100)), '100 cars · GOLD');
   assert.equal(S.modes.mark(250, markReward(250)), '250 cars · ENDURANCE', 'a skin mark names the skin, not the tier below');
   assert.equal(S.modes.mark(500, markReward(500)), '500 cars · MASTER', 'a tier wins over the skin');
-  assert.equal(S.modes.mark(1000, markReward(1000)), '1000 cars · INFINITY');
+  assert.equal(S.modes.mark(1000, markReward(1000)), '1000 cars · LEGEND', 'a tier wins over the skin');
   assert.equal(S.modes.tierLine(null, { cars: 25, id: 'bronze' }), '– · 25 cars for Bronze');
   assert.equal(S.progress.collectionShare(35, 70), 'Collection · 50 %');
   assert.ok(S.shop.pityLegendary(40).includes('40'));
@@ -2603,7 +2612,7 @@ test('Heat makes the road harder step by step and leaves Heat 0 alone', () => {
   const base = forLevel(baseConfig, 60, 1);
   assert.equal(forHeat(base, 0), base, 'off: the very same config');
   let last = base;
-  for (let heat = 1; heat <= baseConfig.maxHeat; heat++) {
+  for (let heat = 1; heat <= baseConfig.heatHardest; heat++) {
     const c = forHeat(base, heat);
     assert.equal(c.heat, heat);
     assert.ok(c.tempoStart > last.tempoStart && c.tempoEnd > last.tempoEnd, `Heat ${heat} is faster`);
@@ -2625,8 +2634,9 @@ test('Heat is always the highest step the living Daily streak opens, one per 7 d
   assert.equal(Careers.maxHeat(c, day, baseConfig), 0);
   c.dailyStreak = 7;
   assert.equal(Careers.maxHeat(c, day, baseConfig), 1);
-  c.dailyStreak = 99;
+  c.dailyStreak = 999;
   assert.equal(Careers.maxHeat(c, day, baseConfig), baseConfig.maxHeat, 'capped');
+  assert.equal(baseConfig.maxHeat, 30);
   c.dailyStreak = 21;
   assert.equal(Careers.maxHeat(c, day, baseConfig), 3);
   assert.equal(Careers.maxHeat(c, day + 1, baseConfig), 3, 'the Daily of today is still open: the streak lives');
@@ -2990,7 +3000,9 @@ test('Build trials play on your upgrades minus a group; the other trials ignore 
   assert.ok(RUN_IDS.includes('noPolice') && RUN_IDS.includes('bareBuild'), 'a save keeps them');
 });
 
-test('every level from 30 to 120 brings one more trial, in turn of nine shapes', () => {
+test('every level from 30 to 200 brings one more trial, in turn of nine shapes', () => {
+  assert.equal(LEVEL_TRIAL_LAST, 200);
+  assert.ok(isRunId('level.150') && isRunId('ascension.30') && !isRunId('ascension.31'), 'old and new ids load');
   assert.equal(LEVEL_TRIALS.length, LEVEL_TRIAL_LAST - LEVEL_TRIAL_FIRST + 1);
   assert.equal(new Set(LEVEL_TRIALS.map((t) => t.id)).size, LEVEL_TRIALS.length);
   assert.equal(new Set(LEVEL_TRIALS.map((t) => t.seed)).size, LEVEL_TRIALS.length, 'each its own traffic');
@@ -2999,7 +3011,7 @@ test('every level from 30 to 120 brings one more trial, in turn of nine shapes',
     assert.ok(isRunId(t.id), 'a save keeps it');
     assert.ok(trialConfig(t, baseConfig, {}).shiftCars === t.cars);
   }
-  assert.ok(!isRunId('level.29') && !isRunId('level.121'));
+  assert.ok(!isRunId('level.29') && !isRunId('level.201'));
   assert.equal(new Set(LEVEL_TRIALS.slice(0, LEVEL_KINDS.length).map((t) => `${t.goal.k}${t.rule}${t.weather}${t.darkness}${t.legendary}${t.strip}`)).size, LEVEL_KINDS.length, 'a shape each');
   assert.ok(LEVEL_TRIALS.at(-1).reward > LEVEL_TRIALS[0].reward, 'the reward grows');
   const career = newCareer();
@@ -3032,7 +3044,7 @@ test('the precision upgrades: close merges pay a tip, a chain in the flow is lef
   assert.equal(Careers.availableUpgrades({ ...newCareer(), level: baseConfig.lightRainLevel }).includes('fogLamps'), true);
 
   const kitted = upgraded(baseConfig, (u) => gear[u] ?? 0);
-  for (const weather of ['lightRain', 'storm', 'snow', 'hail', 'sandstorm', 'fog']) {
+  for (const weather of ['lightRain', 'storm', 'snow', 'hail', 'sandstorm', 'fog', 'blackIce', 'ashfall']) {
     const bare = forWeather(baseConfig, weather);
     const eased = forWeather(kitted, weather);
     assert.ok(eased.tireGripBrake >= bare.tireGripBrake && eased.tireGripSide >= bare.tireGripSide, `${weather}: more grip`);
@@ -3652,7 +3664,8 @@ test('the bosses and late specials run on from rank to rank, and each rank asks 
   };
   assert.deepEqual([15, 30, 45].map((l) => at(0, l).bossKind), ['convoy', 'getaway', 'armoured'], 'rank 0 meets the first three');
   assert.deepEqual([15, 30, 45, 60].map((l) => at(1, l).bossKind), ['phantom', 'twins', 'decoy', 'smuggler'], 'rank 1 plays 60 levels: four bosses');
-  assert.deepEqual([15, 30].map((l) => at(2, l).bossKind), ['kingpin', 'convoy'], 'the schedule carries on, round after round');
+  assert.deepEqual([15, 30, 45, 60, 75].map((l) => at(2, l).bossKind), ['kingpin', 'trio', 'bulwark', 'mirage', 'wall'], 'rank 2 plays 80 levels: the last five of the twelve');
+  assert.equal(at(3, 15).bossKind, 'convoy', 'the schedule carries on, round after round');
   assert.equal(at(1, 20).convoy, false, 'only every 15th level');
   assert.equal(at(3, 15).convoy && at(3, 45).convoy, true);
   assert.equal(Careers.bossShift({ ...newCareer(), prestige: 2 }), 105);
@@ -3663,6 +3676,7 @@ test('the bosses and late specials run on from rank to rank, and each rank asks 
   assert.ok(deep(100).tempoEnd > deep(50).tempoEnd && deep(200).densityEnd > deep(50).densityEnd, 'past Level 50 the traffic keeps getting harder');
   assert.equal(bossPlace('kingpin', baseConfig).rank, 2);
   assert.deepEqual(bossPlace('smuggler', baseConfig), { rank: 1, level: 60 });
+  assert.deepEqual(bossPlace('wall', baseConfig), { rank: 2, level: 75 });
   const comes = (rank, level) => {
     const cfg = at(rank, level);
     cfg.oversizeChance = cfg.racerChance = cfg.weddingChance = 1;
@@ -3674,6 +3688,17 @@ test('the bosses and late specials run on from rank to rank, and each rank asks 
   assert.deepEqual(comes(2, 1), [true, false, false], 'rank 2 brings the oversize load');
   assert.deepEqual(comes(3, 1), [true, true, false], 'rank 3 the street racers');
   assert.deepEqual(comes(4, 1), [true, true, true], 'rank 4 the wedding convoy');
+  const tractors = (rank) => {
+    const cfg = at(rank, 1);
+    cfg.oversizeChance = 1;
+    cfg.tractorShare = 1;
+    cfg.oversizeFirst = { lo: 0.1, hi: 0.1 };
+    const world = new World(cfg, 77, { startsOnFirstTap: false });
+    for (let i = 0; i < 120 && world.oversize.kind === 'idle'; i++) world.step();
+    return world.oversize.kind === 'warning' && world.oversize.tractor;
+  };
+  assert.equal(tractors(4), false, 'no tractor before rank 5');
+  assert.equal(tractors(5), true, 'rank 5 brings the tractor');
 });
 
 test('a Daily done for today names tomorrow’s city as the reason to come back', () => {
@@ -4206,4 +4231,17 @@ test('the drift car shows up on a busy ring: regular traffic holds back until it
     if (seen) came++;
   }
   assert.ok(came >= 8, `the drift car came in ${came} of 10 shifts`);
+});
+
+test('Unlimited 750 / 1000 / 1500 and Heat 10 / 20 / 30 earn titles once; Heat traffic stops getting harder at heatHardest', () => {
+  const c = newCareer();
+  const has = () => Elite.titles(c, baseConfig).filter((t) => ['champion', 'legend', 'titan', 'blazing', 'wildfire', 'sunborn'].includes(t));
+  assert.deepEqual(has(), []);
+  Careers.claimUnlimited(c, 1000);
+  assert.deepEqual(has(), ['champion', 'legend']);
+  Careers.claimUnlimited(c, 300);
+  assert.equal(c.unlimitedCars, 1000, 'the best run stays');
+  c.heatCleared = 20;
+  assert.deepEqual(has(), ['champion', 'legend', 'blazing', 'wildfire']);
+  assert.deepEqual({ ...forHeat(baseConfig, 30), heat: 0 }, { ...forHeat(baseConfig, baseConfig.heatHardest), heat: 0 });
 });

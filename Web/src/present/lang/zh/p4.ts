@@ -172,7 +172,7 @@ export default (S: Strings): Words<Strings> => ({
     ascensionHint: '每个声望段位一个试炼：游戏里最难的班次。',
     levelTrials: '等级试炼',
     levelTrialsHint: (waiting, shown) =>
-      waiting > shown ? `每升一级多一个。还有 ${waiting - shown} 个在等着：通过一个，下一个就会出现。` : '每升一级多一个，从 30 级到 120 级。',
+      waiting > shown ? `每升一级多一个。还有 ${waiting - shown} 个在等着：通过一个，下一个就会出现。` : '每升一级多一个，从 30 级到 200 级。',
     bosses: '辛迪加首领',
     legendary: '传奇班次',
     weeklies: '每周班次',

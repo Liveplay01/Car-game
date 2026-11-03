@@ -114,6 +114,10 @@ const REMATCH_REWARD: Record<BossKind, number> = {
   decoy: 16000,
   smuggler: 18000,
   kingpin: 25000,
+  trio: 20000,
+  bulwark: 22000,
+  mirage: 24000,
+  wall: 28000,
 };
 
 /**
@@ -143,12 +147,12 @@ export const rematchKind = (id: string): BossKind | null => BOSS_KINDS.find((k) 
 // MARK: Ascension trials
 
 /**
- * Ascension (Leo, 02.10.2026): one fixed, very hard shift per Prestige rank, ★1 to ★10, for the
+ * Ascension (Leo, 02.10.2026): one fixed, very hard shift per Prestige rank, ★1 to ★30, for the
  * players past the first ranks (Prestige stops making the traffic harder at ★4). Each opens with
  * its rank, is played on a fresh four-arm roundabout like every trial, and pays once; the last
  * one gives the title Summit (core/elite.ts). Levels 66 to 120: two lanes from the fourth on.
  */
-export const ASCENSION_RANKS = 10;
+export const ASCENSION_RANKS = 30;
 
 const ASCENSION_PLAN: Omit<Trial, 'id' | 'seed' | 'reward'>[] = [
   { level: 66, cars: 20, goal: { k: 'complete' }, rule: null, weather: 'storm', darkness: 'night', legendary: null },
@@ -172,8 +176,15 @@ export function ascensionRank(id: string): number | null {
   return rank >= 1 && rank <= ASCENSION_RANKS ? rank : null;
 }
 
-export const ASCENSIONS: Trial[] = ASCENSION_PLAN.map((plan, i) => ({
-  ...plan,
+/** ★11 to ★30 repeat the ten shapes in turn; the level climbs by 4 per rank to 200 (the last rank level), the traffic with it. */
+const ascensionPlan = (i: number): Omit<Trial, 'id' | 'seed' | 'reward'> => {
+  if (i < ASCENSION_PLAN.length) return ASCENSION_PLAN[i];
+  const far = i + 1 - ASCENSION_PLAN.length;
+  return { ...ASCENSION_PLAN[i % ASCENSION_PLAN.length], level: 120 + 4 * far, cars: 30 };
+};
+
+export const ASCENSIONS: Trial[] = Array.from({ length: ASCENSION_RANKS }, (_, i) => ({
+  ...ascensionPlan(i),
   id: ascensionId(i + 1),
   seed: (0x7a11c001 + i) >>> 0,
   reward: 10000 + 5000 * (i + 1),
@@ -210,13 +221,13 @@ export const landmarkOf = (id: string): Trial | null => LANDMARKS.find((t) => t.
 // MARK: Level trials
 
 /**
- * Level trials (Leo, 11.10.2026): from level 30 on, every level brings one more trial, up to level 120. They are made from the
+ * Level trials (Leo, 11.10.2026): from level 30 on, every level brings one more trial, up to level 200. They are made from the
  * level (`levelTrial`): the shape follows `LEVEL_KINDS` in turn, the weather, the boss or the rule come from the level's own
  * seed, and the goal and the reward grow with it. Played like every trial (fresh four-arm roundabout, no upgrades), except the
  * Handicap, which is a Build trial. The Trials page shows the first few that are open and still unplayed (`LEVEL_TRIALS_SHOWN`).
  */
 export const LEVEL_TRIAL_FIRST = 30;
-export const LEVEL_TRIAL_LAST = 120;
+export const LEVEL_TRIAL_LAST = 200;
 export const LEVEL_TRIALS_SHOWN = 4;
 export const LEVEL_KINDS = ['precision', 'sharpEyes', 'cleanRun', 'weatherRun', 'nightShift', 'manhunt', 'ruleBreaker', 'handicap', 'longHaul'] as const;
 export type LevelKind = (typeof LEVEL_KINDS)[number];
@@ -233,7 +244,7 @@ export function levelTrialLevel(id: string): number | null {
 export const levelKind = (level: number): LevelKind => LEVEL_KINDS[(level - LEVEL_TRIAL_FIRST) % LEVEL_KINDS.length];
 
 const STRIPS: readonly (readonly UpgradeGroup[])[] = [[0], [2], [0, 2]];
-const TOUGH_WEATHER: readonly Weather[] = ['heavyRain', 'storm', 'extreme', 'fog', 'snow', 'hail', 'sandstorm'];
+const TOUGH_WEATHER: readonly Weather[] = ['heavyRain', 'storm', 'extreme', 'fog', 'snow', 'hail', 'sandstorm', 'blackIce', 'ashfall'];
 
 export function levelTrial(level: number): Trial {
   const rank = level - LEVEL_TRIAL_FIRST;

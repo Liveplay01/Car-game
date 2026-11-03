@@ -172,7 +172,7 @@ export default (S: Strings): Words<Strings> => ({
     ascensionHint: 'Une épreuve pour chaque palier de prestige : les services les plus rudes.',
     levelTrials: 'Épreuves de niveau',
     levelTrialsHint: (waiting, shown) =>
-      waiting > shown ? `Une de plus par niveau. ${waiting - shown} autres en attente : réussissez-en une pour révéler la suivante.` : 'Une nouvelle par niveau, du niveau 30 à 120.',
+      waiting > shown ? `Une de plus par niveau. ${waiting - shown} autres en attente : réussissez-en une pour révéler la suivante.` : 'Une nouvelle par niveau, du niveau 30 à 200.',
     bosses: 'Boss du syndicat',
     legendary: 'Services légendaires',
     weeklies: 'Services hebdomadaires',

@@ -320,7 +320,8 @@ export const ProgressPage = {
     if (career.prestige > 0) {
       const ascended = ASCENSIONS.filter((x) => career.trialsDone.includes(x.id)).length;
       s.heading(S.progress.ascension, `${ascended}/${ASCENSIONS.length}`, ascended === ASCENSIONS.length);
-      for (const trial of ASCENSIONS) s.row({ k: 'trial', trial }, 64);
+      const next = ASCENSIONS.findIndex((x) => !trialOpen(x, career) && !career.trialsDone.includes(x.id));
+      for (const trial of ASCENSIONS.slice(0, next < 0 ? undefined : next + 1)) s.row({ k: 'trial', trial }, 64);
       s.row({ k: 'note', text: S.progress.ascensionHint }, 16);
     }
     // Landmarks: famous roundabouts, for those who have been through Prestige five times.
@@ -1009,6 +1010,7 @@ export const ProgressPage = {
     const ready = open && Careers.canPrestige(c);
     Meter.addWave(list, 'elite', card, ShopPage.corner, o, reduceMotion);
     if (ready) list.s(rect(R.center(card), v(R.width(card) + 4, R.height(card) + 4), ShopPage.corner + 2), 'coin', 0.9 * o);
+    if (!ready) for (let k = 1; k <= Elite.frame(c); k++) list.s(rect(R.center(card), v(R.width(card) + 4 * k, R.height(card) + 4 * k), ShopPage.corner + 2 * k), 'coin', 0.55 * o);
     ProgressPage.panel(list, card, o);
     const top = card.minY + 22;
     drawText(list, open ? S.elite.caption(Elite.level(c)) : S.elite.title, v(card.minX + 16, top), 15, open ? 'coin' : 'muted', { opacity: o, weight: 'bold' });

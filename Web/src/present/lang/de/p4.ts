@@ -172,7 +172,7 @@ export default (S: Strings): Words<Strings> => ({
     ascensionHint: 'Eine Prüfung für jeden Prestige-Rang: die härtesten Schichten im Spiel.',
     levelTrials: 'Level-Prüfungen',
     levelTrialsHint: (waiting, shown) =>
-      waiting > shown ? `Mit jedem Level eine mehr. ${waiting - shown} weitere warten: Bestehe eine, und die nächste erscheint.` : 'Mit jedem Level eine mehr, von Level 30 bis 120.',
+      waiting > shown ? `Mit jedem Level eine mehr. ${waiting - shown} weitere warten: Bestehe eine, und die nächste erscheint.` : 'Mit jedem Level eine mehr, von Level 30 bis 200.',
     bosses: 'Syndikatsbosse',
     legendary: 'Legendäre Schichten',
     weeklies: 'Wochenschichten',

@@ -212,11 +212,15 @@ export const COSMETICS: Cosmetic[] = [
   c('moonmirror', 'mapSkin', 'legendary', { kind: 'prestige', rank: 25 }),
   // Past Elite 100 (Leo, 10.10.2026): six more skins along the track up to Elite 200, looks only.
   c('monolith', 'carSkin', 'legendary', { kind: 'elite', level: 110 }),
+  c('paragon', 'carSkin', 'legendary', { kind: 'elite', level: 125 }),
   c('tempest', 'carSkin', 'legendary', { kind: 'elite', level: 130 }),
   c('solstice', 'carSkin', 'legendary', { kind: 'elite', level: 145 }),
+  c('pinnacle', 'carSkin', 'legendary', { kind: 'elite', level: 150 }),
   c('abyssal', 'carSkin', 'legendary', { kind: 'elite', level: 165 }),
+  c('ascendant', 'carSkin', 'legendary', { kind: 'elite', level: 175 }),
   c('regalia', 'carSkin', 'legendary', { kind: 'elite', level: 185 }),
   c('apotheosis', 'carSkin', 'legendary', { kind: 'elite', level: 195 }),
+  c('eternum', 'carSkin', 'legendary', { kind: 'elite', level: 200 }),
   // Unlimited milestones: cars sent in one run.
   c('endurance', 'carSkin', 'epic', { kind: 'unlimited', cars: 250 }),
   c('overdrive', 'carSkin', 'legendary', { kind: 'unlimited', cars: 500 }),

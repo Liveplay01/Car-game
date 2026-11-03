@@ -551,6 +551,10 @@ export const S = {
         decoy: 'The Decoy',
         smuggler: 'The Smuggler',
         kingpin: 'The Kingpin',
+        trio: 'The Trio',
+        bulwark: 'The Bulwark',
+        mirage: 'The Mirage',
+        wall: 'The Wall',
       })[k],
     rematch: (k: BossKind): string => `Rematch · ${S.boss.name(k)}`,
     beaten: 'Busted',
@@ -736,6 +740,12 @@ export const S = {
         crewChampion: 'Crew Champion',
         collector: 'Collector',
         completionist: 'Completionist',
+        champion: 'Champion',
+        legend: 'Legend',
+        titan: 'Titan',
+        blazing: 'Blazing',
+        wildfire: 'Wildfire',
+        sunborn: 'Sunborn',
         ascended: 'Ascended',
         eternal: 'Eternal',
         grandmaster: 'Grandmaster',
@@ -769,6 +779,8 @@ export const S = {
           return `Reach Prestige ★${r.rank}`;
         case 'heat':
           return S.heat.rule(r.level);
+        case 'cars':
+          return `Send ${r.cars} cars in one Unlimited run`;
         case 'fund':
           return `Give ${money(Fmt.number(r.amount))} to the Game fund`;
         case 'item':
@@ -855,8 +867,8 @@ export const S = {
     stage: (stage: number, overtime: number): string =>
       overtime > 0
         ? `OVERTIME ${overtime} · more traffic, a little faster`
-        : (['', 'GAS TANKERS JOIN THE TRAFFIC', 'NIGHT FALLS', 'A STORM ROLLS IN', 'MILITARY TRUCKS ON THE ROAD'][stage] ?? ''),
-    tier: (id: TierId): string => ({ bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum', diamond: 'Diamond', master: 'Master' })[id],
+        : (['', 'GAS TANKERS JOIN THE TRAFFIC', 'NIGHT FALLS', 'A STORM ROLLS IN', 'MILITARY TRUCKS ON THE ROAD', 'OVERSIZE LOADS ON THE ROAD', 'STREET RACERS TAKE OVER', 'A WEDDING CONVOY ARRIVES'][stage] ?? ''),
+    tier: (id: TierId): string => ({ bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum', diamond: 'Diamond', master: 'Master', champion: 'Champion', legend: 'Legend', titan: 'Titan' })[id],
     /** A tier reached in a run: its name over the ring, and in the shift's news. */
     mark: (cars: number, reward: { tier: TierId | null; skin: string | null }): string =>
       reward.tier ? `${cars} cars · ${S.modes.tier(reward.tier).toUpperCase()}` : reward.skin ? `${cars} cars · ${S.shop.item(reward.skin).toUpperCase()}` : `${cars} cars`,
@@ -1113,7 +1125,7 @@ export const S = {
     ascensionHint: 'One trial for every Prestige rank: the hardest shifts in the game.',
     levelTrials: 'Level trials',
     levelTrialsHint: (waiting: number, shown: number): string =>
-      waiting > shown ? `One more with every level. ${waiting - shown} more are waiting: pass one and the next shows up.` : 'One more with every level, from Level 30 to 120.',
+      waiting > shown ? `One more with every level. ${waiting - shown} more are waiting: pass one and the next shows up.` : 'One more with every level, from Level 30 to 200.',
     bosses: 'Syndicate bosses',
     prestige: 'Prestige',
     legendary: 'Legendary shifts',
@@ -2266,6 +2278,10 @@ export const S = {
         abyssal: 'Abyssal',
         regalia: 'Regalia',
         apotheosis: 'Apotheosis',
+        paragon: 'Paragon',
+        pinnacle: 'Pinnacle',
+        ascendant: 'Ascendant',
+        eternum: 'Eternum',
         chrono: 'Chrono',
         biolume: 'Biolume',
         dragon: 'Dragonfire',
@@ -2566,7 +2582,7 @@ export const S = {
   night: 'Night',
   blackout: 'Blackout',
   weather: (w: Weather): string =>
-    ({ clear: 'Clear', lightRain: 'Light Rain', heavyRain: 'Heavy Rain', storm: 'Storm', extreme: 'Extreme Weather', fog: 'Fog', snow: 'Snow & Ice', hail: 'Hail', sandstorm: 'Sandstorm' })[w],
+    ({ clear: 'Clear', lightRain: 'Light Rain', heavyRain: 'Heavy Rain', storm: 'Storm', extreme: 'Extreme Weather', fog: 'Fog', snow: 'Snow & Ice', hail: 'Hail', sandstorm: 'Sandstorm', blackIce: 'Black Ice', ashfall: 'Ashfall' })[w],
   cityEvent: (e: CityEvent): string =>
     ({
       roadworks: 'Roadworks',
@@ -2820,6 +2836,8 @@ export const S = {
           return 'BIKE';
         case 'oversize':
           return 'WIDE LOAD';
+        case 'tractor':
+          return 'TRACTOR';
         case 'racer':
           return 'RACER';
         case 'wedding':

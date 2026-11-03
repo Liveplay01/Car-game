@@ -278,6 +278,10 @@ Standard Chest (oben, „Truhen“). Er steht im Regal „Honours“, zählt abe
 | Abyssal | `abyssal` | Legendary | Elite 165 | Lagune, Planktonstreifen, glänzend; Effekt: Kristallsplitter |
 | Regalia | `regalia` | Legendary | Elite 185 | Rubin, Goldstreifen, glänzend + Glitzer; Effekt: Lorbeersterne |
 | Apotheosis | `apotheosis` | Legendary | Elite 195 | Perlweiß, violetter Streifen, glänzend + Glitzer; Effekt: weiße Strahlen |
+| Paragon | `paragon` | Legendary | Elite 125 | Ozean, Goldstreifen, glänzend + Glitzer; Effekt: Polarlicht |
+| Pinnacle | `pinnacle` | Legendary | Elite 150 | Obsidian, Goldstreifen, glänzend + Glitzer; Effekt: weiße Strahlen |
+| Ascendant | `ascendant` | Legendary | Elite 175 | Pflaume, violetter Streifen, glänzend + Glitzer; Effekt: Lichtkrone |
+| Eternum | `eternum` | Legendary | Elite 200 | Chrom, Goldstreifen, glänzend + Glitzer; Effekt: Regenbogen |
 | Ladybug | `ladybug` | Epic | 1. Bug-Report (Website, mit Freundescode) | Rot, schwarzer Kopf, sieben Punkte, Fühler |
 | Goldbug | `goldbug` | Epic | 2. Bug-Report | Gelb, drei schwarze Streifen, Fühler |
 | Scarab | `scarab` | Epic | 3. Bug-Report | Grün, goldener Halsschild und Punkte, Fühler |
