@@ -3389,6 +3389,41 @@ button.mod:active {
   white-space: nowrap;
 }
 
+/* Title rarity (TITLE_TIER): tier 4 gets one slow glint across the gold; the band sits off-text at both ends, so the loop restarts unseen. */
+.title-name.tier-2 {
+  color: var(--primary);
+}
+.title-name.tier-3 {
+  color: var(--rarity-rare);
+  font-weight: 600;
+}
+.title-name.tier-4 {
+  background-image: linear-gradient(100deg, var(--rarity-legendary) 40%, #fff4cf 50%, var(--rarity-legendary) 60%);
+  background-size: 250% 100%;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 600;
+  animation: title-glint 6s linear infinite;
+}
+@keyframes title-glint {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .title-name.tier-4 {
+    animation: none;
+  }
+}
+.app.reduce-motion .title-name.tier-4 {
+  animation: none;
+}
+
 .sheet .board-value,
 .social-page .board-value {
   color: var(--primary);

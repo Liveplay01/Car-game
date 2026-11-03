@@ -21,7 +21,7 @@ import { savePlayerName } from '../storage/profile';
 import { Fmt, S } from '../present/strings';
 import { baseConfig, INVITE_LEVEL, prestigeLevelAt } from '../core/config';
 import { dayNumber } from '../core/daily';
-import { TITLES, type TitleId } from '../core/elite';
+import { TITLE_TIER, TITLES, type TitleId, type TitleTier } from '../core/elite';
 import { tierOf } from '../core/tiers';
 
 /**
@@ -185,9 +185,14 @@ function prestigeInfo(back: () => void): HTMLElement {
 }
 
 /** The line under a name: the title, on the Unlimited board the tier the run reached, on the Daily board a second try. */
-function boardSub(board: BoardId, e: { title: string | null; meta: Record<string, number> }): string {
+function boardSub(board: BoardId, e: { title: string | null; meta: Record<string, number> }): (Node | string)[] {
   const tier = board === 'unlimited' ? tierOf(e.meta.cars ?? 0) : null;
-  return [titleName(e.title), tier ? S.modes.tier(tier) : null, board === 'daily' && e.meta.tries === 2 ? S.ranks.secondTry : null, board === 'unlimited' && e.meta.revived === 1 ? S.ranks.revived : null].filter(Boolean).join(' · ');
+  return dotted([titleEl(e.title), tier ? S.modes.tier(tier) : null, board === 'daily' && e.meta.tries === 2 ? S.ranks.secondTry : null, board === 'unlimited' && e.meta.revived === 1 ? S.ranks.revived : null]);
+}
+
+/** Joins the parts of a line with a middle dot, skipping the empty ones. */
+export function dotted(parts: (Node | string | null | undefined | false)[]): (Node | string)[] {
+  return parts.filter((p): p is Node | string => !!p).flatMap((p, i) => (i ? [' · ', p] : [p]));
 }
 
 function entryRow(board: BoardId, e: BoardEntry | (Omit<BoardEntry, 'name'> & { name: string }), onStar: () => void): HTMLElement {
@@ -199,7 +204,7 @@ function entryRow(board: BoardId, e: BoardEntry | (Omit<BoardEntry, 'name'> & { 
       'div',
       { class: 'row-main' },
       h('div', { class: 'row-title board-name' }, h('span', { class: 'plate' }, e.name), e.me ? h('span', { class: 'you-tag' }, S.ranks.you) : null),
-      boardSub(board, e) ? h('div', { class: 'row-sub board-title' }, boardSub(board, e)) : null,
+      boardSub(board, e).length ? h('div', { class: 'row-sub board-title' }, ...boardSub(board, e)) : null,
     ),
     h('span', { class: `row-value board-value${board === 'casino' && e.score < 0 ? ' loss' : ''}${board === 'shift-level' ? ' level-value' : ''}` }, ...valueOf(board, e, onStar)),
   );
@@ -209,6 +214,14 @@ function entryRow(board: BoardId, e: BoardEntry | (Omit<BoardEntry, 'name'> & { 
 export function titleName(id: string | null | undefined): string | null {
   if (id === 'mafia') return S.mafia.badge;
   return id && TITLES.includes(id as TitleId) ? S.titles.name(id as TitleId) : null;
+}
+
+/** A title's name in its rarity colour (see TITLE_TIER), or null for none. */
+export function titleEl(id: string | null | undefined): HTMLElement | null {
+  const name = titleName(id);
+  if (!name) return null;
+  const tier: TitleTier = TITLES.includes(id as TitleId) ? TITLE_TIER[id as TitleId] : 1;
+  return h('span', { class: `title-name tier-${tier}` }, name);
 }
 
 /** Grey lines where the list will be, so the sheet does not jump when it arrives. */

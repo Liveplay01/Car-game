@@ -5,7 +5,7 @@ import { copy, flash, share } from './share';
 import type { Career } from '../core/career';
 import type { ChestKind } from '../core/loot';
 import { type BoardId, type Records, LeaderboardError, describeError, loadAccount, syncScores } from '../net/leaderboard';
-import { titleName } from './ranksPanel';
+import { dotted, titleEl, titleName } from './ranksPanel';
 import { withCoins } from './clubPanel';
 import { type InviteView, fetchInvite, inviteUrl } from '../net/invite';
 import {
@@ -371,19 +371,20 @@ export function crewPanel(host: CrewHost): HTMLElement {
     const crew = now.crew!;
     const people = [...crew.members]
       .sort((a, b) => b.xp - a.xp || a.joinedAt - b.joinedAt)
-      .map((m) =>
-        h(
+      .map((m) => {
+        const line = dotted([m.owner ? S.crew.founder : null, titleEl(m.title)]);
+        return h(
           'button',
           { class: `row row-link board-row${m.me ? ' me' : ''}`, type: 'button', 'aria-label': S.crew.profileOf(m.name), onclick: () => openProfile(now, m) },
           h(
             'div',
             { class: 'row-main' },
             h('div', { class: 'row-title board-name' }, h('span', { class: 'plate' }, m.name), m.me ? h('span', { class: 'you-tag' }, S.ranks.you) : null),
-            h('div', { class: 'row-sub board-title' }, [m.owner ? S.crew.founder : null, titleName(m.title)].filter(Boolean).join(' · ') || S.crew.member),
+            h('div', { class: 'row-sub board-title' }, ...(line.length ? line : [S.crew.member])),
           ),
           h('span', { class: 'row-value board-value' }, S.crew.xp(Fmt.number(m.xp))),
-        ),
-      );
+        );
+      });
     return [label(S.crew.membersTitle(crew.members.length)), h('div', { class: 'list' }, ...people)];
   }
 
