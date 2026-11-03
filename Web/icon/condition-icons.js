@@ -49,6 +49,13 @@ const ICONS = {
   snow: {
     body: `<g class="fl" stroke="${C.ice}">` + [0, 60, 120].map((r) => `<g transform="rotate(${r} 12 12)"><path d="M12 3.5v17M9.8 4.9 12 6.7l2.2-1.8M9.8 19.1l2.2-1.8 2.2 1.8"/></g>`).join('') + `</g>`,
   },
+  blackIce: {
+    body: `<g transform="translate(12 7.6) scale(.6) translate(-12 -12)"><g class="fl" stroke="${C.ice}" stroke-width="3">` + [0, 60, 120].map((r) => `<g transform="rotate(${r} 12 12)"><path d="M12 3.5v17M9.8 4.9 12 6.7l2.2-1.8M9.8 19.1l2.2-1.8 2.2 1.8"/></g>`).join('') + `</g></g>` +
+      `<rect x="2.5" y="15" width="19" height="5.5" rx="2.75" fill="${C.ice}" stroke="none"/><path class="dr" pathLength="1" d="M5.6 17.4l3.6-1M11 16.9l2-.55" stroke="currentColor" stroke-width="1.4"/><g transform="translate(18.6 15.2)"><path class="gl" d="${spark(2.6)}" fill="currentColor" ${KO} stroke-width="1"/></g>`,
+  },
+  ashfall: {
+    body: `<g class="ac" fill="${C.smoke}" stroke="none"><circle cx="8.6" cy="8" r="3"/><circle cx="12.6" cy="6" r="3.8"/><circle cx="16.4" cy="8.6" r="2.8"/><rect x="8.6" y="7.6" width="7.8" height="3.8" rx="1.6"/></g><path d="M3 21l5.6-7.6h6.8L21 21Z" fill="currentColor" fill-opacity=".14"/><path class="lv" d="M10.2 13.4h3.6" stroke="${C.orange}" stroke-width="2.2"/><circle class="a0" cx="5.4" cy="12.6" r="1" fill="${C.smoke}" stroke="none"/><circle class="a1" cx="19" cy="13.4" r="1" fill="${C.smoke}" stroke="none"/>`,
+  },
   night: {
     body: `<path class="mo" d="M19.5 14.8A8 8 0 1 1 9.2 4.5a6.4 6.4 0 0 0 10.3 10.3Z" fill="${C.lamp}" stroke="${C.lamp}" stroke-width="1"/>` +
       `<g transform="translate(17.6 6.4)"><path class="s1" d="${spark(2.3)}" fill="${C.lamp}" stroke="none"/></g><g transform="translate(20.8 10.8)"><path class="s2" d="${spark(1.4)}" fill="${C.lamp}" stroke="none"/></g>`,
@@ -140,6 +147,8 @@ const MOTION = {
   hail: [0, 1, 2].map((i) => a('.h' + i, 'fall', i * .08)).join(''),
   sandstorm: [0, 1, 2].map((i) => a('.w' + i, 'draw', i * .08)).join(''),
   snow: '.fl{transform-box:view-box;transform-origin:12px 12px}' + a('.fl', 'spin60'),
+  blackIce: '.fl{transform-box:view-box;transform-origin:12px 12px}.gl{transform:scale(0)}' + a('.fl', 'spin60') + a('.dr', 'draw', .1) + a('.gl', 'twinkle', .2),
+  ashfall: a('.ac', 'pulse') + a('.lv', 'dim', .1) + a('.a0', 'fall') + a('.a1', 'fall', .12),
   night: a('.s1', 'dim') + a('.s2', 'dim', .15),
   blackout: '.cone{opacity:0}' + a('.cone', 'flick', 0, 'linear') + a('.sl', 'draw', .1),
   marathon: [0, 1, 2].map((i) => a('.c' + i, 'dim', i * .08)).join(''),

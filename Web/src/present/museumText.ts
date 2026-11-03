@@ -1,6 +1,7 @@
 import { type Config, type Weather, type CityEvent, type BossKind, weatherSeverity } from '../core/config';
 import type { SpecialKind, WeatherKind, DarkKind, MuseumEntry } from '../core/museum';
 import type { FailCause } from '../core/events';
+import type { LandmarkId } from '../core/trials';
 import { Fmt, money, percent } from './format';
 
 /** A Museum entry's words: one short line for its card, the explanation for its sheet. */
@@ -544,6 +545,8 @@ export function museumText(e: MuseumEntry): MuseumText {
       return ROAD_TEXT;
     case 'fail':
       return FAIL_TEXT[e.kind];
+    case 'landmark':
+      return LANDMARK_TEXT[e.kind];
   }
 }
 
@@ -558,5 +561,24 @@ const ROAD_TEXT: MuseumText = {
   ],
 };
 
+/** The famous roundabouts: each a fixed shift on its own real layout. */
+const LANDMARK_TEXT: Record<LandmarkId, MuseumText> = {
+  'landmark.etoile': {
+    line: 'Twelve avenues, no lanes',
+    brief: 'Place de l’Étoile: twelve avenues meet on one ring.',
+    explain: () => ['The Arc de Triomphe sits in the middle of twelve avenues. Cars come in from every side and merge into a ring with no marked lanes.', 'A fixed shift: the layout never changes. Pass it once and it is on show here.'],
+  },
+  'landmark.magic': {
+    line: 'Five small rings in one',
+    brief: 'Swindon’s Magic Roundabout: six arms around one big ring.',
+    explain: () => ['In Swindon, five mini-roundabouts form one big ring, and traffic runs both ways around it. Here it is a ring of ten slots with six arms built.', 'A fixed shift: the layout never changes. Pass it once and it is on show here.'],
+  },
+  'landmark.venezia': {
+    line: 'Seven arms around a monument',
+    brief: 'Piazza Venezia, Rome: seven streets around a monument.',
+    explain: () => ['Rome’s Piazza Venezia has no clear right of way and seven arms, spread unevenly around the monument. It rains.', 'A fixed shift: the layout never changes. Pass it once and it is on show here.'],
+  },
+};
+
 /** Every record above, for a translation to lay its words over (`strings.ts`). */
-export const MUSEUM_TEXT = { boss: BOSS_TEXT, special: SPECIAL_TEXT, weather: WEATHER_TEXT, dark: DARK_TEXT, event: EVENT_TEXT, road: ROAD_TEXT, fail: FAIL_TEXT };
+export const MUSEUM_TEXT = { boss: BOSS_TEXT, special: SPECIAL_TEXT, weather: WEATHER_TEXT, dark: DARK_TEXT, event: EVENT_TEXT, road: ROAD_TEXT, landmark: LANDMARK_TEXT, fail: FAIL_TEXT };

@@ -431,6 +431,23 @@ const museum: Translation['museum'] = {
     ],
   },
 
+  landmark: {
+    'landmark.etoile': {
+      line: 'Dodici viali, nessuna corsia',
+      brief: 'Place de l’Étoile: dodici viali si incontrano su un anello.',
+      explain: () => ['L’Arco di Trionfo sorge al centro di dodici viali. Le auto arrivano da ogni lato e si immettono in un anello senza corsie segnate.', 'Un turno fisso: il tracciato non cambia mai. Superalo una volta e sarà esposto qui.'],
+    },
+    'landmark.magic': {
+      line: 'Cinque piccole rotatorie in una',
+      brief: 'La Magic Roundabout di Swindon: sei bracci attorno a un grande anello.',
+      explain: () => ['A Swindon cinque mini-rotatorie formano un grande anello e il traffico scorre in entrambi i sensi. Qui è un anello di dieci posti con sei bracci costruiti.', 'Un turno fisso: il tracciato non cambia mai. Superalo una volta e sarà esposto qui.'],
+    },
+    'landmark.venezia': {
+      line: 'Sette bracci attorno a un monumento',
+      brief: 'Piazza Venezia a Roma: sette strade attorno al Vittoriano, sotto la pioggia.',
+      explain: () => ['Piazza Venezia a Roma non ha una precedenza chiara e ha sette bracci, distribuiti in modo irregolare attorno al monumento. Piove.', 'Un turno fisso: il tracciato non cambia mai. Superalo una volta e sarà esposto qui.'],
+    },
+  },
   fail: {
     mergeCrash: {
       name: 'Scontro in immissione',

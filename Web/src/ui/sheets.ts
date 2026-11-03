@@ -277,7 +277,17 @@ export function glideHeight(body: HTMLElement, content: HTMLElement): void {
   if (!sheet) return;
   let before = sheet.offsetHeight;
   let tallest = 0;
+  let queued = false;
+  // Resizing inside the callback would loop the observer; one frame later it does not.
   new ResizeObserver(() => {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => {
+      queued = false;
+      fit();
+    });
+  }).observe(body);
+  const fit = (): void => {
     if (content.isConnected && content.offsetHeight > tallest) {
       tallest = content.offsetHeight;
       content.style.minHeight = `${tallest}px`;
@@ -305,7 +315,7 @@ export function glideHeight(body: HTMLElement, content: HTMLElement): void {
       return;
     }
     before = after;
-  }).observe(body);
+  };
 }
 
 /**

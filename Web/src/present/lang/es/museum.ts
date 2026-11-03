@@ -428,6 +428,23 @@ const museum: Translation['museum'] = {
     ],
   },
 
+  landmark: {
+    'landmark.etoile': {
+      line: 'Doce avenidas, sin carriles',
+      brief: 'Place de l’Étoile: doce avenidas se unen en un anillo.',
+      explain: () => ['El Arco del Triunfo está en el centro de doce avenidas. Los coches llegan de todos los lados y se incorporan a un anillo sin carriles marcados.', 'Un turno fijo: el trazado nunca cambia. Supéralo una vez y quedará expuesto aquí.'],
+    },
+    'landmark.magic': {
+      line: 'Cinco rotondas pequeñas en una',
+      brief: 'La Magic Roundabout de Swindon: seis brazos alrededor de un gran anillo.',
+      explain: () => ['En Swindon, cinco minirrotondas forman un gran anillo y el tráfico circula en ambos sentidos. Aquí es un anillo de diez plazas con seis brazos construidos.', 'Un turno fijo: el trazado nunca cambia. Supéralo una vez y quedará expuesto aquí.'],
+    },
+    'landmark.venezia': {
+      line: 'Siete brazos alrededor de un monumento',
+      brief: 'Piazza Venezia en Roma: siete calles alrededor del Vittoriano, bajo la lluvia.',
+      explain: () => ['La Piazza Venezia de Roma no tiene prioridad clara y tiene siete brazos, repartidos de forma desigual alrededor del monumento. Llueve.', 'Un turno fijo: el trazado nunca cambia. Supéralo una vez y quedará expuesto aquí.'],
+    },
+  },
   fail: {
     mergeCrash: {
       name: 'Choque al incorporarse',

@@ -13,6 +13,7 @@ import { S, Fmt } from './strings';
 import { ShopPage } from './shop';
 import { CarArt } from './carArt';
 import { SYNDICATE_BOSS, SYNDICATE_ESCORT } from './scene';
+import { Signs } from './signs';
 
 /** What the Museum section remembers: the entry in the detail sheet, and the entries scrolled into view. */
 export class MuseumState {
@@ -115,6 +116,8 @@ export const MuseumPage = {
         return 'accent';
       case 'fail':
         return 'destructive';
+      case 'landmark':
+        return 'accent';
     }
   },
 
@@ -256,7 +259,8 @@ export const MuseumPage = {
     const u = Math.min(1.05 * scale, room / 66);
     const at: At = (x, y) => add(center, v(x * u, y * u));
     const icon = new List(list.camera, list.background);
-    drawCondition(entry.k === 'road' ? 'road' : entry.kind === 'blackIce' ? 'snow' : entry.kind === 'ashfall' ? 'sandstorm' : entry.kind, pen(icon, u), at, t);
+    if (entry.k === 'landmark') Signs.landmark(icon, center, true, 1);
+    else drawCondition(entry.k === 'road' ? 'road' : entry.kind, pen(icon, u), at, t);
     return icon.items;
   },
 };

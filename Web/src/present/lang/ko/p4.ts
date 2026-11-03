@@ -237,7 +237,7 @@ export default (S: Strings): Words<Strings> => ({
           : `레벨 ${level}부터 등장해요. 도로에서 만나면 알아야 할 모든 것과 함께 여기에 전시돼요.`
         : '시프트를 계속 플레이하세요. 도로에서 만나면 알아야 할 모든 것과 함께 여기에 전시돼요.',
     lockedBossHint: (level, rank = 0) => (rank > 0 ? `신디케이트가 ${S.museum.place(level, rank)}에서 내보내요. 만나면 잡는 방법과 함께 여기에 전시돼요.` : `신디케이트가 레벨 ${level}에서 내보내요. 만나면 잡는 방법과 함께 여기에 전시돼요.`),
-    kind: (e) => ({ boss: '신디케이트 보스', special: '특수 차량', weather: '날씨', dark: '어둠', event: '도시 이벤트', road: '도로', fail: '실패' })[e.k],
+    kind: (e) => ({ boss: '신디케이트 보스', special: '특수 차량', weather: '날씨', dark: '어둠', event: '도시 이벤트', road: '도로', fail: '실패', landmark: '명소' })[e.k],
     met: '만났지만 아직 도주 중',
     onRing: '링 위에',
     signalArrive: (arm, sweep) =>
@@ -267,6 +267,8 @@ export default (S: Strings): Words<Strings> => ({
           return S.cityEvent(e.kind);
         case 'road':
           return '2차선';
+        case 'landmark':
+          return S.trials.name(e.kind);
         case 'fail':
           return FAIL_TEXT[e.kind].name;
       }

@@ -3,7 +3,8 @@ import type { Config } from '../core/config';
 import type { ShiftResult } from '../core/events';
 import type { ChallengeSpec } from '../core/challenge';
 import { BOSS_KINDS } from '../core/config';
-import { type Trial, trialPassed, rushTrial, RUSH_ID, RUSH_REWARD } from '../core/trials';
+import { type Trial, type LandmarkId, trialPassed, rushTrial, landmarkOf, RUSH_ID, RUSH_REWARD } from '../core/trials';
+import { museumId } from '../core/museum';
 import { weekNumber } from '../core/weekly';
 import { tourStopOf, completeStop, stopDoneKey, tourStopsDone } from '../core/tours';
 import type { ShiftSummary, RunCard } from './hud';
@@ -86,6 +87,7 @@ export function settleSpecial(run: SpecialRun, result: ShiftResult, career: Care
   } else if (first) {
     career.trialsDone.push(t.id);
     career.money += t.reward;
+    if (landmarkOf(t.id)) Careers.discover(career, [museumId({ k: 'landmark', kind: t.id as LandmarkId })]);
     const titles = Careers.recordTitles(career, config);
     if (titles.length > 0) news.push(S.titles.earned(titles));
   }

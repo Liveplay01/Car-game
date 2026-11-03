@@ -41,7 +41,7 @@ const { bookShift } = await load('/src/present/booking.ts');
 const { newPlayerMoment } = await load('/src/present/moments.ts');
 const { S, Fmt } = await load('/src/present/strings.ts');
 const { Unlocks } = await load('/src/core/unlocks.ts');
-const { sightings, shelfEntries, museumId, shelfComplete, completedShelves } = await load('/src/core/museum.ts');
+const { sightings, inferredSightings, shelfEntries, museumId, shelfComplete, completedShelves } = await load('/src/core/museum.ts');
 const { FAIL_CAUSES } = await load('/src/core/events.ts');
 const { tapOffset, noteTap, averageOffset } = await load('/src/core/timing.ts');
 const { forLegendary } = await load('/src/core/levels.ts');
@@ -4265,4 +4265,13 @@ test('Unlimited 750 / 1000 / 1500 and Heat 10 / 20 / 30 earn titles once; Heat t
   c.heatCleared = 20;
   assert.deepEqual(has(), ['champion', 'legend', 'blazing', 'wildfire']);
   assert.deepEqual({ ...forHeat(baseConfig, 30), heat: 0 }, { ...forHeat(baseConfig, baseConfig.heatHardest), heat: 0 });
+});
+
+test('a passed Landmark is discovered for the Museum, and a migrated save does not see it', () => {
+  const c = newCareer();
+  const id = museumId({ k: 'landmark', kind: 'landmark.venezia' });
+  assert.ok(shelfEntries(2).some((e) => museumId(e) === id));
+  assert.ok(!inferredSightings(99, 9, [], { takedowns: 0, transporters: 0, ambulances: 0 }, baseConfig).includes(id));
+  Careers.discover(c, [id]);
+  assert.ok(c.museumSeen.includes(id));
 });

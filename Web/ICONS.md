@@ -76,4 +76,4 @@ bell: wrap('bell',
 
 ## Zustands-Icons (Wetter, Dunkelheit, Ereignisse, Fehlschläge, Straße)
 
-Diese 27 Icons zeichnet das Spiel auf der Canvas (Museum, Zustands-Chips, Ergebniskarte, Website-SVGs), nicht als DOM. Quelle ist `icon/condition-icons.js` (Entwurf mit SVG und CSS-Keyframes). `node scripts/condition-icons.mjs` macht daraus `src/present/conditionIconData.ts` (nicht von Hand ändern); `present/conditionIcons.ts` zeichnet es über den Pen. Neuer Entwurf = Datei in `icon/` ersetzen, Skript ausführen, `npm test`.
+Diese 29 Icons zeichnet das Spiel auf der Canvas (Museum, Zustands-Chips, Ergebniskarte, Website-SVGs), nicht als DOM. Quelle ist `icon/condition-icons.js` (Entwurf mit SVG und CSS-Keyframes). `node scripts/condition-icons.mjs` macht daraus `src/present/conditionIconData.ts` (nicht von Hand ändern); `present/conditionIcons.ts` zeichnet es über den Pen. Neuer Entwurf = Datei in `icon/` ersetzen, Skript ausführen, `npm test`.

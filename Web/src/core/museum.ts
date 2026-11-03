@@ -3,6 +3,7 @@ import { type Darkness, firstBossLevel, bossPlace, firstLevelOf, eventLevel } fr
 import type { VehicleType } from './vehicle';
 import type { World } from './world';
 import { type FailCause, FAIL_CAUSES } from './events';
+import { type LandmarkId, LANDMARKS, landmarkOf } from './trials';
 
 /**
  * The Museum (Leo, 28.09.2026): the syndicate's bosses, the special vehicles and the city's
@@ -61,7 +62,9 @@ export type MuseumEntry =
   | { k: 'event'; kind: CityEvent }
   | { k: 'road'; kind: RoadKind }
   /** A way to lose a shift (Leo, 15.10.2026): on show once it has happened to you. */
-  | { k: 'fail'; kind: FailCause };
+  | { k: 'fail'; kind: FailCause }
+  /** A famous roundabout (Leo, 03.11.2026): on show once its trial is passed. */
+  | { k: 'landmark'; kind: LandmarkId };
 
 /** The level a failure can first happen on; a rule broken has no level of its own. */
 const FAIL_LEVEL: Record<FailCause, (c: Config) => number> = {
@@ -101,6 +104,7 @@ export function shelfEntries(shelf: MuseumShelf): MuseumEntry[] {
         ...WEATHER_KINDS.map((kind): MuseumEntry => ({ k: 'weather', kind })),
         ...DARK_KINDS.map((kind): MuseumEntry => ({ k: 'dark', kind })),
         ...CITY_EVENTS.map((kind): MuseumEntry => ({ k: 'event', kind })),
+        ...LANDMARKS.map((t): MuseumEntry => ({ k: 'landmark', kind: t.id as LandmarkId })),
       ];
     case 3:
       return FAIL_CAUSES.map((kind): MuseumEntry => ({ k: 'fail', kind }));
@@ -129,13 +133,15 @@ export function firstLevel(e: MuseumEntry, c: Config): number {
       return c.twoLaneLevel;
     case 'fail':
       return FAIL_LEVEL[e.kind](c);
+    case 'landmark':
+      return landmarkOf(e.kind)?.level ?? 1;
   }
 }
 
 /** Where an entry first comes for a career that Prestiges at Level 50: a Prestige rank (0: from the start) and the level on it. */
 export function firstPlace(e: MuseumEntry, c: Config): { rank: number; level: number } {
   if (e.k === 'boss') return bossPlace(e.kind, c);
-  const rank = e.k === 'special' ? SPECIAL_RANK[e.kind]?.(c) ?? 0 : 0;
+  const rank = e.k === 'special' ? SPECIAL_RANK[e.kind]?.(c) ?? 0 : e.k === 'landmark' ? landmarkOf(e.kind)?.prestige ?? 0 : 0;
   return rank > 0 ? { rank, level: 1 } : { rank: 0, level: firstLevel(e, c) };
 }
 
@@ -197,8 +203,8 @@ export function inferredSightings(
   return shelves
     .flatMap(shelfEntries)
     .filter((e) => {
-      // A failure is only ever met by failing: an old save has not earned them.
-      if (e.k === 'fail') return false;
+      // A failure is only ever met by failing, a landmark by passing it: an old save has not earned them.
+      if (e.k === 'fail' || e.k === 'landmark') return false;
       if (prestige > 0) return true;
       if (e.k === 'boss') return bossesBeaten.includes(e.kind) || level > firstLevel(e, c);
       if (e.k === 'special' && (e.kind === 'pickup' || e.kind === 'police')) return stats.takedowns > 0 || level > 2;

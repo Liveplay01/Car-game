@@ -28,12 +28,21 @@ function report(type: string, message: string, stack?: string): void {
   apiRequest('POST', '/v1/errors', { body, keepalive: true }).catch(() => undefined);
 }
 
+function foreignHosts(): string {
+  const hosts = new Set<string>();
+  for (const { src } of document.scripts) if (src && !src.startsWith(location.origin)) hosts.add(new URL(src).host);
+  return [...hosts].join(', ') || 'none';
+}
+
 export function startErrorReports(): void {
   if (!on) return;
   window.addEventListener('error', (e) => {
+    if (e.message.startsWith('ResizeObserver loop')) return;
     if (e.filename && !e.filename.startsWith(location.origin)) return;
     const err = e.error instanceof Error ? e.error : undefined;
-    report(err?.name ?? 'Error', e.message, err?.stack);
+    // A foreign script's error reaches us stripped to "Script error." with no file: say which foreign hosts are loaded.
+    if (!e.filename && !err) return report('ForeignScript', `${e.message} (loaded: ${foreignHosts()})`);
+    report(err?.name ?? 'Error', e.message, err?.stack ?? `at ${e.filename.replace(location.origin, '')}:${e.lineno}:${e.colno}`);
   });
   window.addEventListener('unhandledrejection', (e) => {
     if (e.reason instanceof DOMException) return;

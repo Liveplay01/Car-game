@@ -428,6 +428,23 @@ const museum: Translation['museum'] = {
     ],
   },
 
+  landmark: {
+    'landmark.etoile': {
+      line: 'Douze avenues, aucune voie',
+      brief: 'Place de l’Étoile : douze avenues se rejoignent sur un anneau.',
+      explain: () => ['L’Arc de Triomphe se dresse au milieu de douze avenues. Les voitures arrivent de tous côtés et s’insèrent dans un anneau sans voies marquées.', 'Un service fixe : le tracé ne change jamais. Réussissez-le une fois et il sera exposé ici.'],
+    },
+    'landmark.magic': {
+      line: 'Cinq petits ronds-points en un',
+      brief: 'Le Magic Roundabout de Swindon : six branches autour d’un grand anneau.',
+      explain: () => ['À Swindon, cinq mini-ronds-points forment un grand anneau, et la circulation roule dans les deux sens. Ici, c’est un anneau de dix places avec six branches construites.', 'Un service fixe : le tracé ne change jamais. Réussissez-le une fois et il sera exposé ici.'],
+    },
+    'landmark.venezia': {
+      line: 'Sept branches autour d’un monument',
+      brief: 'Piazza Venezia à Rome : sept rues autour du Vittoriano, sous la pluie.',
+      explain: () => ['La Piazza Venezia de Rome n’a pas de priorité claire et compte sept branches, réparties inégalement autour du monument. Il pleut.', 'Un service fixe : le tracé ne change jamais. Réussissez-le une fois et il sera exposé ici.'],
+    },
+  },
   fail: {
     mergeCrash: {
       name: 'Collision à l’insertion',

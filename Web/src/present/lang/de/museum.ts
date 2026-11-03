@@ -428,6 +428,23 @@ const museum: Translation['museum'] = {
     ],
   },
 
+  landmark: {
+    'landmark.etoile': {
+      line: 'Zwölf Alleen, keine Spuren',
+      brief: 'Place de l’Étoile: zwölf Alleen treffen sich auf einem Ring.',
+      explain: () => ['Der Arc de Triomphe steht in der Mitte von zwölf Alleen. Autos kommen von allen Seiten und fädeln sich in einen Ring ohne markierte Spuren ein.', 'Eine feste Schicht: Das Layout ändert sich nie. Schaffst du sie einmal, ist sie hier ausgestellt.'],
+    },
+    'landmark.magic': {
+      line: 'Fünf kleine Ringe in einem',
+      brief: 'Swindons Magic Roundabout: sechs Arme um einen großen Ring.',
+      explain: () => ['In Swindon bilden fünf Mini-Kreisverkehre einen großen Ring, und der Verkehr läuft in beide Richtungen. Hier ist es ein Ring aus zehn Plätzen mit sechs gebauten Armen.', 'Eine feste Schicht: Das Layout ändert sich nie. Schaffst du sie einmal, ist sie hier ausgestellt.'],
+    },
+    'landmark.venezia': {
+      line: 'Sieben Arme um ein Denkmal',
+      brief: 'Piazza Venezia in Rom: sieben Straßen um das Vittoriano, bei Regen.',
+      explain: () => ['Roms Piazza Venezia hat keine klare Vorfahrt und sieben Arme, ungleich um das Denkmal verteilt. Es regnet.', 'Eine feste Schicht: Das Layout ändert sich nie. Schaffst du sie einmal, ist sie hier ausgestellt.'],
+    },
+  },
   fail: {
     mergeCrash: {
       name: 'Einfädel-Crash',

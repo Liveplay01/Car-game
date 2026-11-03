@@ -237,7 +237,7 @@ export default (S: Strings): Words<Strings> => ({
           : `Apparaît à partir du niveau ${level}. Dès sa première rencontre sur la route, sa fiche complète s’affichera ici.`
         : 'Continuez vos services. Dès sa rencontre sur la route, sa fiche s’affichera ici.',
     lockedBossHint: (level, rank = 0) => (rank > 0 ? `Le syndicat le dépêche à ${S.museum.place(level, rank)}. Dès votre premier affrontement, il sera répertorié ici avec la marche à suivre.` : `Le syndicat le dépêche au niveau ${level}. Dès votre premier affrontement, il sera répertorié ici avec la marche à suivre.`),
-    kind: (e) => ({ boss: 'Boss du syndicat', special: 'Véhicule spécial', weather: 'Météo', dark: 'Obscurité', event: 'Événement urbain', road: 'Chaussée', fail: 'Échec' })[e.k],
+    kind: (e) => ({ boss: 'Boss du syndicat', special: 'Véhicule spécial', weather: 'Météo', dark: 'Obscurité', event: 'Événement urbain', road: 'Chaussée', fail: 'Échec', landmark: 'Monument' })[e.k],
     met: 'Rencontré, toujours en fuite',
     onRing: 'Sur l’anneau',
     signalArrive: (arm, sweep) =>
@@ -267,6 +267,8 @@ export default (S: Strings): Words<Strings> => ({
           return S.cityEvent(e.kind);
         case 'road':
           return 'Deux voies';
+        case 'landmark':
+          return S.trials.name(e.kind);
         case 'fail':
           return FAIL_TEXT[e.kind].name;
       }

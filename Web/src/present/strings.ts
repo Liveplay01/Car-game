@@ -1195,7 +1195,7 @@ export const S = {
         : 'Keep playing shifts. Once you have met it on the road, it goes on show here with everything you need to know.',
     lockedBossHint: (level: number, rank = 0): string => `The syndicate sends it on ${rank > 0 ? S.museum.place(level, rank) : `Level ${level}`}. Once you have faced it, it goes on show here with how to take it down.`,
     lockedFailHint: 'Not happened to you yet. Lose a shift this way and it goes on show here, with what went wrong and how to avoid it.',
-    kind: (e: MuseumEntry): string => ({ boss: 'Syndicate boss', special: 'Special vehicle', weather: 'Weather', dark: 'Darkness', event: 'City event', road: 'Road', fail: 'Way to lose' })[e.k],
+    kind: (e: MuseumEntry): string => ({ boss: 'Syndicate boss', special: 'Special vehicle', weather: 'Weather', dark: 'Darkness', event: 'City event', road: 'Road', fail: 'Way to lose', landmark: 'Landmark' })[e.k],
     /** Every way to lose a shift found: the Failures shelf pays its skin (`GameSession.bookFailure`). */
     failuresDone: (skin: string): string => `Every way to lose, found: the ${skin} skin is yours`,
     /** Entries met for the first time on a shift: the result says how many went on show. */
@@ -1230,6 +1230,8 @@ export const S = {
           return S.cityEvent(e.kind);
         case 'road':
           return 'Two Lanes';
+        case 'landmark':
+          return S.trials.name(e.kind);
         case 'fail':
           return FAIL_TEXT[e.kind].name;
       }

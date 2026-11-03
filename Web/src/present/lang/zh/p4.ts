@@ -237,7 +237,7 @@ export default (S: Strings): Words<Strings> => ({
           : `${level} 级起出现。在路上遇到它之后，它会连同所有该知道的信息一起展出在这里。`
         : '继续玩班次吧。在路上遇到它之后，它会连同所有该知道的信息一起展出在这里。',
     lockedBossHint: (level, rank = 0) => (rank > 0 ? `辛迪加会在${S.museum.place(level, rank)}派出他。遇到之后，他会连同抓获他的办法一起展出在这里。` : `辛迪加会在 ${level} 级派出他。遇到之后，他会连同抓获他的办法一起展出在这里。`),
-    kind: (e) => ({ boss: '辛迪加首领', special: '特种车辆', weather: '天气', dark: '黑暗', event: '城市事件', road: '道路', fail: '失败' })[e.k],
+    kind: (e) => ({ boss: '辛迪加首领', special: '特种车辆', weather: '天气', dark: '黑暗', event: '城市事件', road: '道路', fail: '失败', landmark: '地标' })[e.k],
     met: '已遇到，仍在逃',
     onRing: '在环岛上',
     signalArrive: (arm, sweep) =>
@@ -267,6 +267,8 @@ export default (S: Strings): Words<Strings> => ({
           return S.cityEvent(e.kind);
         case 'road':
           return '双车道';
+        case 'landmark':
+          return S.trials.name(e.kind);
         case 'fail':
           return FAIL_TEXT[e.kind].name;
       }

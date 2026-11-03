@@ -62,6 +62,8 @@ export const PATCH_NOTES: PatchNote[] = [
       'Four more Syndicate bosses on ★2: the Trio, the Bulwark, the Mirage and the Wall.',
     ],
     items: [
+      'Black Ice and Ashfall have their own animated weather icons in the Museum.',
+      'Fixed: drawers that change height (Friends, Leaderboard) no longer trigger a browser "ResizeObserver loop" error.',
       'Titles on the ranks and in the crew show their rarity: the rarest glow gold with a slow shine. Plain titles stay as they were.',
       'Unlimited has three new tiers after Master: Champion (750 cars), Legend (1000) and Titan (1500). Each lights the ring, pays Elite XP once and earns a title.',
       'Unlimited runs now go on past 10 minutes: Oversize loads, Street Racers and the Wedding convoy join, each announced at the top.',
@@ -78,6 +80,7 @@ export const PATCH_NOTES: PatchNote[] = [
       'The Wall (Level 75 on ★2): four armoured escorts bumper to bumper behind the boss. Wait for a gap in the line.',
       'Each new boss has a Museum page, a rematch and a place in Boss Rush. The title Syndicate’s End now asks for all twelve.',
       'Two new Landmarks for the Prestige ranks: the Magic Roundabout in Swindon (★5) and Piazza Venezia in Rome (★6). Each has its own road layout.',
+      'Landmarks now have a place in the Museum, on show once you pass them.',
     ],
   },
   {
