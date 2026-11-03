@@ -1977,6 +1977,27 @@ test('the chest from an invite says why it came, any other chest stays a gift fr
 
 // MARK: Landmarks, Boss Rush, QR code
 
+test('every landmark opens at its own Prestige rank, has its roads, and the careful bot drives through without a crash', () => {
+  assert.ok(LANDMARKS.length >= 3);
+  for (const lm of LANDMARKS) {
+    const career = newCareer();
+    career.prestige = lm.prestige - 1;
+    assert.ok(!trialOpen(lm, career), `${lm.id} closed one rank short`);
+    career.prestige = lm.prestige;
+    assert.ok(trialOpen(lm, career), `${lm.id} open at its rank`);
+    assert.ok(RUN_IDS.includes(lm.id), 'a save keeps it');
+    for (let i = 0; i < 3; i++) {
+      const seed = (lm.seed + i) >>> 0;
+      const config = trialConfig({ ...lm, seed }, baseConfig);
+      const arms = new World(config, seed, { startsOnFirstTap: false }).layout.arms.length;
+      assert.equal(arms, lm.slots?.length ?? lm.arms, `${lm.id}: roads`);
+      const { result } = playConfig(config, seed);
+      assert.ok(result, `${lm.id} seed ${i}: the shift ends`);
+      assert.equal(result.crashes, 0, `${lm.id} seed ${i}: the careful bot does not crash`);
+    }
+  }
+});
+
 test('the Étoile has twelve roads, opens at Prestige 5, and the careful bot drives through it without a crash', () => {
   const etoile = landmarkOf('landmark.etoile');
   assert.ok(etoile && LANDMARKS.includes(etoile) && trialById(etoile.id) === etoile);

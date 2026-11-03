@@ -742,7 +742,7 @@ export const SceneBuilder = {
           cache: true,
           steer: veh.type === 'drift' ? driftSteer(world, veh.id) : null,
           // The decoy's escorts wear its ring too; the kingpin's light bar is its own.
-          boss: veh.role === 'boss' || (veh.role === 'escort' && world.config.bossKind === 'decoy') ? world.config.bossKind : null,
+          boss: veh.role === 'boss' || (veh.role === 'escort' && (world.config.bossKind === 'decoy' || world.config.bossKind === 'mirage')) ? world.config.bossKind : null,
         },
         world.config,
       );

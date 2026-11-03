@@ -39,6 +39,12 @@ export default (S: Strings): Words<Strings> => ({
         crewChampion: '车队冠军',
         collector: '收藏家',
         completionist: '全成就者',
+        champion: '冠军',
+        legend: '传奇',
+        titan: '泰坦',
+        blazing: '烈焰',
+        wildfire: '燎原',
+        sunborn: '日耀',
         ascended: '飞升者',
         eternal: '永恒',
         grandmaster: '宗师',
@@ -72,6 +78,8 @@ export default (S: Strings): Words<Strings> => ({
           return `达到声望 ★${r.rank}`;
         case 'heat':
           return S.heat.rule(r.level);
+        case 'cars':
+          return `在一次无限模式中送出 ${r.cars} 辆车`;
         case 'fund':
           return `向游戏基金捐出 ${money(Fmt.number(r.amount))}`;
         case 'item':
@@ -148,8 +156,8 @@ export default (S: Strings): Words<Strings> => ({
     stage: (stage, overtime) =>
       overtime > 0
         ? `加班 ${overtime} · 车更多，速度略快`
-        : (['', '燃气罐车混进了车流', '夜幕降临', '风暴正在逼近', '军用卡车上路了'][stage] ?? ''),
-    tier: (id) => ({ bronze: '青铜', silver: '白银', gold: '黄金', platinum: '铂金', diamond: '钻石', master: '大师' })[id],
+        : (['', '燃气罐车混进了车流', '夜幕降临', '风暴正在逼近', '军用卡车上路了', '超大货运上路', '街头飙车族出没', '婚礼车队抵达'][stage] ?? ''),
+    tier: (id) => ({ bronze: '青铜', silver: '白银', gold: '黄金', platinum: '铂金', diamond: '钻石', master: '大师', champion: '冠军', legend: '传奇', titan: '泰坦' })[id],
     mark: (cars, reward) =>
       reward.tier ? `${cars} 辆车 · ${S.modes.tier(reward.tier).toUpperCase()}` : reward.skin ? `${cars} 辆车 · ${S.shop.item(reward.skin).toUpperCase()}` : `${cars} 辆车`,
     tierUp: (id) => `新段位 · 无限模式${S.modes.tier(id).toUpperCase()}`,

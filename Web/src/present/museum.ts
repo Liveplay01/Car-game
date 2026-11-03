@@ -36,6 +36,10 @@ const BOSS_FOLLOWERS: Record<BossKind, (c: Config) => { count: number; look: 'es
   decoy: (c) => ({ count: c.decoyEscorts, look: 'disguised' }),
   smuggler: () => ({ count: 0, look: 'escort' }),
   kingpin: (c) => ({ count: c.kingpinEscorts, look: 'disguised' }),
+  trio: () => ({ count: 2, look: 'twin' }),
+  bulwark: (c) => ({ count: c.bulwarkEscorts, look: 'escort' }),
+  mirage: (c) => ({ count: c.mirageEscorts, look: 'disguised' }),
+  wall: (c) => ({ count: c.wallEscorts, look: 'escort' }),
 };
 
 type Look = typeof SYNDICATE_BOSS | typeof SYNDICATE_ESCORT;
@@ -54,6 +58,7 @@ const SPECIAL_COLOR: Record<SpecialKind, ColorToken> = {
   learner: 'learnerSign',
   bus: 'juiceYellow',
   oversize: 'vehicleOversize',
+  tractor: 'vehicleTractor',
   racer: 'vehicleRacer',
   wedding: 'vehicleWedding',
   drift: 'lightRed',
@@ -67,6 +72,8 @@ const WEATHER_COLOR: Record<WeatherKind, ColorToken> = {
   snow: 'skinIce',
   hail: 'primary',
   sandstorm: 'mapSand',
+  blackIce: 'lightBlue',
+  ashfall: 'muted',
 };
 const DARK_COLOR: Record<DarkKind, ColorToken> = { night: 'rarityEpic', blackout: 'muted' };
 const EVENT_COLOR: Record<CityEvent, ColorToken> = {
@@ -249,7 +256,7 @@ export const MuseumPage = {
     const u = Math.min(1.05 * scale, room / 66);
     const at: At = (x, y) => add(center, v(x * u, y * u));
     const icon = new List(list.camera, list.background);
-    drawCondition(entry.k === 'road' ? 'road' : entry.kind, pen(icon, u), at, t);
+    drawCondition(entry.k === 'road' ? 'road' : entry.kind === 'blackIce' ? 'snow' : entry.kind === 'ashfall' ? 'sandstorm' : entry.kind, pen(icon, u), at, t);
     return icon.items;
   },
 };

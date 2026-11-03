@@ -1,6 +1,7 @@
 // Unlimited's late stages (config `endlessStages`) played by the careful bot from sim.mjs: they must
 // come in order, the careful bot must not crash into them, and the same seed must give the same run.
-// Criminals are left out here: the bot does not hunt them.
+// Criminals are left out here: the bot does not hunt them, and it waits while an oversize load circles (the
+// bunched traffic behind it is what the bot's gap check misreads; players are told to keep clear, too).
 //   node scripts/unlimited-sim.mjs [runs] [minutes]
 import { createServer } from 'vite';
 
@@ -15,7 +16,7 @@ try {
 
   const lane = (world) => world.vehicle(world.queue.vehicles[0])?.lane ?? 0;
   const careful = (world) =>
-    world.queue.isReady && world.predictedMergeGap(world.layout.player, 0, 40, -Infinity, lane(world)) > 0.04 && !joinsClearRoad(world, { type: 'car' }, world.layout.player);
+    world.queue.isReady && world.oversize.kind !== 'active' && world.predictedMergeGap(world.layout.player, 0, 40, -Infinity, lane(world)) > 0.04 && !joinsClearRoad(world, { type: 'car' }, world.layout.player);
 
   const play = (seed) => {
     // No criminals: the careful bot does not hunt them, and an escape would end the run before the stages.

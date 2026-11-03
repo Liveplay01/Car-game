@@ -39,6 +39,12 @@ export default (S: Strings): Words<Strings> => ({
         crewChampion: 'Campione di crew',
         collector: 'Collezionista',
         completionist: 'Completista',
+        champion: 'Campione',
+        legend: 'Leggenda',
+        titan: 'Titano',
+        blazing: 'Rovente',
+        wildfire: 'Incendio',
+        sunborn: 'Figlio del Sole',
         ascended: 'Asceso',
         eternal: 'Eterno',
         grandmaster: 'Gran maestro',
@@ -72,6 +78,8 @@ export default (S: Strings): Words<Strings> => ({
           return `Raggiungi Prestigio ★${r.rank}`;
         case 'heat':
           return S.heat.rule(r.level);
+        case 'cars':
+          return `Manda ${r.cars} auto in una partita di Unlimited`;
         case 'fund':
           return `Dona ${money(Fmt.number(r.amount))} al Fondo di gioco`;
         case 'item':
@@ -149,8 +157,8 @@ export default (S: Strings): Words<Strings> => ({
     stage: (stage, overtime) =>
       overtime > 0
         ? `STRAORDINARI ${overtime} · più traffico, ritmo accelerato`
-        : (['', 'CISTERNE DI GAS SI UNISCONO AL FLUSSO', 'CALA LA NOTTE', 'SI AVVICINA UNA TEMPESTA', 'CAMION MILITARI SULLA STRADA'][stage] ?? ''),
-    tier: (id) => ({ bronze: 'Bronzo', silver: 'Argento', gold: 'Oro', platinum: 'Platino', diamond: 'Diamante', master: 'Maestro' })[id],
+        : (['', 'CISTERNE DI GAS SI UNISCONO AL FLUSSO', 'CALA LA NOTTE', 'SI AVVICINA UNA TEMPESTA', 'CAMION MILITARI SULLA STRADA', 'TRASPORTI ECCEZIONALI IN STRADA', 'I PILOTI DI STRADA PRENDONO IL COMANDO', 'ARRIVA UN CORTEO NUZIALE'][stage] ?? ''),
+    tier: (id) => ({ bronze: 'Bronzo', silver: 'Argento', gold: 'Oro', platinum: 'Platino', diamond: 'Diamante', master: 'Maestro', champion: 'Campione', legend: 'Leggenda', titan: 'Titano' })[id],
     mark: (cars, reward) =>
       reward.tier ? `${cars} auto · ${S.modes.tier(reward.tier).toUpperCase()}` : reward.skin ? `${cars} auto · ${S.shop.item(reward.skin).toUpperCase()}` : `${cars} auto`,
     tierUp: (id) => `NUOVO GRADO · ${S.modes.tier(id).toUpperCase()} in Senza limiti`,

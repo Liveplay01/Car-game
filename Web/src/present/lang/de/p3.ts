@@ -39,6 +39,12 @@ export default (S: Strings): Words<Strings> => ({
         crewChampion: 'Crew-Meister',
         collector: 'Sammler',
         completionist: 'Vollender',
+        champion: 'Champion',
+        legend: 'Legende',
+        titan: 'Titan',
+        blazing: 'Glutkern',
+        wildfire: 'Flächenbrand',
+        sunborn: 'Sonnengeboren',
         ascended: 'Aufgestiegen',
         eternal: 'Ewig',
         grandmaster: 'Großmeister',
@@ -72,6 +78,8 @@ export default (S: Strings): Words<Strings> => ({
           return `Erreiche Prestige ★${r.rank}`;
         case 'heat':
           return S.heat.rule(r.level);
+        case 'cars':
+          return `Schicke ${r.cars} Autos in einem Unlimited-Lauf los`;
         case 'fund':
           return `Spende ${money(Fmt.number(r.amount))} an den Spielfonds`;
         case 'item':
@@ -149,8 +157,8 @@ export default (S: Strings): Words<Strings> => ({
     stage: (stage, overtime) =>
       overtime > 0
         ? `ÜBERSTUNDEN ${overtime} · mehr Verkehr, etwas schneller`
-        : (['', 'GASTANKER MISCHEN SICH UNTERS VOLK', 'DIE NACHT BRICHT AN', 'EIN STURM ZIEHT AUF', 'MILITÄR-LKW AUF DER STRASSE'][stage] ?? ''),
-    tier: (id) => ({ bronze: 'Bronze', silver: 'Silber', gold: 'Gold', platinum: 'Platin', diamond: 'Diamant', master: 'Meister' })[id],
+        : (['', 'GASTANKER MISCHEN SICH UNTERS VOLK', 'DIE NACHT BRICHT AN', 'EIN STURM ZIEHT AUF', 'MILITÄR-LKW AUF DER STRASSE', 'ÜBERBREITE LADUNGEN AUF DER STRASSE', 'STRASSENRENNFAHRER ÜBERNEHMEN', 'EIN HOCHZEITSKORSO KOMMT'][stage] ?? ''),
+    tier: (id) => ({ bronze: 'Bronze', silver: 'Silber', gold: 'Gold', platinum: 'Platin', diamond: 'Diamant', master: 'Meister', champion: 'Champion', legend: 'Legende', titan: 'Titan' })[id],
     mark: (cars, reward) =>
       reward.tier ? `${cars} Autos · ${S.modes.tier(reward.tier).toUpperCase()}` : reward.skin ? `${cars} Autos · ${S.shop.item(reward.skin).toUpperCase()}` : `${cars} Autos`,
     tierUp: (id) => `NEUE STUFE · ${S.modes.tier(id).toUpperCase()} in Unlimited`,

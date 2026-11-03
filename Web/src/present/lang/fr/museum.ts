@@ -67,6 +67,38 @@ const museum: Translation['museum'] = {
         'Distinguez les silhouettes dans l’ombre : le boss est le pick-up cerclé. Deux patrouilles successives dans l’ouverture viendront à bout de lui.',
       ],
     },
+    trio: {
+      line: 'Trois d’affilée',
+      brief: 'Trois boss : chaque arrestation appelle le suivant. Gardez des patrouilles prêtes.',
+      explain: (c) => [
+        'Le Trio mène les derniers coups du syndicat. Trois pick-up arrivent l’un après l’autre, sans escorte : dès que vous en arrêtez un, le suivant est déjà à une autre branche.',
+        `Environ ${Math.round(c.criminalTime * c.trioTimeFactor)} secondes chacun. Le butin ne revient que lorsque les trois sont arrêtés.`,
+      ],
+    },
+    bulwark: {
+      line: 'Exige quatre patrouilles',
+      brief: 'Blindage pour trois chocs et une escorte. Alignez quatre patrouilles.',
+      explain: (c) => [
+        'Le Rempart est une plaque blindée sur roues : les trois premières patrouilles la fissurent seulement, la quatrième l’arrête. Une escorte colle à son arrière.',
+        `Il reste environ ${Math.round(c.criminalTime * c.bulwarkTimeFactor)} secondes sur l’anneau, suffisant pour quatre assauts si votre file est bien garnie.`,
+      ],
+    },
+    mirage: {
+      line: 'Le leurre, dans le noir',
+      brief: 'Escortes camouflées, en blackout : percutez le pick-up cerclé.',
+      explain: () => [
+        'Le Mirage est le Leurre phares éteints : un blackout et des escortes peintes comme le boss.',
+        'Le boss est le pick-up à benne ouverte et au cercle. Un fourgon à la même peinture n’est qu’un fourgon : le percuter est un accident ordinaire.',
+      ],
+    },
+    wall: {
+      line: 'Quatre escortes, une brèche',
+      brief: 'Quatre escortes serrent les rangs derrière lui. Attendez la brèche, puis percutez.',
+      explain: (c) => [
+        'Le Mur lance quatre fourgons blindés juste derrière le boss, l’un après l’autre, pare-chocs contre pare-chocs.',
+        `Il reste environ ${Math.round(c.criminalTime * c.wallTimeFactor)} secondes. Les fourgons laissent des brèches pendant que l’anneau tourne : glissez la patrouille dans l’une d’elles.`,
+      ],
+    },
   },
 
   special: {
@@ -178,6 +210,15 @@ const museum: Translation['museum'] = {
         `Un bandeau ambré matérialise son périmètre de sécurité. Préservez cet espace et il vous rapportera ${money(Fmt.number(c.oversizePay))} au départ.`,
       ],
     },
+    tractor: {
+      name: 'Tracteur',
+      line: 'Lent, large, laisse-lui de la place',
+      brief: 'Un tracteur lent : garde tes voitures hors de la bande ambre autour de lui.',
+      explain: (c) => [
+        'Un tracteur fait un tour de l\'anneau, plus lent que tout le reste. Le trafic derrière lui ralentit avec lui.',
+        `Une bande ambre montre la place dont il a besoin, devant et derrière. Garde tes voitures dehors et il paie ${money(Fmt.number(c.tractorPay))} à son départ et allonge ta chaîne.`,
+      ],
+    },
     racer: {
       name: 'Bolide de course',
       line: 'Par paire : percutez-les',
@@ -279,6 +320,22 @@ const museum: Translation['museum'] = {
       explain: (c) => [
         `Tempête de sable : la poussière masque l’anneau opposé et le sable ne laisse que ${gripIn('sandstorm', c)} d’adhérence.`,
         `Surveillez les véhicules qui jaillissent du nuage. Paie bonifiée de ${percent(c.sandstormPayFactor - 1)}.`,
+      ],
+    },
+    blackIce: {
+      line: 'Du verre sous les pneus',
+      brief: 'Verglas : presque aucune adhérence, presque aucun freinage. Laisse de très grands écarts.',
+      explain: (c) => [
+        `Verglas : les pneus ne gardent que ${gripIn('blackIce', c)} de leur adhérence, les conducteurs freinent seulement à ${percent(c.blackIceBrake)} et un accident glisse très loin.`,
+        `Laisse bien plus de place que sur la neige et insère-toi tôt. Une manche de verglas paie ${percent(c.blackIcePayFactor - 1)} de plus.`,
+      ],
+    },
+    ashfall: {
+      line: 'Nuage gris sur l\'anneau',
+      brief: 'Cendres : l\'autre côté se perd dans le gris. Surveille ce qui en sort.',
+      explain: (c) => [
+        `Les cendres couvrent l\'anneau : l\'autre côté s\'efface, les conducteurs voient un accident tard, la route garde ${gripIn('ashfall', c)} de son adhérence et il y a un peu plus de trafic.`,
+        `Surveille le trafic qui sort du nuage vers ton bras ; les avertissements restent visibles. Une manche de cendres paie ${percent(c.ashfallPayFactor - 1)} de plus.`,
       ],
     },
   },

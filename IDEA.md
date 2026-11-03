@@ -134,3 +134,20 @@ der Verkehr nutzt), damit Replays und Ranglisten gleich bleiben; was nur aussieh
 - **Sternschnuppe:** In einer klaren Nacht-Schicht zieht ein Lichtstreif über den Himmel. Nur Optik.
 - **Das Streifenwagen-Eis:** Ein Polizeiauto hält kurz an der Bushaltestelle der Schulweg-Schicht, ein Eiswagen steht
   daneben. Nur Optik.
+
+## Seltene Momente für Weitgekommene (Leo, 03.11.2026)
+
+Die seltenen Momente aus dem Abschnitt darüber (Ballon, Katze auf der Insel, Sternschnuppe und die übrigen) sollen nicht
+von Anfang an laufen, sondern erst ab einem Prestige-Rang (etwa ★5) oder bei langer Daily-Serie. Wer weit ist, hat
+sonst alles gesehen; sie bleiben Optik ohne Punkte und Meldung, aus dem Seed.
+
+## Weitere Touren und eine harte Tour-Variante (Leo, 03.11.2026)
+
+Frühling und Sommer als Einträge in `TOURS`, jeder mit drei Skins. Dazu eine harte Variante jeder Tour ab Prestige ★3:
+dieselben sieben Stopps mit höherem Level, eigene Belohnung (Rahmen oder Titel), damit die Touren auch für Weitgekommene
+etwas sind.
+
+## Prestige-Quests (Leo, 03.11.2026)
+
+Der Quest-Pool skaliert mit dem Prestige-Rang: größere Ziele, mehr Geld. Wer Millionen hat, bekommt von den
+heutigen Quests kaum etwas. Die Quests bleiben ein stiller Hintergrund, kein neues Menü.

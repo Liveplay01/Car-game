@@ -68,6 +68,7 @@ const SPECIAL_SIGNAL: Record<SpecialKind, MuseumSignal | null> = {
   fireTruck: fullCycle(BLUE, 'blocked'),
   learner: fullCycle(TEAL),
   oversize: fullCycle(ORANGE),
+  tractor: fullCycle(ORANGE),
   racer: noMiss(PINK),
   wedding: fullCycle(ROSE),
   drift: null,

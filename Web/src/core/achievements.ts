@@ -117,7 +117,7 @@ export const Achievements = {
     if (mode !== 'shift' || r.outcome !== 'completed') return;
     const w = shift.weather;
     if (w !== 'clear') add('badWeather', 1);
-    if (w === 'storm' || w === 'extreme' || w === 'hail' || w === 'sandstorm') add('stormy', 1);
+    if (w === 'storm' || w === 'extreme' || w === 'hail' || w === 'sandstorm' || w === 'blackIce' || w === 'ashfall') add('stormy', 1);
     if (w === 'fog' || w === 'snow') add('murky', 1);
     if (shift.blackout) add('blackouts', 1);
     else if (shift.night) add('nights', 1);

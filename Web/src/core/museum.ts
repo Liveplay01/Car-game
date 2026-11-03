@@ -37,6 +37,7 @@ const SPECIAL_LEVEL: Record<SpecialKind, (c: Config) => number> = {
   motorbike: (c) => c.motorbikeLevel,
   learner: (c) => c.learnerLevel,
   oversize: (c) => c.oversizeLevel,
+  tractor: (c) => c.oversizeLevel,
   racer: (c) => c.racerLevel,
   wedding: (c) => c.weddingLevel,
   drift: (c) => c.driftLevel,
@@ -81,6 +82,7 @@ export const FAIL_SKIN = 'crashTest';
 /** The specials that come with a Prestige rank rather than a level (`reaches`): oversize loads, racers, the wedding. */
 const SPECIAL_RANK: Partial<Record<SpecialKind, (c: Config) => number>> = {
   oversize: (c) => c.oversizePrestige,
+  tractor: (c) => c.tractorPrestige,
   racer: (c) => c.racerPrestige,
   wedding: (c) => c.weddingPrestige,
 };

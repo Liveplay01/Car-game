@@ -20,7 +20,7 @@ export type RematchId = `rematch.${BossKind}`;
 /** An Ascension trial: one per Prestige rank (`ascension.1` … `ascension.10`). */
 export type AscensionId = `ascension.${number}`;
 /** A Landmark: a famous roundabout, played as a trial (`landmark.etoile`). */
-export type LandmarkId = 'landmark.etoile';
+export type LandmarkId = 'landmark.magic' | 'landmark.etoile' | 'landmark.venezia';
 /** Every run that is played like a trial. */
 /** A stop of a Tour (`tour.halloween.3`, core/tours.ts). */
 export type TourStopId = `tour.${string}.${number}`;
@@ -57,6 +57,10 @@ export interface Trial {
   elite?: EliteKind;
   /** A roundabout with this many arms, spaced evenly, instead of the four of a trial (a Landmark). */
   arms?: number;
+  /** Uneven arms: the slots of a ring with `arms` slots that carry a road (a Landmark). Without it all slots are built. */
+  slots?: number[];
+  /** The Prestige rank that opens a Landmark. */
+  prestige?: number;
   /** How much of the traffic those arms would bring: twelve roads at full strength would crash even the careful bot. */
   traffic?: number;
   /** A stop of a Tour: which run of it (`halloween-2026`), the stop (1…), and the map its scene wears. */
@@ -95,7 +99,7 @@ export const trialOpen = (t: Trial, c: Career): boolean => {
   if (levelTrialLevel(t.id) !== null) return c.level >= t.level || c.prestige > 0 || c.trialsDone.includes(t.id);
   const rank = ascensionRank(t.id);
   if (rank !== null) return c.prestige >= rank || c.trialsDone.includes(t.id);
-  if (landmarkOf(t.id)) return c.prestige >= LANDMARK_PRESTIGE || c.trialsDone.includes(t.id);
+  if (landmarkOf(t.id)) return c.prestige >= (landmarkOf(t.id)?.prestige ?? 0) || c.trialsDone.includes(t.id);
   return c.level >= t.level || c.prestige > 0 || c.trialsDone.includes(t.id);
 };
 
@@ -204,7 +208,11 @@ export const ASCENSION_IDS: AscensionId[] = ASCENSIONS.map((t) => t.id as Ascens
 export const LANDMARK_PRESTIGE = 5;
 
 export const LANDMARKS: Trial[] = [
-  { id: 'landmark.etoile', level: 60, seed: 0x7a11d001, cars: 24, goal: { k: 'complete' }, rule: null, weather: 'clear', darkness: 'day', reward: 40000, legendary: null, arms: 12, traffic: 0.65 },
+  // Swindon: five mini-roundabouts around a hub, as five roads crowded onto one side of a short ring.
+  { id: 'landmark.magic', level: 60, seed: 0x7a11d002, cars: 22, goal: { k: 'complete' }, rule: null, weather: 'clear', darkness: 'day', reward: 36000, legendary: null, arms: 10, slots: [0, 1, 2, 5, 6, 7], traffic: 0.8, prestige: 5 },
+  { id: 'landmark.etoile', level: 60, seed: 0x7a11d001, cars: 24, goal: { k: 'complete' }, rule: null, weather: 'clear', darkness: 'day', reward: 40000, legendary: null, arms: 12, traffic: 0.65, prestige: LANDMARK_PRESTIGE },
+  // Rome: seven roads, two of them close together, in rain.
+  { id: 'landmark.venezia', level: 60, seed: 0x7a11d003, cars: 24, goal: { k: 'complete' }, rule: null, weather: 'lightRain', darkness: 'day', reward: 44000, legendary: null, arms: 14, slots: [0, 2, 4, 5, 8, 10, 12], traffic: 0.75, prestige: 6 },
 ];
 
 export const LANDMARK_IDS: LandmarkId[] = LANDMARKS.map((t) => t.id as LandmarkId);
@@ -334,7 +342,7 @@ export function trialConfig(t: Trial, base: Config, owned: Partial<Record<Upgrad
   if (t.arms) {
     // Evenly spaced around the ring: as many slots as arms, each one built.
     base = { ...cloneConfig(base), armSlotCount: t.arms, armSlotSpacing: 1 };
-    career.armSlots = Array.from({ length: t.arms }, (_, i) => i);
+    career.armSlots = t.slots ?? Array.from({ length: t.arms }, (_, i) => i);
   }
   const shift = Careers.config(career, base, t.seed, t.weather, null, null);
   const c = cloneConfig(forNight(shift, t.darkness));

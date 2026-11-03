@@ -36,6 +36,8 @@ export type VehicleType =
   | 'bus'
   /** An oversize load: long, heavy and slow; keeping your distance pays (core/oversize.ts). */
   | 'oversize'
+  /** A tractor: slow, small, rare; shares the oversize load's rules with its own values (core/oversize.ts). */
+  | 'tractor'
   /** A street racer: barges in; a police car that rams it stops it, for a bonus (core/racers.ts). */
   | 'racer'
   /** A wedding car: three of them drive as a convoy at ring speed; keep your cars out of it (core/wedding.ts). */
@@ -51,6 +53,8 @@ export type VehicleRole = 'boss' | 'escort' | null;
 export const isCarType = (t: VehicleType): boolean => t === 'car' || t === 'sportsCar' || t === 'compact' || t === 'van' || t === 'classic';
 /** A lorry of any kind: long and heavy, worth more flames in Mayhem. */
 export const isHeavy = (t: VehicleType): boolean => t === 'truck' || t === 'tanker' || t === 'military' || t === 'bus' || t === 'fireTruck' || t === 'oversize';
+/** The slow loads of core/oversize.ts: a band around them is to be kept clear. */
+export const isLoad = (t: VehicleType): boolean => t === 'oversize' || t === 'tractor';
 /** On an emergency run: the road ahead of it has to stay clear. */
 export const isEmergency = (t: VehicleType): boolean => t === 'ambulance' || t === 'fireTruck';
 /** Goes up when it is wrecked. */
@@ -227,7 +231,7 @@ export class Vehicle {
   /** Plain AI traffic: the bots whose gaps the player's cars have to hit. */
   get isBot(): boolean {
     const t = this.type;
-    return this.owner === 'ai' && t !== 'pickup' && t !== 'transporter' && t !== 'military' && !isEmergency(t) && t !== 'learner' && t !== 'oversize' && t !== 'racer' && t !== 'drift';
+    return this.owner === 'ai' && t !== 'pickup' && t !== 'transporter' && t !== 'military' && !isEmergency(t) && t !== 'learner' && !isLoad(t) && t !== 'racer' && t !== 'drift';
   }
 
   get isPlayerPolice(): boolean {

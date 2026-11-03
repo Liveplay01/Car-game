@@ -158,7 +158,7 @@ export type GameEvent =
   | { type: 'rushHour'; time: number }
   /**
    * Unlimited moved on (`endlessStages`): 1 gas tankers, 2 night, 3 storm, 4 military trucks,
-   * 5 and up Overtime (`overtime` counts them).
+   * 5 oversize load, 6 street racers, 7 wedding convoy, 8 and up Overtime (`overtime` counts them).
    */
   | { type: 'unlimitedStage'; stage: number; overtime: number; time: number }
   | { type: 'shiftEnded'; result: ShiftResult }
@@ -192,7 +192,7 @@ export type GameEvent =
   /** The ambulance left the ring with its road kept clear. */
   | { type: 'ambulanceCleared'; vehicle: number; amount: number; point: Vec2; time: number }
   | { type: 'ambulanceLost'; vehicle: number; point: Vec2; time: number }
-  | { type: 'oversizeWarning'; arm: Arm; time: number }
+  | { type: 'oversizeWarning'; arm: Arm; time: number; tractor: boolean }
   | { type: 'oversizeEntered'; vehicle: number }
   /** A car of yours joined right beside the oversize load: its bonus is gone. */
   | { type: 'oversizeSpoilt'; vehicle: number; blocker: number; point: Vec2; time: number }

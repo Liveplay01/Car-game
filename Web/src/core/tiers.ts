@@ -8,6 +8,9 @@ export const UNLIMITED_TIERS = [
   { id: 'platinum', cars: 200 },
   { id: 'diamond', cars: 350 },
   { id: 'master', cars: 500 },
+  { id: 'champion', cars: 750 },
+  { id: 'legend', cars: 1000 },
+  { id: 'titan', cars: 1500 },
 ] as const;
 
 export type TierId = (typeof UNLIMITED_TIERS)[number]['id'];

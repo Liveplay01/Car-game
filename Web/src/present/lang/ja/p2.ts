@@ -1,7 +1,7 @@
 import type { Strings } from '../../strings';
 import type { Words } from '../../i18n';
 import { INVITE_LEVEL } from '../../../core/config';
-import { rematchKind, ascensionRank, levelTrialLevel, levelKind, LANDMARK_PRESTIGE, type TrialId } from '../../../core/trials';
+import { rematchKind, ascensionRank, levelTrialLevel, levelKind, type TrialId } from '../../../core/trials';
 import { Fmt, money } from '../../format';
 
 /** 日本語 パート2: トライアル、ボス、レジェンダリー、ウィークリーシフト、プレステージ、エリート。 */
@@ -31,6 +31,8 @@ export default (S: Strings): Words<Strings> => ({
     name(id) {
       const boss = rematchKind(id);
       if (boss) return S.boss.rematch(boss);
+      if (id === 'landmark.magic') return 'マジック・ラウンドアバウト';
+      if (id === 'landmark.venezia') return 'ヴェネツィア広場';
       if (id === 'landmark.etoile') return 'エトワール凱旋門';
       if (id === 'weekly') return S.weekly.title;
       if (id.startsWith('tour.')) return S.tours.stopName(id);
@@ -130,7 +132,7 @@ export default (S: Strings): Words<Strings> => ({
     opens: (t) => {
       const rank = ascensionRank(t.id);
       if (rank !== null) return `プレステージ★${rank}で解放`;
-      return t.arms ? `プレステージ★${LANDMARK_PRESTIGE}で解放` : S.trials.opensAt(t.level);
+      return t.prestige ? `プレステージ★${t.prestige}で解放` : S.trials.opensAt(t.level);
     },
     howTo(t) {
       if (t.goal.k === 'perfects') {
@@ -165,6 +167,10 @@ export default (S: Strings): Words<Strings> => ({
         decoy: 'おとり',
         smuggler: '密輸業者',
         kingpin: 'キングピン',
+        trio: 'トリオ',
+        bulwark: 'ブルワーク',
+        mirage: 'ミラージュ',
+        wall: 'ウォール',
       })[k],
     rematch: (k) => `リベンジ · ${S.boss.name(k)}`,
     beaten: '確保',

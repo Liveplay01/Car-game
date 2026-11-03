@@ -238,6 +238,8 @@ export const CarArt = {
         return 'vehicleMotorbike';
       case 'oversize':
         return 'vehicleOversize';
+      case 'tractor':
+        return 'vehicleTractor';
       case 'racer':
         return 'vehicleRacer';
       case 'wedding':
@@ -272,6 +274,7 @@ export const CarArt = {
       case 'drift':
         return [...common, 'rearWindow'];
       case 'oversize':
+      case 'tractor':
         return ['cargo', ...common];
       case 'motorbike':
         return ['frontLeftWheel', 'rearLeftWheel', 'windscreen'];
@@ -316,6 +319,8 @@ export const CarArt = {
         return c.motorbikeLength;
       case 'oversize':
         return c.oversizeLength;
+      case 'tractor':
+        return c.tractorLength;
       case 'racer':
         return c.racerLength;
       case 'drift':
@@ -687,6 +692,11 @@ export const CarArt = {
         for (const y of [-W * 0.32, 0, W * 0.32]) list.w(rect(worldOf(v(x, y), pose), v(2.6, 1.6), 0.2, pose.heading), 'vehicleTire', opacity);
       }
     }
+    if (type === 'tractor' && dents.length === 0) {
+      // Fat rear tyres on both sides and a dark exhaust over the bonnet: a tractor from above.
+      for (const y of [-1, 1]) list.w(rect(worldOf(v(-L * 0.22, y * (W / 2 + 0.4)), pose), v(L * 0.3, 2.8), 0.8, pose.heading), 'vehicleTire', opacity);
+      list.w(circle(worldOf(v(L * 0.3, W * 0.2), pose), 0.9), 'vehicleTire', opacity);
+    }
     if (type === 'racer' && dents.length === 0) {
       // Two white racing stripes nose to tail.
       for (const y of [-W * 0.14, W * 0.14]) list.w(line(worldOf(v(L / 2 - 1, y), pose), worldOf(v(-L / 2 + 1, y), pose), 1.2), 'primary', opacity * 0.85);
@@ -788,7 +798,21 @@ export const CarArt = {
         // A chevron on the bonnet, one side the mirror of the other.
         for (const y of [-1, 1]) list.w(line(at(L / 2 - 2, y * (W / 2 - 1.6)), at(L / 2 - 5.5, 0), 1), 'coin', opacity);
         break;
-      case 'decoy': {
+      case 'trio':
+        // Three bars across the bonnet.
+        for (const y of [-1, 0, 1]) list.w(line(at(L / 2 - 2, y * W * 0.22), at(L / 2 - 5, y * W * 0.22), 0.9), 'coin', opacity);
+        break;
+      case 'bulwark':
+        // A steel plate over the whole front, bolted.
+        list.w(rect(at(L / 2 - 3, 0), v(5, W - 1.6), 1.2, pose.heading), 'vehicleTire', opacity);
+        for (const y of [-1, 1]) list.w(circle(at(L / 2 - 3, y * (W / 2 - 2)), 0.5), 'coin', opacity);
+        break;
+      case 'wall':
+        // A broad gold bar across the tail.
+        list.w(line(at(-L / 2 + 1.2, -W / 2 + 1), at(-L / 2 + 1.2, W / 2 - 1), 1.4), 'coin', opacity);
+        break;
+      case 'decoy':
+      case 'mirage': {
         // A gold ring on the back: on the boss and on every escort, so the ring tells nobody which.
         const ring = at(-L * 0.22, 0);
         list.w(circle(ring, 2.8), 'coin', opacity);

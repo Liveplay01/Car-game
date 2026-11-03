@@ -77,6 +77,7 @@ export const PATCH_NOTES: PatchNote[] = [
       'The Mirage (Level 60 on ★2): the Decoy in a blackout. Escorts wear the boss paint; the boss is the pick-up with the ring.',
       'The Wall (Level 75 on ★2): four armoured escorts bumper to bumper behind the boss. Wait for a gap in the line.',
       'Each new boss has a Museum page, a rematch and a place in Boss Rush. The title Syndicate’s End now asks for all twelve.',
+      'Two new Landmarks for the Prestige ranks: the Magic Roundabout in Swindon (★5) and Piazza Venezia in Rome (★6). Each has its own road layout.',
     ],
   },
   {

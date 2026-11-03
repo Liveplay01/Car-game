@@ -847,7 +847,7 @@ export const ProgressPage = {
   },
 
   /** Landmarks show from the Prestige rank that opens them, or once one was passed. */
-  showsLandmarks: (career: Career): boolean => career.prestige >= LANDMARK_PRESTIGE || LANDMARKS.some((x) => career.trialsDone.includes(x.id)),
+  showsLandmarks: (career: Career): boolean => career.prestige >= Math.min(...LANDMARKS.map((x) => x.prestige ?? LANDMARK_PRESTIGE)) || LANDMARKS.some((x) => career.trialsDone.includes(x.id)),
 
   /** Boss Rush: tap to run all eight bosses in a row; a clear pays once, the best time stays. */
   addRush(list: RenderList, r: Rect, career: Career, full: number): void {

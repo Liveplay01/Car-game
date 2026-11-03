@@ -186,6 +186,7 @@ function readCareer(raw: unknown): Career {
     tailwind: raw.tailwind === true,
     tailwindDay: int(raw.tailwindDay, -1),
     heatCleared: int(raw.heatCleared, 0, 0),
+    unlimitedCars: int(raw.unlimitedCars, 0, 0),
     challengeDay: int(raw.challengeDay, -1),
     challengesDone: strings(raw.challengesDone),
     dailyPlayed,

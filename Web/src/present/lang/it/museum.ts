@@ -70,6 +70,38 @@ const museum: Translation['museum'] = {
         'Individua la sagoma nell\'ombra: il boss è il pickup con l\'anello. Due volanti nello spazio posteriore lo abbatteranno.',
       ],
     },
+    trio: {
+      line: 'Tre di fila',
+      brief: 'Tre boss: ogni cattura chiama il successivo. Tieni pronte le volanti.',
+      explain: (c) => [
+        'Il Trio porta a termine gli ultimi colpi del sindacato. Arrivano tre pickup uno dopo l\'altro, senza scorta: appena ne prendi uno, il prossimo è già a un altro braccio.',
+        `Circa ${Math.round(c.criminalTime * c.trioTimeFactor)} secondi a testa. Il bottino torna solo quando li hai presi tutti e tre.`,
+      ],
+    },
+    bulwark: {
+      line: 'Servono quattro volanti',
+      brief: 'Corazza per tre speronamenti e una scorta. Metti in fila quattro volanti.',
+      explain: (c) => [
+        'Il Baluardo è una lastra corazzata su ruote: le prime tre volanti la incrinano soltanto, la quarta lo ferma. Una scorta gli resta incollata alla coda.',
+        `Resta per circa ${Math.round(c.criminalTime * c.bulwarkTimeFactor)} secondi, sufficienti per quattro tentativi se la tua coda conserva le volanti.`,
+      ],
+    },
+    mirage: {
+      line: 'L\'esca, al buio',
+      brief: 'Scorte camuffate, in un blackout: sperona il pickup con l\'anello.',
+      explain: () => [
+        'Il Miraggio è l\'Esca a luci spente: un blackout e scorte verniciate come il boss.',
+        'Il boss è il pickup con il cassone aperto e l\'anello. Un furgone con la stessa vernice è solo un furgone: speronarlo è un normale incidente.',
+      ],
+    },
+    wall: {
+      line: 'Quattro scorte, un varco',
+      brief: 'Quattro scorte si stringono dietro di lui. Aspetta il varco, poi sperona.',
+      explain: (c) => [
+        'Il Muro manda quattro furgoni blindati subito dietro il boss, uno dopo l\'altro, paraurti contro paraurti.',
+        `Resta per circa ${Math.round(c.criminalTime * c.wallTimeFactor)} secondi. I furgoni lasciano dei varchi mentre l\'anello gira: infila la volante in uno.`,
+      ],
+    },
   },
 
   special: {
@@ -181,6 +213,15 @@ const museum: Translation['museum'] = {
         `Una fascia ambra segnala lo spazio necessario davanti e dietro. Lascialo passare e pagherà ${money(Fmt.number(c.oversizePay))} all'uscita.`,
       ],
     },
+    tractor: {
+      name: 'Trattore',
+      line: 'Lento, largo, dagli spazio',
+      brief: 'Un trattore lento: tieni le tue auto fuori dalla fascia ambra intorno a lui.',
+      explain: (c) => [
+        'Un trattore fa un giro dell\'anello, più lento di qualsiasi altro mezzo. Il traffico dietro di lui rallenta con lui.',
+        `Una fascia ambra mostra lo spazio che serve, davanti e dietro. Tieni le tue auto fuori e, quando se ne va, paga ${money(Fmt.number(c.tractorPay))} e allunga la tua catena.`,
+      ],
+    },
     racer: {
       name: 'Pilota clandestino',
       line: 'Arrivano in coppia: speronali',
@@ -282,6 +323,22 @@ const museum: Translation['museum'] = {
       explain: (c) => [
         `Tempesta di sabbia: la polvere avvolge la rotonda, gli impatti si notano tardi e la sabbia lascia solo il ${gripIn('sandstorm', c)} di grip.`,
         `Fai attenzione al traffico che emerge dalla nube verso il tuo braccio. Paga un bonus del ${percent(c.sandstormPayFactor - 1)}.`,
+      ],
+    },
+    blackIce: {
+      line: 'Vetro sotto le gomme',
+      brief: 'Ghiaccio nero: quasi nessuna aderenza, quasi nessuna frenata. Lascia grandi distanze.',
+      explain: (c) => [
+        `Ghiaccio nero: le gomme mantengono solo ${gripIn('blackIce', c)} dell\'aderenza, i conducenti frenano solo al ${percent(c.blackIceBrake)} e uno schianto scivola molto lontano.`,
+        `Lascia molto più spazio che con la neve e immettiti presto. Un turno con ghiaccio nero paga il ${percent(c.blackIcePayFactor - 1)} in più.`,
+      ],
+    },
+    ashfall: {
+      line: 'Nuvola grigia sull\'anello',
+      brief: 'Cenere: l\'altro lato si perde nel grigio. Guarda cosa ne esce.',
+      explain: (c) => [
+        `La cenere copre l\'anello: l\'altro lato svanisce, i conducenti vedono uno schianto tardi, la strada mantiene ${gripIn('ashfall', c)} dell\'aderenza e c\'è un po\' più di traffico.`,
+        `Guarda il traffico che esce dalla nuvola verso il tuo braccio; gli avvisi brillano comunque. Un turno con cenere paga il ${percent(c.ashfallPayFactor - 1)} in più.`,
       ],
     },
   },

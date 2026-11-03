@@ -1,7 +1,7 @@
 import type { Strings } from '../../strings';
 import type { Words } from '../../i18n';
 import { INVITE_LEVEL } from '../../../core/config';
-import { rematchKind, ascensionRank, levelTrialLevel, levelKind, LANDMARK_PRESTIGE, type TrialId } from '../../../core/trials';
+import { rematchKind, ascensionRank, levelTrialLevel, levelKind, type TrialId } from '../../../core/trials';
 import { Fmt, money } from '../../format';
 
 /** 한국어 파트 2: 트라이얼, 보스, 레전더리, 주간 시프트, 프레스티지, 엘리트. */
@@ -31,6 +31,8 @@ export default (S: Strings): Words<Strings> => ({
     name(id) {
       const boss = rematchKind(id);
       if (boss) return S.boss.rematch(boss);
+      if (id === 'landmark.magic') return '매직 로터리';
+      if (id === 'landmark.venezia') return '베네치아 광장';
       if (id === 'landmark.etoile') return '에투알 개선문';
       if (id === 'weekly') return S.weekly.title;
       if (id.startsWith('tour.')) return S.tours.stopName(id);
@@ -130,7 +132,7 @@ export default (S: Strings): Words<Strings> => ({
     opens: (t) => {
       const rank = ascensionRank(t.id);
       if (rank !== null) return `프레스티지 ★${rank}에서 열려요`;
-      return t.arms ? `프레스티지 ★${LANDMARK_PRESTIGE}에서 열려요` : S.trials.opensAt(t.level);
+      return t.prestige ? `프레스티지 ★${t.prestige}에서 열려요` : S.trials.opensAt(t.level);
     },
     howTo(t) {
       if (t.goal.k === 'perfects') {
@@ -165,6 +167,10 @@ export default (S: Strings): Words<Strings> => ({
         decoy: '미끼',
         smuggler: '밀수꾼',
         kingpin: '킹핀',
+        trio: '트리오',
+        bulwark: '불워크',
+        mirage: '미라지',
+        wall: '월',
       })[k],
     rematch: (k) => `리벤지 · ${S.boss.name(k)}`,
     beaten: '체포',

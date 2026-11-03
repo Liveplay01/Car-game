@@ -39,6 +39,12 @@ export default (S: Strings): Words<Strings> => ({
         crewChampion: '크루 챔피언',
         collector: '수집가',
         completionist: '완벽주의자',
+        champion: '챔피언',
+        legend: '레전드',
+        titan: '타이탄',
+        blazing: '블레이징',
+        wildfire: '들불',
+        sunborn: '선본',
         ascended: '승천한 자',
         eternal: '영원',
         grandmaster: '그랜드마스터',
@@ -72,6 +78,8 @@ export default (S: Strings): Words<Strings> => ({
           return `프레스티지 ★${r.rank} 도달`;
         case 'heat':
           return S.heat.rule(r.level);
+        case 'cars':
+          return `언리미티드 한 번의 주행에서 차 ${r.cars}대를 보내세요`;
         case 'fund':
           return `게임 펀드에 ${money(Fmt.number(r.amount))} 기부`;
         case 'item':
@@ -148,8 +156,8 @@ export default (S: Strings): Words<Strings> => ({
     stage: (stage, overtime) =>
       overtime > 0
         ? `초과 근무 ${overtime} · 교통량이 늘고 조금 빨라져요`
-        : (['', '가스 탱커가 섞여 들어와요', '밤이 찾아와요', '폭풍이 다가와요', '군용 트럭이 도로에'][stage] ?? ''),
-    tier: (id) => ({ bronze: '브론즈', silver: '실버', gold: '골드', platinum: '플래티넘', diamond: '다이아몬드', master: '마스터' })[id],
+        : (['', '가스 탱커가 섞여 들어와요', '밤이 찾아와요', '폭풍이 다가와요', '군용 트럭이 도로에', '특대 화물이 도로에', '스트리트 레이서 등장', '웨딩 행렬이 도착'][stage] ?? ''),
+    tier: (id) => ({ bronze: '브론즈', silver: '실버', gold: '골드', platinum: '플래티넘', diamond: '다이아몬드', master: '마스터', champion: '챔피언', legend: '레전드', titan: '타이탄' })[id],
     mark: (cars, reward) =>
       reward.tier ? `${cars}대 · ${S.modes.tier(reward.tier).toUpperCase()}` : reward.skin ? `${cars}대 · ${S.shop.item(reward.skin).toUpperCase()}` : `${cars}대`,
     tierUp: (id) => `새 등급 · 언리미티드 ${S.modes.tier(id).toUpperCase()}`,

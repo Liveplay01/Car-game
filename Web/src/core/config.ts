@@ -19,9 +19,9 @@ const r = (lo: number, hi: number): Range => ({ lo, hi });
  * sandstorms (Leo, 02.10.2026) for the late levels: hail makes the drivers brake badly, a
  * sandstorm takes the view and some grip.
  */
-export type Weather = 'clear' | 'lightRain' | 'heavyRain' | 'storm' | 'extreme' | 'fog' | 'snow' | 'hail' | 'sandstorm';
-export const WEATHERS: Weather[] = ['clear', 'lightRain', 'heavyRain', 'storm', 'extreme', 'fog', 'snow', 'hail', 'sandstorm'];
-const RAIN: Record<Weather, number> = { clear: 0, lightRain: 1, heavyRain: 2, storm: 3, extreme: 4, fog: 0, snow: 0, hail: 0, sandstorm: 0 };
+export type Weather = 'clear' | 'lightRain' | 'heavyRain' | 'storm' | 'extreme' | 'fog' | 'snow' | 'hail' | 'sandstorm' | 'blackIce' | 'ashfall';
+export const WEATHERS: Weather[] = ['clear', 'lightRain', 'heavyRain', 'storm', 'extreme', 'fog', 'snow', 'hail', 'sandstorm', 'blackIce', 'ashfall'];
+const RAIN: Record<Weather, number> = { clear: 0, lightRain: 1, heavyRain: 2, storm: 3, extreme: 4, fog: 0, snow: 0, hail: 0, sandstorm: 0, blackIce: 0, ashfall: 0 };
 /** How hard it rains: 0 (clear, fog, snow) to 4 (extreme). */
 export const weatherSeverity = (w: Weather): number => RAIN[w];
 
@@ -56,10 +56,19 @@ export type TrialRule = 'flawless';
  * - twins: two bosses, one right after the other; both have to be caught.
  * - decoy: its escorts wear the boss's paint; only the real one has the open bed and the ring.
  * - smuggler: armoured twice over: three police cars, no escorts, more time.
- * - kingpin: the finale: a blackout, armour, and three escorts in its paint.
+ * - kingpin: a blackout, armour, and three escorts in its paint.
+ * Four more close the first round of twelve:
+ * - trio: three bosses, one right after the other; all three have to be caught.
+ * - bulwark: armour that takes three rams, and an escort.
+ * - mirage: the decoy's paint on every escort, in a blackout.
+ * - wall: four escorts in a row behind it; the gap is the whole puzzle.
  */
-export type BossKind = 'convoy' | 'getaway' | 'armoured' | 'phantom' | 'twins' | 'decoy' | 'smuggler' | 'kingpin';
-export const BOSS_KINDS: BossKind[] = ['convoy', 'getaway', 'armoured', 'phantom', 'twins', 'decoy', 'smuggler', 'kingpin'];
+export type BossKind =
+  | 'convoy' | 'getaway' | 'armoured' | 'phantom' | 'twins' | 'decoy' | 'smuggler' | 'kingpin'
+  | 'trio' | 'bulwark' | 'mirage' | 'wall';
+export const BOSS_KINDS: BossKind[] = [
+  'convoy', 'getaway', 'armoured', 'phantom', 'twins', 'decoy', 'smuggler', 'kingpin', 'trio', 'bulwark', 'mirage', 'wall',
+];
 /** The first four, the syndicate as it was until 02.10.2026 (the title Syndicate Breaker, the rematch levels). */
 export const FIRST_BOSSES: BossKind[] = ['convoy', 'getaway', 'armoured', 'phantom'];
 
@@ -401,11 +410,12 @@ export const baseConfig = {
   /**
    * Unlimited after its ramps (Leo, 02.10.2026): the density and the tempo stop rising after a
    * few minutes, so the run moves on in stages, announced, at these seconds of the run: gas
-   * tankers join the lorries, night falls, a storm rolls in, military trucks come. After the last
+   * tankers join the lorries, night falls, a storm rolls in, military trucks come; from 10 minutes
+   * an oversize load, street racers and a wedding convoy follow (Leo, 03.11.2026). After the last
    * one, every `endlessOvertimeEvery` seconds is Overtime: one more car of density and a little
    * more tempo, up to the limits below.
    */
-  endlessStages: [240, 330, 420, 510] as readonly number[],
+  endlessStages: [240, 330, 420, 510, 600, 690, 780] as readonly number[],
   endlessOvertimeEvery: 90,
   endlessMaxOvertime: 6,
   endlessOvertimeTempo: 0.03,
@@ -552,11 +562,25 @@ export const baseConfig = {
   sandstormGrip: 0.85,
   sandstormReactionDelay: 0.35,
   sandstormPayFactor: 1.2,
+  /** Black ice (Leo, 03.11.2026): the road is glass; nobody grips, nobody stops. It pays well. */
+  blackIceLevel: 80,
+  blackIceGrip: 0.35,
+  blackIceBrake: 0.5,
+  blackIceReactionDelay: 0.25,
+  blackIcePayFactor: 1.3,
+  /** Ashfall: a grey cloud takes the view and some grip, a little more traffic. It pays well. */
+  ashfallLevel: 90,
+  ashfallGrip: 0.8,
+  ashfallReactionDelay: 0.4,
+  ashfallDensity: 1,
+  ashfallPayFactor: 1.3,
   /** How often each kind comes when the sky turns bad (rain eases from 4 down to 1). */
   fogWeight: 3,
   snowWeight: 2,
   hailWeight: 2,
   sandstormWeight: 2,
+  blackIceWeight: 2,
+  ashfallWeight: 2,
 
   // Night: the city goes dark, you merge by the lights (only the picture changes, not the rules)
   night: false,
@@ -617,6 +641,18 @@ export const baseConfig = {
   kingpinEscorts: 3,
   kingpinArmour: 1,
   kingpinTimeFactor: 2.2,
+  /** The trio: three bosses (`bossCount`), no escorts, a short time each. */
+  trioTimeFactor: 0.9,
+  /** The bulwark: rams it shrugs off, one escort, and its time. */
+  bulwarkArmour: 3,
+  bulwarkEscorts: 1,
+  bulwarkTimeFactor: 2.6,
+  /** The mirage: the decoy in a blackout. */
+  mirageEscorts: 2,
+  mirageTimeFactor: 1.8,
+  /** The wall: escorts in a row, past the usual cap. */
+  wallEscorts: 4,
+  wallTimeFactor: 2.4,
   /** This boss's escorts wear its paint (`forLevel` sets it). */
   bossDisguise: false,
   /** From the second round of bosses on: one more escort per round, at most `maxBossEscorts`… */
@@ -784,6 +820,17 @@ export const baseConfig = {
   /** Keep your cars this far away from it, ahead and behind, and it pays when it leaves. */
   oversizeZoneArc: 70,
   oversizePay: 400,
+
+  // Tractor (core/oversize.ts): from Prestige rank 5 some oversize slots are a tractor instead,
+  // smaller and slower, with a narrower band to keep clear
+  tractorPrestige: 5,
+  /** Share of the oversize slots it takes once rank 5 is reached: rare. */
+  tractorShare: 0.4,
+  tractorLength: 30,
+  tractorMass: 2.2,
+  tractorSpeed: 0.5,
+  tractorZoneArc: 48,
+  tractorPay: 300,
 
   // Street racers (Leo, 02.10.2026, core/racers.ts): two of them barge in; a police car stops each
   racerLevel: 90,
@@ -1008,7 +1055,9 @@ export const baseConfig = {
   afterWorkPay: 0.2,
   /** Heat (core/heat.ts): the shift's Heat (set per shift, 0 = off), the highest one, and what each step adds. */
   heat: 0,
-  maxHeat: 8,
+  maxHeat: 30,
+  /** The Heat from which traffic stops getting harder (Heat 10, 20 and 30 are marks with a title; pay and Elite XP keep rising). */
+  heatHardest: 8,
   /** Days of Daily streak for each Heat step (the streak is the only way to open Heat; a lost streak closes it). */
   heatStreakDays: 7,
   heatTempo: 0.06,

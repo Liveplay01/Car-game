@@ -438,7 +438,7 @@ export default (S: Strings): Words<Strings> => ({
   night: '夜',
   blackout: 'ブラックアウト',
   weather: (w) =>
-    ({ clear: '晴れ', lightRain: '小雨', heavyRain: '大雨', storm: '嵐', extreme: '異常気象', fog: '霧', snow: '雪と氷', hail: 'ひょう', sandstorm: '砂嵐' })[w],
+    ({ clear: '晴れ', lightRain: '小雨', heavyRain: '大雨', storm: '嵐', extreme: '異常気象', fog: '霧', snow: '雪と氷', hail: 'ひょう', sandstorm: '砂嵐', blackIce: 'ブラックアイス', ashfall: '火山灰' })[w],
   cityEvent: (e) =>
     ({
       roadworks: '道路工事',

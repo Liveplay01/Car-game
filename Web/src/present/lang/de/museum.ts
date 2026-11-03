@@ -67,6 +67,38 @@ const museum: Translation['museum'] = {
         'Lies die Formen im Dunkeln: Der Boss ist der Pick-up mit dem Ring. Zwei Streifenwagen in der Lücke dahinter bringen ihn zu Fall.',
       ],
     },
+    trio: {
+      line: 'Drei hintereinander',
+      brief: 'Drei Bosse: Jede Festnahme ruft den nächsten. Halte Streifenwagen bereit.',
+      explain: (c) => [
+        'Das Trio führt die letzten Jobs des Syndikats aus. Drei Pick-ups kommen nacheinander, ohne Eskorten: Sobald du einen fasst, ist der nächste schon an einem anderen Arm.',
+        `Etwa ${Math.round(c.criminalTime * c.trioTimeFactor)} Sekunden je Boss. Erst wenn alle drei gefasst sind, ist die Beute zurück.`,
+      ],
+    },
+    bulwark: {
+      line: 'Braucht vier Streifenwagen',
+      brief: 'Panzerung für drei Rammstöße und eine Eskorte. Reihe vier Streifenwagen auf.',
+      explain: (c) => [
+        'Das Bollwerk ist Panzerplatte auf Rädern: Die ersten drei Streifenwagen knacken sie nur, der vierte stoppt es. Eine Eskorte klebt an seinem Heck.',
+        `Es bleibt etwa ${Math.round(c.criminalTime * c.bulwarkTimeFactor)} Sekunden, genug für vier Anläufe, wenn deine Schlange die Streifenwagen hält.`,
+      ],
+    },
+    mirage: {
+      line: 'Der Lockvogel im Dunkeln',
+      brief: 'Eskorten in seinem Lack, im Blackout: Ramme den Pick-up mit dem Ring.',
+      explain: () => [
+        'Die Fata Morgana ist der Lockvogel bei ausgeschaltetem Licht: ein Blackout und Eskorten, die wie der Boss lackiert sind.',
+        'Der Boss ist der Pick-up mit offener Ladefläche und Ring. Ein Transporter im selben Lack ist nur ein Transporter, ihn zu rammen ist ein gewöhnlicher Crash.',
+      ],
+    },
+    wall: {
+      line: 'Vier Eskorten, eine Lücke',
+      brief: 'Vier Eskorten schließen hinter ihm auf. Warte auf die Lücke, dann ramme.',
+      explain: (c) => [
+        'Die Mauer schickt vier gepanzerte Transporter direkt hinter dem Boss los, einer nach dem anderen, Stoßstange an Stoßstange.',
+        `Sie bleibt etwa ${Math.round(c.criminalTime * c.wallTimeFactor)} Sekunden. Die Transporter lassen beim Kreisen Lücken: Schiebe den Streifenwagen in eine.`,
+      ],
+    },
   },
 
   special: {
@@ -178,6 +210,15 @@ const museum: Translation['museum'] = {
         `Ein bernsteinfarbenes Band zeigt den Raum, den er braucht, vor und hinter ihm. Halte deine Autos heraus, und er zahlt beim Wegfahren ${money(Fmt.number(c.oversizePay))} und verlängert deine Kette.`,
       ],
     },
+    tractor: {
+      name: 'Traktor',
+      line: 'Langsam, breit, gib ihm Platz',
+      brief: 'Ein langsamer Traktor: Halte deine Autos aus dem bernsteinfarbenen Band um ihn.',
+      explain: (c) => [
+        'Ein Traktor tuckert einmal um den Ring, langsamer als alles andere auf der Straße. Der Verkehr hinter ihm wird mit ihm langsamer.',
+        `Ein bernsteinfarbenes Band zeigt den Raum, den er braucht, vor und hinter ihm. Halte deine Autos heraus, und er zahlt beim Wegfahren ${money(Fmt.number(c.tractorPay))} und verlängert deine Kette.`,
+      ],
+    },
     racer: {
       name: 'Straßenrennfahrer',
       line: 'Zwei davon: Ramme sie',
@@ -279,6 +320,22 @@ const museum: Translation['museum'] = {
       explain: (c) => [
         `Ein Sandsturm: Staub verbirgt die andere Seite des Rings, Fahrer sehen einen Crash spät, und Sand auf der Straße lässt ${gripIn('sandstorm', c)} des Grips übrig.`,
         `Achte auf den Verkehr, der aus dem Staub auf deinen Arm zukommt; die Warnungen scheinen weiter durch. Ein Sandsturm zahlt ${percent(c.sandstormPayFactor - 1)} mehr.`,
+      ],
+    },
+    blackIce: {
+      line: 'Glas unter den Reifen',
+      brief: 'Glatteis: Fast kein Grip, fast keine Bremswirkung. Lass riesige Lücken.',
+      explain: (c) => [
+        `Glatteis: Die Reifen behalten nur ${gripIn('blackIce', c)} ihres Grips, Fahrer bremsen nur ${percent(c.blackIceBrake)} so stark, und ein Crash rutscht sehr weit.`,
+        `Lass weit mehr Platz als bei Schnee und fädle früh ein. Eine Glatteis-Schicht zahlt ${percent(c.blackIcePayFactor - 1)} mehr.`,
+      ],
+    },
+    ashfall: {
+      line: 'Graue Wolke über dem Ring',
+      brief: 'Aschewolke: Die andere Seite verschwindet im Grau. Achte darauf, was daraus auftaucht.',
+      explain: (c) => [
+        `Asche hängt über dem Ring: Die andere Seite verblasst, Fahrer sehen einen Crash spät, die Straße behält ${gripIn('ashfall', c)} ihres Grips, und etwas mehr Verkehr ist unterwegs.`,
+        `Achte auf den Verkehr, der aus der Wolke auf deinen Arm zukommt; die Warnungen scheinen weiter durch. Eine Aschewolken-Schicht zahlt ${percent(c.ashfallPayFactor - 1)} mehr.`,
       ],
     },
   },

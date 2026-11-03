@@ -81,6 +81,14 @@ export const WeatherLayer = {
       list.s(rect(mul(vp, 0.5), vp), 'mapSand', 0.1 * amount);
       return;
     }
+    if (weather === 'blackIce') {
+      list.s(rect(mul(vp, 0.5), vp), 'groundSnow', 0.12 * amount);
+      return;
+    }
+    if (weather === 'ashfall') {
+      list.s(rect(mul(vp, 0.5), vp), 'scrim', 0.18 * amount);
+      return;
+    }
     const severity = weatherSeverity(weather);
     if (severity <= 0) return;
     list.s(rect(mul(vp, 0.5), vp), 'scrim', WeatherLayer.darkness[severity] * amount);
@@ -98,6 +106,8 @@ export const WeatherLayer = {
     if (weather === 'snow') return WeatherLayer.addSnow(list, reduceMotion ? 0 : time, amount);
     if (weather === 'hail') return WeatherLayer.addHail(list, reduceMotion ? 0 : time, amount);
     if (weather === 'sandstorm') return WeatherLayer.addSandstorm(list, world, reduceMotion ? 0 : time, seen, thrifty);
+    if (weather === 'blackIce') return WeatherLayer.addHail(list, reduceMotion ? 0 : time, amount * 0.4);
+    if (weather === 'ashfall') return WeatherLayer.addSandstorm(list, world, reduceMotion ? 0 : time, seen, thrifty);
     const severity = weatherSeverity(weather);
     if (severity <= 0) return;
     const vp = list.camera.viewport;

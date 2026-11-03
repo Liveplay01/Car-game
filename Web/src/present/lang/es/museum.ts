@@ -67,6 +67,38 @@ const museum: Translation['museum'] = {
         'Identifica su silueta en la sombra: el jefe es la camioneta con el anillo. Dos coches patrulla en el espacio posterior lo derribarán.',
       ],
     },
+    trio: {
+      line: 'Tres seguidos',
+      brief: 'Tres jefes: cada captura llama al siguiente. Ten patrullas a mano.',
+      explain: (c) => [
+        'El Trío se encarga de los últimos trabajos del sindicato. Llegan tres camionetas una tras otra, sin escoltas: en cuanto atrapas una, la siguiente ya está en otro acceso.',
+        `Unos ${Math.round(c.criminalTime * c.trioTimeFactor)} segundos cada uno. El botín solo vuelve cuando los tres están capturados.`,
+      ],
+    },
+    bulwark: {
+      line: 'Necesita cuatro patrullas',
+      brief: 'Blindaje para tres choques y una escolta. Alinea cuatro patrullas.',
+      explain: (c) => [
+        'El Baluarte es una plancha blindada con ruedas: las tres primeras patrullas apenas la agrietan, la cuarta lo detiene. Una escolta va pegada a su cola.',
+        `Permanece unos ${Math.round(c.criminalTime * c.bulwarkTimeFactor)} segundos, suficiente para cuatro intentos si tu cola conserva las patrullas.`,
+      ],
+    },
+    mirage: {
+      line: 'El señuelo, a oscuras',
+      brief: 'Escoltas camufladas, en un apagón: embiste a la camioneta con el anillo.',
+      explain: () => [
+        'El Espejismo es el Señuelo con las luces apagadas: un apagón y escoltas pintadas como el jefe.',
+        'El jefe es la camioneta con la caja abierta y el anillo. Una furgoneta con la misma pintura es solo una furgoneta: embestirla es un choque normal.',
+      ],
+    },
+    wall: {
+      line: 'Cuatro escoltas, un hueco',
+      brief: 'Cuatro escoltas cierran filas tras él. Espera el hueco y embiste.',
+      explain: (c) => [
+        'El Muro lanza cuatro furgonetas blindadas justo detrás del jefe, una tras otra, parachoques con parachoques.',
+        `Permanece unos ${Math.round(c.criminalTime * c.wallTimeFactor)} segundos. Las furgonetas dejan huecos mientras el anillo gira: mete la patrulla en uno.`,
+      ],
+    },
   },
 
   special: {
@@ -178,6 +210,15 @@ const museum: Translation['museum'] = {
         `Una franja ámbar indica el margen necesario delante y detrás. Dale espacio y pagará ${money(Fmt.number(c.oversizePay))} al marcharse.`,
       ],
     },
+    tractor: {
+      name: 'Tractor',
+      line: 'Lento, ancho, dale espacio',
+      brief: 'Un tractor lento: mantén tus coches fuera de la banda ámbar a su alrededor.',
+      explain: (c) => [
+        'Un tractor avanza una vuelta al anillo, más lento que cualquier otro vehículo. El tráfico detrás de él se ralentiza con él.',
+        `Una banda ámbar muestra el espacio que necesita, delante y detrás. Mantén tus coches fuera y, al salir, paga ${money(Fmt.number(c.tractorPay))} y alarga tu cadena.`,
+      ],
+    },
     racer: {
       name: 'Piloto callejero',
       line: 'Vienen de dos en dos: embístelos',
@@ -279,6 +320,22 @@ const museum: Translation['museum'] = {
       explain: (c) => [
         `Tormenta de arena: el polvo cubre la rotonda, los choques se perciben tarde y la arena deja solo el ${gripIn('sandstorm', c)} de agarre.`,
         `Vigila el tráfico que emerge del polvo hacia tu ramal. Paga un ${percent(c.sandstormPayFactor - 1)} extra.`,
+      ],
+    },
+    blackIce: {
+      line: 'Cristal bajo los neumáticos',
+      brief: 'Hielo negro: casi sin agarre y casi sin frenada. Deja huecos enormes.',
+      explain: (c) => [
+        `Hielo negro: los neumáticos conservan solo ${gripIn('blackIce', c)} de su agarre, los conductores frenan solo al ${percent(c.blackIceBrake)} y un choque se desliza muy lejos.`,
+        `Deja mucho más espacio que con nieve e incorpórate pronto. Un turno con hielo negro paga un ${percent(c.blackIcePayFactor - 1)} más.`,
+      ],
+    },
+    ashfall: {
+      line: 'Nube gris sobre el anillo',
+      brief: 'Ceniza: el otro lado se pierde en el gris. Vigila lo que sale de ahí.',
+      explain: (c) => [
+        `La ceniza cubre el anillo: el otro lado se desvanece, los conductores ven un choque tarde, la carretera conserva ${gripIn('ashfall', c)} de su agarre y hay algo más de tráfico.`,
+        `Vigila el tráfico que sale de la nube hacia tu brazo; los avisos siguen brillando. Un turno con ceniza paga un ${percent(c.ashfallPayFactor - 1)} más.`,
       ],
     },
   },

@@ -8,7 +8,7 @@ import type { Challenge } from '../core/daily';
 import type { NearMiss } from '../core/goals';
 import type { CasinoGame, SlotSymbol } from '../core/casino';
 import type { VehicleType, VehicleRole } from '../core/vehicle';
-import { type Trial, type TrialId, type RunId, type EliteKind, type LevelKind, rematchKind, ascensionRank, levelTrialLevel, levelKind, LANDMARK_PRESTIGE } from '../core/trials';
+import { type Trial, type TrialId, type RunId, type EliteKind, type LevelKind, rematchKind, ascensionRank, levelTrialLevel, levelKind } from '../core/trials';
 import type { MuseumEntry } from '../core/museum';
 import type { EliteStep, EliteBar, TitleId, TitleRule } from '../core/elite';
 import type { PassReward, PassStep, HallEntry } from '../core/seasonPass';
@@ -417,7 +417,9 @@ export const S = {
     name(id: RunId): string {
       const boss = rematchKind(id);
       if (boss) return S.boss.rematch(boss);
+      if (id === 'landmark.magic') return 'The Magic Roundabout';
       if (id === 'landmark.etoile') return 'The Étoile';
+      if (id === 'landmark.venezia') return 'Piazza Venezia';
       if (id === 'weekly') return S.weekly.title;
       if (id.startsWith('tour.')) return S.tours.stopName(id);
       const rank = ascensionRank(id);
@@ -511,7 +513,7 @@ export const S = {
     opens: (t: Trial): string => {
       const rank = ascensionRank(t.id);
       if (rank !== null) return `Opens at Prestige ★${rank}`;
-      return t.arms ? `Opens at Prestige ★${LANDMARK_PRESTIGE}` : S.trials.opensAt(t.level);
+      return t.prestige ? `Opens at Prestige ★${t.prestige}` : S.trials.opensAt(t.level);
     },
     /**
      * What a counting goal asks for, on the trial's ready screen (Leo, 01.10.2026: nobody knew

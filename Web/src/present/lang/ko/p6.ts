@@ -438,7 +438,7 @@ export default (S: Strings): Words<Strings> => ({
   night: '밤',
   blackout: '블랙아웃',
   weather: (w) =>
-    ({ clear: '맑음', lightRain: '가벼운 비', heavyRain: '폭우', storm: '폭풍', extreme: '극한 날씨', fog: '안개', snow: '눈과 얼음', hail: '우박', sandstorm: '모래 폭풍' })[w],
+    ({ clear: '맑음', lightRain: '가벼운 비', heavyRain: '폭우', storm: '폭풍', extreme: '극한 날씨', fog: '안개', snow: '눈과 얼음', hail: '우박', sandstorm: '모래 폭풍', blackIce: '블랙 아이스', ashfall: '화산재' })[w],
   cityEvent: (e) =>
     ({
       roadworks: '도로 공사',

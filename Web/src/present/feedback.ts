@@ -249,6 +249,7 @@ export const Feedback = {
   stings: {
     convoy: 'stingConvoy', getaway: 'stingGetaway', armoured: 'stingArmoured', phantom: 'stingPhantom',
     twins: 'stingTwins', decoy: 'stingDecoy', smuggler: 'stingSmuggler', kingpin: 'stingKingpin',
+    trio: 'stingTwins', bulwark: 'stingArmoured', mirage: 'stingDecoy', wall: 'stingConvoy',
   } satisfies Record<BossKind, SoundID>,
 
   crashSound(r: CrashReport): SoundID {

@@ -39,6 +39,12 @@ export default (S: Strings): Words<Strings> => ({
         crewChampion: 'クルー王者',
         collector: 'コレクター',
         completionist: 'コンプリート王',
+        champion: 'チャンピオン',
+        legend: 'レジェンド',
+        titan: 'タイタン',
+        blazing: 'ブレイジング',
+        wildfire: 'ワイルドファイア',
+        sunborn: 'サンボーン',
         ascended: '昇天者',
         eternal: '永遠',
         grandmaster: 'グランドマスター',
@@ -72,6 +78,8 @@ export default (S: Strings): Words<Strings> => ({
           return `プレステージ★${r.rank}に到達`;
         case 'heat':
           return S.heat.rule(r.level);
+        case 'cars':
+          return `アンリミテッドの1回の走行で${r.cars}台を送り出す`;
         case 'fund':
           return `ゲームファンドに${money(Fmt.number(r.amount))}を寄付`;
         case 'item':
@@ -148,8 +156,8 @@ export default (S: Strings): Words<Strings> => ({
     stage: (stage, overtime) =>
       overtime > 0
         ? `残業 ${overtime} · 交通量が増え、少し速くなる`
-        : (['', 'ガスタンカーが紛れ込む', '夜が訪れる', '嵐が近づく', '軍用トラックが道路に'][stage] ?? ''),
-    tier: (id) => ({ bronze: 'ブロンズ', silver: 'シルバー', gold: 'ゴールド', platinum: 'プラチナ', diamond: 'ダイヤモンド', master: 'マスター' })[id],
+        : (['', 'ガスタンカーが紛れ込む', '夜が訪れる', '嵐が近づく', '軍用トラックが道路に', '特大貨物が道路に', 'ストリートレーサーが台頭', '結婚式の車列が到着'][stage] ?? ''),
+    tier: (id) => ({ bronze: 'ブロンズ', silver: 'シルバー', gold: 'ゴールド', platinum: 'プラチナ', diamond: 'ダイヤモンド', master: 'マスター', champion: 'チャンピオン', legend: 'レジェンド', titan: 'タイタン' })[id],
     mark: (cars, reward) =>
       reward.tier ? `${cars}台 · ${S.modes.tier(reward.tier).toUpperCase()}` : reward.skin ? `${cars}台 · ${S.shop.item(reward.skin).toUpperCase()}` : `${cars}台`,
     tierUp: (id) => `新ランク · アンリミテッドで${S.modes.tier(id).toUpperCase()}`,

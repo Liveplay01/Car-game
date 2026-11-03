@@ -67,6 +67,38 @@ const museum: Translation['museum'] = {
         '在黑暗里读形状：首领是带光环的皮卡。把两辆警车送进它后面的空隙，就能放倒他。',
       ],
     },
+    trio: {
+      line: '三个接连出现',
+      brief: '三个首领：抓住一个，下一个马上来。随时备好警车。',
+      explain: (c) => [
+        '三人组负责组织的最后几单。三辆没有护卫的皮卡接连出现：你一抓住一辆，下一辆已经在另一个入口了。',
+        `每个约 ${Math.round(c.criminalTime * c.trioTimeFactor)} 秒。三个都抓住，赃款才会追回。`,
+      ],
+    },
+    bulwark: {
+      line: '需要四辆警车',
+      brief: '装甲能扛三次撞击，还有一名护卫。把四辆警车排好。',
+      explain: (c) => [
+        '堡垒是带轮子的装甲板：前三辆警车只能撞出裂痕，第四辆才能拦下它。一名护卫紧贴在它后面。',
+        `它大约停留 ${Math.round(c.criminalTime * c.bulwarkTimeFactor)} 秒，只要你的队列里还有警车，足够冲四次。`,
+      ],
+    },
+    mirage: {
+      line: '黑暗里的诱饵',
+      brief: '护卫涂装和他一样，在停电时：撞那辆带光环的皮卡。',
+      explain: () => [
+        '海市蜃楼是关了灯的诱饵：全城停电，护卫的涂装和首领一模一样。',
+        '首领是货箱敞开、带光环的皮卡。涂装相同的厢式车只是厢式车，撞上去就是普通事故。',
+      ],
+    },
+    wall: {
+      line: '四名护卫，一个空隙',
+      brief: '四名护卫在他身后排成一列。等空隙出现，再撞上去。',
+      explain: (c) => [
+        '城墙会在首领身后一辆接一辆放出四辆装甲厢式车，保险杠挨着保险杠。',
+        `它大约停留 ${Math.round(c.criminalTime * c.wallTimeFactor)} 秒。环岛转动时车与车之间会出现空隙：把警车送进去。`,
+      ],
+    },
   },
 
   special: {
@@ -178,6 +210,15 @@ const museum: Translation['museum'] = {
         `一条琥珀色色带显示它前后需要的空间。别让你的车进去，它驶离时会付 ${money(Fmt.number(c.oversizePay))} 并延长你的连锁。`,
       ],
     },
+    tractor: {
+      name: '拖拉机',
+      line: '慢而宽，给它让路',
+      brief: '一辆缓慢的拖拉机：别让你的车进入它周围的琥珀色区域。',
+      explain: (c) => [
+        '拖拉机绕环岛行驶一圈，比路上任何车都慢，后面的车流也跟着变慢。',
+        `琥珀色区域显示它前后需要的空间。让你的车待在区域外，它离开时会支付${money(Fmt.number(c.tractorPay))}并延长你的连击。`,
+      ],
+    },
     racer: {
       name: '街头飙车族',
       line: '两个：撞他们',
@@ -279,6 +320,22 @@ const museum: Translation['museum'] = {
       explain: (c) => [
         `沙尘暴：尘土遮住环岛对面，司机很晚才看到撞车，路上的沙子让抓地力只剩 ${gripIn('sandstorm', c)}。`,
         `留意从尘土里朝你的岔路驶来的车流；警告会透过尘土显示出来。沙尘暴班次报酬多 ${percent(c.sandstormPayFactor - 1)}。`,
+      ],
+    },
+    blackIce: {
+      line: '轮胎下是玻璃',
+      brief: '黑冰：几乎没有抓地力，几乎无法刹车。请留出很大的间距。',
+      explain: (c) => [
+        `黑冰：轮胎只保留${gripIn('blackIce', c)}的抓地力，司机只能用${percent(c.blackIceBrake)}的力度刹车，撞车后会滑得很远。`,
+        `比下雪时留出更多空间，并尽早汇入。黑冰班次多支付${percent(c.blackIcePayFactor - 1)}。`,
+      ],
+    },
+    ashfall: {
+      line: '环岛上空的灰云',
+      brief: '火山灰：对面消失在灰色中。留意从中驶出的车。',
+      explain: (c) => [
+        `灰烬笼罩环岛：对面逐渐模糊，司机很晚才发现撞车，路面只保留${gripIn('ashfall', c)}的抓地力，车流也略多。`,
+        `留意从灰云中朝你的路口驶来的车；警告灯依然透出。火山灰班次多支付${percent(c.ashfallPayFactor - 1)}。`,
       ],
     },
   },

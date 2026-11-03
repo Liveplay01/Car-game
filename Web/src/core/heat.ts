@@ -9,15 +9,16 @@ export function forHeat(base: Config, heat: number): Config {
   if (heat <= 0) return base;
   const c = cloneConfig(base);
   c.heat = heat;
-  const faster = base.heatTempo * heat;
+  const hard = Math.min(heat, base.heatHardest);
+  const faster = base.heatTempo * hard;
   c.tempoStart += faster;
   c.tempoEnd += faster;
   c.rushHourTempo += faster;
-  const denser = Math.floor(heat / base.heatDensityEvery);
+  const denser = Math.floor(hard / base.heatDensityEvery);
   c.densityStart += denser;
   c.densityEnd += denser;
-  c.criminalTime = Math.max(base.heatMinCriminalTime, c.criminalTime * (1 - base.heatCriminal * heat));
-  const quicker = Math.max(base.heatMinSpawnFactor, 1 - base.heatSpawn * heat);
+  c.criminalTime = Math.max(base.heatMinCriminalTime, c.criminalTime * (1 - base.heatCriminal * hard));
+  const quicker = Math.max(base.heatMinSpawnFactor, 1 - base.heatSpawn * hard);
   c.aiSpawnDelay = { lo: c.aiSpawnDelay.lo * quicker, hi: c.aiSpawnDelay.hi * quicker };
   return c;
 }

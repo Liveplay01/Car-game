@@ -183,8 +183,8 @@ export const bossPlace = (kind: BossKind, c: Config): { rank: number; level: num
   return { rank, level: c.convoyEvery * (index - bossesBefore(c, rank) + 1) };
 };
 
-/** The bosses that come in a blackout: the phantom, and the kingpin's finale. */
-export const bossInBlackout = (kind: BossKind): boolean => kind === 'phantom' || kind === 'kingpin';
+/** The bosses that come in a blackout: the phantom, the kingpin and the mirage. */
+export const bossInBlackout = (kind: BossKind): boolean => kind === 'phantom' || kind === 'kingpin' || kind === 'mirage';
 
 /** Escorts, time and armour of one boss; later rounds bring more escorts and less time. */
 export function applyBoss(c: Config, base: Config, kind: BossKind, round: number): void {
@@ -230,9 +230,28 @@ export function applyBoss(c: Config, base: Config, kind: BossKind, round: number
       armour = base.kingpinArmour;
       disguise = true;
       break;
+    case 'trio':
+      escorts = 0;
+      time = base.trioTimeFactor;
+      count = 3;
+      break;
+    case 'bulwark':
+      escorts = base.bulwarkEscorts;
+      time = base.bulwarkTimeFactor;
+      armour = base.bulwarkArmour;
+      break;
+    case 'mirage':
+      escorts = base.mirageEscorts;
+      time = base.mirageTimeFactor;
+      disguise = true;
+      break;
+    case 'wall':
+      escorts = base.wallEscorts;
+      time = base.wallTimeFactor;
+      break;
   }
-  // The getaway driver, the twins and the smuggler stay alone: their test is the time or the armour.
-  const alone = kind === 'getaway' || kind === 'twins' || kind === 'smuggler';
+  // The getaway driver, the twins, the trio and the smuggler stay alone: their test is the time or the armour.
+  const alone = kind === 'getaway' || kind === 'twins' || kind === 'smuggler' || kind === 'trio';
   if (round > 0 && !alone) escorts = Math.min(base.maxBossEscorts, escorts + round * base.bossRoundEscorts);
   c.bossKind = kind;
   c.convoyEscorts = escorts;
@@ -465,6 +484,10 @@ export function firstLevelOf(c: Config, w: Weather): number {
       return c.hailLevel;
     case 'sandstorm':
       return c.sandstormLevel;
+    case 'blackIce':
+      return c.blackIceLevel;
+    case 'ashfall':
+      return c.ashfallLevel;
   }
 }
 
@@ -474,6 +497,8 @@ function weatherWeight(c: Config, w: Weather): number {
   if (w === 'snow') return c.snowWeight;
   if (w === 'hail') return c.hailWeight;
   if (w === 'sandstorm') return c.sandstormWeight;
+  if (w === 'blackIce') return c.blackIceWeight;
+  if (w === 'ashfall') return c.ashfallWeight;
   return 5 - weatherSeverity(w);
 }
 
@@ -538,6 +563,23 @@ export function forWeather(base: Config, weather: Weather): Config {
     grip(base.sandstormGrip);
     delay(base.sandstormReactionDelay);
     c.shiftPay = Math.round(base.shiftPay * base.sandstormPayFactor);
+    return c;
+  }
+  if (weather === 'blackIce') {
+    // Clear glass under the tyres: the grip is nearly gone and brakes only scrape.
+    grip(base.blackIceGrip);
+    c.driverBrake *= kept(base.blackIceBrake);
+    delay(base.blackIceReactionDelay);
+    c.shiftPay = Math.round(base.shiftPay * base.blackIcePayFactor);
+    return c;
+  }
+  if (weather === 'ashfall') {
+    // Ash hangs over the ring and lies on the road.
+    grip(base.ashfallGrip);
+    delay(base.ashfallReactionDelay);
+    c.densityStart += base.ashfallDensity;
+    c.densityEnd += base.ashfallDensity;
+    c.shiftPay = Math.round(base.shiftPay * base.ashfallPayFactor);
     return c;
   }
   const severity = weatherSeverity(weather);

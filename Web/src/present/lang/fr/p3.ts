@@ -39,6 +39,12 @@ export default (S: Strings): Words<Strings> => ({
         crewChampion: 'Champion de crew',
         collector: 'Collectionneur',
         completionist: 'Perfectionniste',
+        champion: 'Champion',
+        legend: 'Légende',
+        titan: 'Titan',
+        blazing: 'Ardent',
+        wildfire: 'Brasier',
+        sunborn: 'Né du soleil',
         ascended: 'Ascendant',
         eternal: 'Éternel',
         grandmaster: 'Grand maître',
@@ -72,6 +78,8 @@ export default (S: Strings): Words<Strings> => ({
           return `Atteignez le Prestige ★${r.rank}`;
         case 'heat':
           return S.heat.rule(r.level);
+        case 'cars':
+          return `Envoie ${r.cars} voitures en une partie d’Unlimited`;
         case 'fund':
           return `Donnez ${money(Fmt.number(r.amount))} au Fonds du jeu`;
         case 'item':
@@ -149,8 +157,8 @@ export default (S: Strings): Words<Strings> => ({
     stage: (stage, overtime) =>
       overtime > 0
         ? `HEURES SUPPLÉMENTAIRES ${overtime} · trafic accru, rythme plus rapide`
-        : (['', 'DES CITERNES DE GAZ SE MÊLENT AU FLUX', 'LA NUIT TOMBE', 'UN ORAGE APPROCHE', 'CAMIONS MILITAIRES SUR L’ANNEAU'][stage] ?? ''),
-    tier: (id) => ({ bronze: 'Bronze', silver: 'Argent', gold: 'Or', platinum: 'Platine', diamond: 'Diamant', master: 'Maître' })[id],
+        : (['', 'DES CITERNES DE GAZ SE MÊLENT AU FLUX', 'LA NUIT TOMBE', 'UN ORAGE APPROCHE', 'CAMIONS MILITAIRES SUR L’ANNEAU', 'CONVOIS EXCEPTIONNELS SUR LA ROUTE', 'LES RACERS PRENNENT LA RUE', 'UN CORTÈGE DE MARIAGE ARRIVE'][stage] ?? ''),
+    tier: (id) => ({ bronze: 'Bronze', silver: 'Argent', gold: 'Or', platinum: 'Platine', diamond: 'Diamant', master: 'Maître', champion: 'Champion', legend: 'Légende', titan: 'Titan' })[id],
     mark: (cars, reward) =>
       reward.tier ? `${cars} voitures · ${S.modes.tier(reward.tier).toUpperCase()}` : reward.skin ? `${cars} voitures · ${S.shop.item(reward.skin).toUpperCase()}` : `${cars} voitures`,
     tierUp: (id) => `NOUVEAU RANG · ${S.modes.tier(id).toUpperCase()} en Sans limites`,

@@ -64,6 +64,8 @@ export const COLORS = {
   signGreen: [16, 116, 72, 1],
   /** The oversize load: site amber, so it reads as a heavy transport and nothing else. */
   vehicleOversize: [238, 166, 44, 1],
+  /** The tractor: field green, apart from the amber of the band it shares with the oversize load. */
+  vehicleTractor: [96, 158, 62, 1],
   /** The street racers: hot pink, apart from the criminal's violet and the police's blue. */
   vehicleRacer: [255, 72, 164, 1],
   /** The wedding convoy: blush white with a gold ribbon, soft beside the loud pink of the racers. */

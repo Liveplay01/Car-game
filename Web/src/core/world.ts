@@ -207,6 +207,7 @@ const CARRIED_AS: Partial<Record<VehicleType, VehicleType>> = {
   military: 'truck',
   transporter: 'truck',
   oversize: 'truck',
+  tractor: 'truck',
   fireTruck: 'truck',
   ambulance: 'van',
   pickup: 'van',
@@ -517,6 +518,8 @@ export class World {
         return c.motorbikeLength;
       case 'oversize':
         return c.oversizeLength;
+      case 'tractor':
+        return c.tractorLength;
       case 'racer':
         return c.racerLength;
       case 'drift':
@@ -538,6 +541,8 @@ export class World {
         return c.criminalMass;
       case 'oversize':
         return c.oversizeMass;
+      case 'tractor':
+        return c.tractorMass;
       case 'racer':
         return c.racerMass;
       case 'transporter':
@@ -1945,6 +1950,15 @@ export class World {
           c.militaryPerShift = Infinity;
           c.militaryInterval = c.endlessMilitaryInterval;
           if (this.military.kind === 'idle') this.military = { kind: 'idle', next: now + this.militaryRng.range(c.endlessMilitaryFirst.lo, c.endlessMilitaryFirst.hi) };
+          break;
+        case 5:
+          if (this.oversize.kind === 'done') this.oversize = { kind: 'idle', next: now + this.oversizeRng.range(c.oversizeFirst.lo, c.oversizeFirst.hi) };
+          break;
+        case 6:
+          if (this.race.kind === 'done') this.race = { kind: 'idle', next: now + this.racerRng.range(c.racerFirst.lo, c.racerFirst.hi) };
+          break;
+        case 7:
+          if (this.wedding.kind === 'done') this.wedding = { kind: 'idle', next: now + this.weddingRng.range(c.weddingFirst.lo, c.weddingFirst.hi) };
           break;
         default: {
           const overtime = stage - stages.length;

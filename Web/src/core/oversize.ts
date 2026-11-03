@@ -1,5 +1,5 @@
 import type { Arm } from './roundabout';
-import { Vehicle, type Waiting } from './vehicle';
+import { Vehicle, isLoad, type Waiting } from './vehicle';
 import type { World } from './world';
 import { reaches } from './config';
 import { warningArms } from './traffic';
@@ -11,10 +11,13 @@ import { weddingOn } from './wedding';
  * behind it, so the gaps change; keep your cars off the stretch around it (ahead and behind)
  * while it is on the ring, and it pays a bonus and extends the chain when it leaves. Joining
  * near it costs nothing but that bonus.
+ *
+ * From Prestige rank 5 some of these slots are a tractor: smaller, slower, a narrower band, a
+ * smaller bonus; the same rules (`tractorShare`).
  */
 export type OversizePhase =
   | { kind: 'idle'; next: number }
-  | { kind: 'warning'; arm: Arm; until: number }
+  | { kind: 'warning'; arm: Arm; until: number; tractor: boolean }
   | { kind: 'arriving'; vehicle: number }
   | { kind: 'active'; vehicle: number; spoilt: boolean }
   | { kind: 'done' };
@@ -57,15 +60,17 @@ export function updateOversize(w: World, now: number): void {
       const candidates = warningArms(w);
       if (candidates.length === 0) return;
       const arm = w.oversizeRng.pick(candidates);
-      w.oversize = { kind: 'warning', arm, until: now + c.oversizeWarning };
-      w.events.push({ type: 'oversizeWarning', arm, time: now });
+      // The extra draw only exists from rank 5: older runs keep their stream.
+      const tractor = c.prestige >= c.tractorPrestige && w.oversizeRng.unit() < c.tractorShare;
+      w.oversize = { kind: 'warning', arm, until: now + c.oversizeWarning, tractor };
+      w.events.push({ type: 'oversizeWarning', arm, time: now, tractor });
       return;
     }
     case 'warning': {
       const occupied = w.vehicles.some((x) => x.phase.kind === 'waiting' && x.phase.arm.index === o.arm.index);
       if (now < o.until || occupied) return;
       const waiting: Waiting = { kind: 'waiting', arm: o.arm, reaction: 0.6, approach: c.aiApproachDistance };
-      const veh = new Vehicle(w.makeId(), 'oversize', 'ai', waiting, w.approachPose(waiting));
+      const veh = new Vehicle(w.makeId(), o.tractor ? 'tractor' : 'oversize', 'ai', waiting, w.approachPose(waiting));
       // Too wide for the inner lane: it keeps to the outside.
       veh.lane = 0;
       w.vehicles.push(veh);
@@ -74,7 +79,7 @@ export function updateOversize(w: World, now: number): void {
     }
     case 'arriving': {
       const veh = w.vehicle(o.vehicle);
-      if (!veh || veh.isCrashed || veh.type !== 'oversize') {
+      if (!veh || veh.isCrashed || !isLoad(veh.type)) {
         w.oversize = { kind: 'done' };
         return;
       }
@@ -106,7 +111,7 @@ export function oversizeThrough(w: World, now: number): void {
   const veh = w.vehicle(o.vehicle);
   if (o.spoilt || !veh || veh.isCrashed) return;
   const c = w.config;
-  const amount = Math.round(c.oversizePay * (w.isRushHourScoring ? c.rushHourScoreFactor : 1));
+  const amount = Math.round((veh.type === 'tractor' ? c.tractorPay : c.oversizePay) * (w.isRushHourScoring ? c.rushHourScoreFactor : 1));
   w.score.money += amount;
   w.setChain(w.score.chain + 1, now);
   w.events.push({ type: 'oversizePassed', vehicle: veh.id, amount, point: veh.position, time: now });
@@ -118,7 +123,8 @@ export function oversizeZone(w: World): { s: number; arc: number } | null {
   if (o.kind !== 'active' || o.spoilt) return null;
   const veh = w.vehicle(o.vehicle);
   if (!veh || veh.phase.kind !== 'ring') return null;
-  return { s: veh.phase.s, arc: w.config.oversizeZoneArc + w.lengthOf('oversize') / 2 };
+  const tractor = veh.type === 'tractor';
+  return { s: veh.phase.s, arc: (tractor ? w.config.tractorZoneArc : w.config.oversizeZoneArc) + w.lengthOf(veh.type) / 2 };
 }
 
 /** A player's car joined too close to the load: the bonus is gone, nothing else. */

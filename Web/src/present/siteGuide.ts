@@ -46,6 +46,7 @@ const COLOR_NAMES: Partial<Record<ColorToken, { name: string; means: string }>> 
   vehicleCriminal: { name: 'Purple', means: 'A criminal.' },
   vehicleCargo: { name: 'Cash gold', means: 'The money transporter.' },
   vehicleOversize: { name: 'Orange', means: 'The oversize load.' },
+  vehicleTractor: { name: 'Field green', means: 'The tractor.' },
   vehicleWedding: { name: 'Rose', means: 'The wedding convoy.' },
   vehicleRacer: { name: 'Pink', means: 'The street racers.' },
   learnerSign: { name: 'Teal', means: 'The learner driver.' },

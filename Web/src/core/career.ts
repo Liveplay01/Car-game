@@ -307,6 +307,8 @@ export interface Career {
   tailwindDay: number;
   /** The highest Heat a shift was cleared at. */
   heatCleared: number;
+  /** The most cars sent in one Unlimited run (the tier titles read it). */
+  unlimitedCars: number;
   challengeDay: number;
   challengesDone: string[];
   dailyPlayed: number;
@@ -488,6 +490,7 @@ export const newCareer = (): Career => ({
   tailwind: false,
   tailwindDay: -1,
   heatCleared: 0,
+  unlimitedCars: 0,
   challengeDay: -1,
   challengesDone: [],
   dailyPlayed: -1,
@@ -1303,6 +1306,7 @@ export const Careers = {
 
   /** The Unlimited milestones a best run of `cars` has reached and the collection still lacks: collected now. */
   claimUnlimited(c: Career, cars: number): string[] {
+    c.unlimitedCars = Math.max(c.unlimitedCars, cars);
     const fresh = unlimitedRewards(cars).filter((x) => !Careers.owns(c, x.id));
     for (const item of fresh) Careers.collect(c, item.id);
     return fresh.map((x) => x.id);

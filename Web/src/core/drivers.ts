@@ -1,5 +1,5 @@
 import { gravity } from './config';
-import { type Drive, type Merging, isInFlow, newDrive, profileDistance, type Vehicle } from './vehicle';
+import { type Drive, type Merging, isInFlow, isLoad, newDrive, profileDistance, type Vehicle } from './vehicle';
 import type { Arm } from './roundabout';
 import { capsule } from './collision';
 import { nearestOnPath } from './paths';
@@ -70,7 +70,7 @@ export function updateDrivers(w: World, dt: number): void {
       // The learner hesitates now and then: it brakes for nothing, and the traffic bunches up.
       if (isStalling(w, veh.id)) limit = Math.min(limit ?? w.ringSpeed, w.ringSpeed * w.config.learnerStallSpeed);
       // The oversize load crawls all the way round; the traffic behind it follows suit.
-      if (veh.type === 'oversize') limit = Math.min(limit ?? w.ringSpeed, w.ringSpeed * w.config.oversizeSpeed);
+      if (isLoad(veh.type)) limit = Math.min(limit ?? w.ringSpeed, w.ringSpeed * (veh.type === 'tractor' ? w.config.tractorSpeed : w.config.oversizeSpeed));
       if (ducks) limit = Math.min(limit ?? w.ringSpeed, ducks.limit);
       if (quarry !== null && leads[0]?.id === quarry && veh.isPlayerPolice) p.drive = pursue(w, p.drive, dt);
       else p.drive = drive(w, p.drive, leads, veh.id, dt, limit);

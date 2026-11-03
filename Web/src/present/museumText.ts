@@ -81,6 +81,38 @@ const BOSS_TEXT: Record<BossKind, MuseumText> = {
       'Read the shapes in the dark: the boss is the pickup with the ring. Two police cars in the gap behind it bring it down.',
     ],
   },
+  trio: {
+    line: 'Three in a row',
+    brief: 'Three bosses: each catch calls the next. Keep police cars coming.',
+    explain: (c) => [
+      'The Trio run the last jobs of the syndicate. Three pickups come one after the other, with no escorts: the moment you catch one, the next is already at another arm.',
+      `About ${Math.round(c.criminalTime * c.trioTimeFactor)} seconds each. Only when all three are caught is the heist back.`,
+    ],
+  },
+  bulwark: {
+    line: 'Takes four police cars',
+    brief: 'Armour for three rams, and an escort. Line up four police cars.',
+    explain: (c) => [
+      'The Bulwark is armoured plate on wheels: the first three police cars only crack it, the fourth one stops it. An escort sticks to its tail.',
+      `It stays about ${Math.round(c.criminalTime * c.bulwarkTimeFactor)} seconds, long enough for four runs if your queue holds the police cars.`,
+    ],
+  },
+  mirage: {
+    line: 'The decoy, in the dark',
+    brief: 'Escorts in its paint, in a blackout: ram the pickup with the ring.',
+    explain: () => [
+      'The Mirage is the Decoy with the lights off: a blackout, and escorts painted like the boss.',
+      'The boss is the pickup with the open bed and the ring. A van in the same paint is only a van, and ramming it is a plain crash.',
+    ],
+  },
+  wall: {
+    line: 'Four escorts, one gap',
+    brief: 'Four escorts close ranks behind it. Wait for the gap, then ram.',
+    explain: (c) => [
+      'The Wall sends four armoured vans out right behind the boss, one after the other, nose to tail.',
+      `It stays about ${Math.round(c.criminalTime * c.wallTimeFactor)} seconds. The vans leave gaps as the ring turns: slide the police car into one.`,
+    ],
+  },
 };
 
 export const SPECIAL_TEXT: Record<SpecialKind, MuseumText & { name: string }> = {
@@ -190,6 +222,15 @@ export const SPECIAL_TEXT: Record<SpecialKind, MuseumText & { name: string }> = 
     explain: (c) => [
       'A heavy transport, far longer than a lorry, crawls once round the ring. The traffic behind it slows down with it, so the gaps you know are gone.',
       `An amber band shows the space it needs, ahead and behind. Keep your cars out of it and it pays ${money(Fmt.number(c.oversizePay))} and extends your chain when it leaves.`,
+    ],
+  },
+  tractor: {
+    name: 'Tractor',
+    line: 'Slow, wide, give it room',
+    brief: 'A slow tractor: keep your cars out of the amber band around it.',
+    explain: (c) => [
+      'A tractor putters once round the ring, slower than anything else on the road. The traffic behind it slows down with it.',
+      `An amber band shows the space it needs, ahead and behind. Keep your cars out of it and it pays ${money(Fmt.number(c.tractorPay))} and extends your chain when it leaves.`,
     ],
   },
   racer: {
@@ -323,7 +364,7 @@ export const FAIL_TEXT: Record<FailCause, MuseumText & { name: string }> = {
 /** The grip the tyres keep in a weather, as `forWeather` sets it. */
 export const gripIn = (w: Weather, c: Config): string =>
   percent(
-    w === 'snow' ? c.snowGrip : w === 'hail' ? c.hailGrip : w === 'sandstorm' ? c.sandstormGrip : w === 'fog' ? 1 : Math.max(0.35, 1 - weatherSeverity(w) * c.weatherGripLoss),
+    w === 'snow' ? c.snowGrip : w === 'hail' ? c.hailGrip : w === 'sandstorm' ? c.sandstormGrip : w === 'blackIce' ? c.blackIceGrip : w === 'ashfall' ? c.ashfallGrip : w === 'fog' ? 1 : Math.max(0.35, 1 - weatherSeverity(w) * c.weatherGripLoss),
   );
 
 const WEATHER_TEXT: Record<WeatherKind, MuseumText> = {
@@ -389,6 +430,22 @@ const WEATHER_TEXT: Record<WeatherKind, MuseumText> = {
     explain: (c) => [
       `A sandstorm: dust hides the far side of the ring, drivers see a crash late, and sand on the road leaves ${gripIn('sandstorm', c)} of the grip.`,
       `Watch the traffic coming out of the dust towards your arm; the warnings still shine through. A sandstorm pays ${percent(c.sandstormPayFactor - 1)} more.`,
+    ],
+  },
+  blackIce: {
+    line: 'Glass under the tyres',
+    brief: 'Black ice: almost no grip, almost no braking. Leave huge gaps.',
+    explain: (c) => [
+      `Black ice: the tyres keep only ${gripIn('blackIce', c)} of their grip, drivers brake only ${percent(c.blackIceBrake)} as hard, and a crash slides a very long way.`,
+      `Leave far more room than in snow, and merge early. A black ice shift pays ${percent(c.blackIcePayFactor - 1)} more.`,
+    ],
+  },
+  ashfall: {
+    line: 'Grey cloud over the ring',
+    brief: 'Ashfall: the far side is lost in grey. Watch what comes out of it.',
+    explain: (c) => [
+      `Ash hangs over the ring: the far side fades out, drivers see a crash late, the road keeps ${gripIn('ashfall', c)} of its grip, and a little more traffic is out.`,
+      `Watch the traffic coming out of the cloud towards your arm; the warnings still shine through. An ashfall shift pays ${percent(c.ashfallPayFactor - 1)} more.`,
     ],
   },
 };

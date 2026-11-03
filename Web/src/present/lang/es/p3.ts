@@ -39,6 +39,12 @@ export default (S: Strings): Words<Strings> => ({
         crewChampion: 'Campeón de crew',
         collector: 'Coleccionista',
         completionist: 'Completista',
+        champion: 'Campeón',
+        legend: 'Leyenda',
+        titan: 'Titán',
+        blazing: 'Ardiente',
+        wildfire: 'Incendio',
+        sunborn: 'Hijo del Sol',
         ascended: 'Ascendido',
         eternal: 'Inmortal',
         grandmaster: 'Gran maestro',
@@ -72,6 +78,8 @@ export default (S: Strings): Words<Strings> => ({
           return `Alcanza Prestigio ★${r.rank}`;
         case 'heat':
           return S.heat.rule(r.level);
+        case 'cars':
+          return `Envía ${r.cars} coches en una partida de Unlimited`;
         case 'fund':
           return `Dona ${money(Fmt.number(r.amount))} al Fondo del juego`;
         case 'item':
@@ -149,8 +157,8 @@ export default (S: Strings): Words<Strings> => ({
     stage: (stage, overtime) =>
       overtime > 0
         ? `HORAS EXTRA ${overtime} · más tráfico, algo más rápido`
-        : (['', 'CISTERNAS DE GAS SE UNEN AL TRÁFICO', 'CAE LA NOCHE', 'SE AVECINA UNA TORMENTA', 'CAMIONES MILITARES EN LA CALLE'][stage] ?? ''),
-    tier: (id) => ({ bronze: 'Bronce', silver: 'Plata', gold: 'Oro', platinum: 'Platino', diamond: 'Diamante', master: 'Maestro' })[id],
+        : (['', 'CISTERNAS DE GAS SE UNEN AL TRÁFICO', 'CAE LA NOCHE', 'SE AVECINA UNA TORMENTA', 'CAMIONES MILITARES EN LA CALLE', 'CARGAS SOBREDIMENSIONADAS EN LA CARRETERA', 'LOS CORREDORES CALLEJEROS TOMAN LA VÍA', 'LLEGA UNA COMITIVA DE BODA'][stage] ?? ''),
+    tier: (id) => ({ bronze: 'Bronce', silver: 'Plata', gold: 'Oro', platinum: 'Platino', diamond: 'Diamante', master: 'Maestro', champion: 'Campeón', legend: 'Leyenda', titan: 'Titán' })[id],
     mark: (cars, reward) =>
       reward.tier ? `${cars} coches · ${S.modes.tier(reward.tier).toUpperCase()}` : reward.skin ? `${cars} coches · ${S.shop.item(reward.skin).toUpperCase()}` : `${cars} coches`,
     tierUp: (id) => `NUEVO RANGO · ${S.modes.tier(id).toUpperCase()} en Sin límites`,

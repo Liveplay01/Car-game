@@ -127,7 +127,7 @@ Jede Einfädelung wird nach dem engsten Abstand (surface to surface) bewertet:
 ### Syndikats-Bosse (28.09.2026, Werte in `config.ts`)
 
 - **Scout auf Level 6 (08.10.2026, `scoutLevel`):** Der erste Verbrecher der Schicht bringt einen gepanzerten Begleiter mit (`scoutEscorts` 1), angekündigt mit „SYNDICATE SCOUT“ und 3 s Warnung, und bleibt ×1,4 so lange (`scoutTimeFactor`). Ein Vorgeschmack auf die Bosse, aber kein Boss: keine Trophäe, kein Museum-Eintrag, kein Heist-Geld. Beim ersten Mal sagt eine Zeile, wie man ihn erwischt.
-- **Jedes 15. Level** (15, 30, 45 …) ist der erste Verbrecher der Schicht der **Boss** des Syndikats. **Auf die Prestige-Ränge verteilt (Leo, 18.10.2026):** Ein Rang spielt Level 1 bis `prestigeLevelAt` (50, 60, 80, 120, 200) und trifft einen Boss auf jedem 15. Level; die Liste läuft von Rang zu Rang weiter (★0 Convoy, Getaway, Armoured; ★1 Phantom, Twins, Decoy, Smuggler; ★2 Kingpin und die zweite Runde des Convoy …; `bossesBefore`, `Careers.bossShift`). Ohne Prestige gilt die Tabelle weiter nach Level. Er kommt früh (nach 1,5–3 s), mit 3 s Warnung („SYNDICATE CONVOY“ usw.), und bleibt länger im Ring als ein normaler Verbrecher. Die vier Bosse wechseln der Reihe nach, jede Runde beginnt von vorn:
+- **Jedes 15. Level** (15, 30, 45 …) ist der erste Verbrecher der Schicht der **Boss** des Syndikats. **Auf die Prestige-Ränge verteilt (Leo, 18.10.2026):** Ein Rang spielt Level 1 bis `prestigeLevelAt` (50, 60, 80, 120, 200) und trifft einen Boss auf jedem 15. Level; die Liste läuft von Rang zu Rang weiter (★0 Convoy, Getaway, Armoured; ★1 Phantom, Twins, Decoy, Smuggler; ★2 Kingpin, Trio, Bulwark, Mirage, Wall; ★3 beginnt die zweite Runde mit dem Convoy …; `bossesBefore`, `Careers.bossShift`). Ohne Prestige gilt die Tabelle weiter nach Level. Er kommt früh (nach 1,5–3 s), mit 3 s Warnung („SYNDICATE CONVOY“ usw.), und bleibt länger im Ring als ein normaler Verbrecher. Die vier Bosse wechseln der Reihe nach, jede Runde beginnt von vorn:
 
 | Boss | Level | Eskorte | Zeit (× Verbrecher-Countdown) | Besonderheit |
 |---|---|---|---|---|
@@ -135,10 +135,14 @@ Jede Einfädelung wird nach dem engsten Abstand (surface to surface) bewertet:
 | **The Getaway Driver** | 30 | keine | ×0,7 | schnell weg; ein Polizeiauto muss bereitstehen |
 | **The Armoured Boss** | 45 | 1 | ×1,8 | steckt den ersten Rammstoß weg („ARMOUR CRACKED“), ein zweites Polizeiauto nötig |
 | **The Phantom** | 60 | 1 | ×1,6 | kommt im Blackout, fährt ohne Licht |
+| **The Trio** (★2, Level 30) | 30 | keine | ×0,9 je Boss | drei Pick-ups nacheinander (`bossCount` 3), jede Festnahme ruft den nächsten |
+| **The Bulwark** (★2, Level 45) | 45 | 1 | ×2,6 | Panzerung für drei Rammstöße (`bulwarkArmour`), vier Polizeiautos nötig |
+| **The Mirage** (★2, Level 60) | 60 | 2 getarnte | ×1,8 | Decoy im Blackout; Eskorten tragen den Lack des Bosses, der Ring bleibt am Boss |
+| **The Wall** (★2, Level 75) | 75 | 4 gepanzerte | ×2,4 | vier Begleiter Stoßstange an Stoßstange, Lücke abwarten |
 
 - **Ab Runde 2 (Level 75+)** je Runde +1 Eskorte (höchstens 3, nur nicht beim Getaway Driver) und ×0,9 Zeit pro Runde.
 - **Busted:** Das gestohlene Geld kommt zurück (3.000 + 200 × Level), der Boss zählt als Trophäe in *Records*, +10 Elite XP.
-- **Rematch** (Progress → Goals): besiegte Bosse lassen sich noch einmal spielen, eine Runde härter, 20 Autos, fester Seed; zahlt einmal 6.000 / 8.000 / 10.000 / 12.000 (Convoy / Getaway / Armoured / Phantom).
+- **Rematch** (Progress → Goals): besiegte Bosse lassen sich noch einmal spielen, eine Runde härter, 20 Autos, fester Seed; zahlt einmal 6.000 / 8.000 / 10.000 / 12.000 (Convoy / Getaway / Armoured / Phantom); Trio 20.000, Bulwark 22.000, Mirage 24.000, Wall 28.000.
 - Auf Boss-Leveln gibt es nie einen Legendary Shift; der Phantom erzwingt einen Blackout.
 
 Weitere Langzeit-Systeme (Legendary Shifts, Prestige, Elite) siehe 12.
@@ -552,8 +556,8 @@ Nach einer Schicht macht „Challenge a friend“ einen Link (`#challenge=…`) 
 
 ### Boss Rush, Landmarks, Einladungs-QR (03.10.2026)
 
-- **Boss Rush** (Progress → Goals, öffnet, sobald alle acht Bosse einmal festgenommen sind): alle acht Syndikats-Bosse hintereinander, jeweils als Rematch (`rushTrial`, 20 Autos), **eine Uhr** (Summe der geschafften Schichten). Ein verlorener Boss beendet den Rush: der nächste Versuch beginnt wieder beim ersten (`advanceRush`, `present/specialRuns.ts`). Erster Durchlauf zahlt einmal **60.000** (`trialsDone` enthält `bossRush`), die **Bestzeit** (`rushBest`) und der weiteste Boss (`rushFurthest`) bleiben im Spielstand. Die Rematches zahlen im Rush nichts extra.
-- **Landmarks** (Progress → Goals, ab Prestige ★5, `LANDMARK_PRESTIGE`): berühmte Kreisverkehre als je eine feste, harte Schicht. Bisher **The Étoile**: zwölf Zufahrten in einem Ring (`armSlotCount` 12, jeder Platz gebaut), Level 60, 24 Autos, Tag, der Verkehr der zwölf Arme (`forArms`) auf 65 % gedämpft (`traffic`), weil der vorsichtige Bot bei vollem Verkehr in einer von acht Schichten crashte. Zahlt einmal 40.000. `node scripts/ascension-sim.mjs` prüft sie mit. **Noch offen:** Magic Roundabout (Swindon, fünf Mini-Ringe) braucht eigene Geometrie im Kern.
+- **Boss Rush** (Progress → Goals, öffnet, sobald alle zwölf Bosse einmal festgenommen sind): alle zwölf Syndikats-Bosse hintereinander, jeweils als Rematch (`rushTrial`, 20 Autos), **eine Uhr** (Summe der geschafften Schichten). Ein verlorener Boss beendet den Rush: der nächste Versuch beginnt wieder beim ersten (`advanceRush`, `present/specialRuns.ts`). Erster Durchlauf zahlt einmal **60.000** (`trialsDone` enthält `bossRush`), die **Bestzeit** (`rushBest`) und der weiteste Boss (`rushFurthest`) bleiben im Spielstand. Die Rematches zahlen im Rush nichts extra.
+- **Landmarks** (Progress → Goals, ab Prestige ★5): berühmte Kreisverkehre als je eine feste, harte Schicht. Jede hängt an einem eigenen Rang (`Trial.prestige`) und hat eigene Zufahrten (`arms` = Plätze im Ring, `slots` = gebaute Plätze, sonst alle); `traffic` dämpft den Verkehr, damit der vorsichtige Bot nie crasht. **The Magic Roundabout** (★5, Swindon: sechs Zufahrten dicht auf einer Ringseite, 36.000), **The Étoile** (★5, zwölf Zufahrten, 40.000), **Piazza Venezia** (★6, sieben Zufahrten in einem Ring von 14 Plätzen, Regen, 44.000). Jede zahlt einmal. **Noch offen:** ein Museumseintrag für Landmarks (eigener Eintragstyp, Bild, Text in 8 Sprachen).
 - **Einladungs-QR:** Die Multiplayer-Lobby zeigt neben dem Code einen QR-Code für den Einladungslink (`ui/qr.ts`, `qrcode-generator` als zweite Laufzeit-Abhängigkeit, lädt erst mit der Lobby; Lizenz in Settings → Licenses).
 - **Patch Notes mit Spieler-Hinweis:** siehe CLAUDE.md.
 
@@ -646,7 +650,7 @@ Jedes Prestige fügt dem Elite-Fenster (Records → Elite) eine Plakette hinzu: 
 
 ### Museum (Progress → Stats, Museum)
 
-Katalog von **30 Einträgen**: 4 Bosse, 11 Spezialfahrzeuge (Police Car, Criminal, Money Transporter, Lorry, Ambulance, Gas Tanker, Military Truck, Fire Engine, Motorbike, Learner Driver, School Bus) und 15 Bedingungen (Two Lanes, 6 Wetter, Night, Blackout, 6 City Events). Ein Eintrag steht gesperrt als graue Silhouette („From Level X“), bis er in einer laufenden Schicht vor dir auf der Straße war; dann zeigt er sich mit allem, was man wissen muss (und seinem Briefing-Satz). Bosse zeigen den Rematch.
+Katalog von **48 Einträgen**, abgeleitet aus den Spiellisten (`BOSS_KINDS`, Fahrzeugtypen, `WEATHERS`, `CITY_EVENTS`; alte Spielstände werden über `inferredSightings` aufgefüllt): 12 Bosse, 16 Spezialfahrzeuge (u. a. Oversize, Traktor, Street Racers, Hochzeitskorso, Drift-Auto) und 20 Bedingungen (Two Lanes, 10 Wetter inkl. Hagel, Sandsturm, Glatteis, Aschewolke, Night, Blackout, 7 City Events inkl. Marathon). Ein Eintrag steht gesperrt als graue Silhouette („From Level X“), bis er in einer laufenden Schicht vor dir auf der Straße war; dann zeigt er sich mit allem, was man wissen muss (und seinem Briefing-Satz). Bosse zeigen den Rematch.
 
 **Das Museum wächst mit:** Der Katalog folgt den Inhaltslisten (`BOSS_KINDS`, Fahrzeugtypen, `WEATHERS`, `CITY_EVENTS`, Dunkelheit); der Build bricht ab, bis Level (`core/museum.ts`), Text (`present/museumText.ts`) und Bild/Farbe (`present/museum.ts`) eingetragen sind. Ein gewöhnlicher Fahrzeugtyp kommt in `ORDINARY`. Alte Spielstände erhalten automatisch, was sie schon gesehen haben müssen.
 

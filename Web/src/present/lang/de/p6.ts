@@ -455,7 +455,7 @@ export default (S: Strings): Words<Strings> => ({
   night: 'Nacht',
   blackout: 'Blackout',
   weather: (w) =>
-    ({ clear: 'Klar', lightRain: 'Leichter Regen', heavyRain: 'Starkregen', storm: 'Sturm', extreme: 'Extremwetter', fog: 'Nebel', snow: 'Schnee & Eis', hail: 'Hagel', sandstorm: 'Sandsturm' })[w],
+    ({ clear: 'Klar', lightRain: 'Leichter Regen', heavyRain: 'Starkregen', storm: 'Sturm', extreme: 'Extremwetter', fog: 'Nebel', snow: 'Schnee & Eis', hail: 'Hagel', sandstorm: 'Sandsturm', blackIce: 'Glatteis', ashfall: 'Aschewolke' })[w],
   cityEvent: (e) =>
     ({
       roadworks: 'Baustelle',

@@ -2981,7 +2981,7 @@ export class GameSession {
           this.rim.signal('sweep', 'lightBlue');
           break;
         case 'oversizeWarning':
-          this.museum.brief({ k: 'special', kind: 'oversize' });
+          this.museum.brief({ k: 'special', kind: e.tractor ? 'tractor' : 'oversize' });
           this.rim.signal('sweep', 'vehicleOversize');
           break;
         case 'oversizeSpoilt':

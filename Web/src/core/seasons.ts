@@ -16,9 +16,9 @@ export interface SeasonRule {
 }
 
 export const SEASON_RULES: Record<Season, SeasonRule> = {
-  winter: { chance: 1.15, weather: { fog: 2, snow: 3, hail: 0.5 }, night: 1.5 },
+  winter: { chance: 1.15, weather: { fog: 2, snow: 3, hail: 0.5, blackIce: 2 }, night: 1.5 },
   spring: { chance: 1.3, weather: { lightRain: 2, heavyRain: 1.5 }, night: 1 },
-  summer: { chance: 0.7, weather: { storm: 2.5, extreme: 2, hail: 2, sandstorm: 2 }, night: 0.7 },
+  summer: { chance: 0.7, weather: { storm: 2.5, extreme: 2, hail: 2, sandstorm: 2, ashfall: 2 }, night: 0.7 },
   autumn: { chance: 1.15, weather: { fog: 3, lightRain: 1.5 }, night: 1.4 },
 };
 

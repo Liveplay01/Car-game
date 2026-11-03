@@ -1,7 +1,7 @@
 import type { Strings } from '../../strings';
 import type { Words } from '../../i18n';
 import { INVITE_LEVEL } from '../../../core/config';
-import { rematchKind, ascensionRank, levelTrialLevel, levelKind, LANDMARK_PRESTIGE, type TrialId } from '../../../core/trials';
+import { rematchKind, ascensionRank, levelTrialLevel, levelKind, type TrialId } from '../../../core/trials';
 import { Fmt, money } from '../../format';
 
 /** Italiano, Parte 2: Prove, Boss, Turni leggendari e settimanali, Prestigio, Élite. */
@@ -31,6 +31,8 @@ export default (S: Strings): Words<Strings> => ({
     name(id) {
       const boss = rematchKind(id);
       if (boss) return S.boss.rematch(boss);
+      if (id === 'landmark.magic') return 'La Magic Roundabout';
+      if (id === 'landmark.venezia') return 'Piazza Venezia';
       if (id === 'landmark.etoile') return 'L’Étoile';
       if (id === 'weekly') return S.weekly.title;
       if (id.startsWith('tour.')) return S.tours.stopName(id);
@@ -130,7 +132,7 @@ export default (S: Strings): Words<Strings> => ({
     opens: (t) => {
       const rank = ascensionRank(t.id);
       if (rank !== null) return `Si sblocca con Prestigio ★${rank}`;
-      return t.arms ? `Si sblocca con Prestigio ★${LANDMARK_PRESTIGE}` : S.trials.opensAt(t.level);
+      return t.prestige ? `Si sblocca con Prestigio ★${t.prestige}` : S.trials.opensAt(t.level);
     },
     howTo(t) {
       if (t.goal.k === 'perfects') {
@@ -165,6 +167,10 @@ export default (S: Strings): Words<Strings> => ({
         decoy: 'Il Baro',
         smuggler: 'Il Contrabbandiere',
         kingpin: 'Il Padrino',
+        trio: 'Il Trio',
+        bulwark: 'Il Baluardo',
+        mirage: 'Il Miraggio',
+        wall: 'Il Muro',
       })[k],
     rematch: (k) => `Rivincita · ${S.boss.name(k)}`,
     beaten: 'Catturato',

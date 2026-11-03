@@ -1,7 +1,7 @@
 import type { Strings } from '../../strings';
 import type { Words } from '../../i18n';
 import { INVITE_LEVEL } from '../../../core/config';
-import { rematchKind, ascensionRank, levelTrialLevel, levelKind, LANDMARK_PRESTIGE, type TrialId } from '../../../core/trials';
+import { rematchKind, ascensionRank, levelTrialLevel, levelKind, type TrialId } from '../../../core/trials';
 import { Fmt, money } from '../../format';
 
 /** 简体中文 第2部分：试炼、首领、传奇、每周班次、声望、精英。 */
@@ -31,6 +31,8 @@ export default (S: Strings): Words<Strings> => ({
     name(id) {
       const boss = rematchKind(id);
       if (boss) return S.boss.rematch(boss);
+      if (id === 'landmark.magic') return '魔法环岛';
+      if (id === 'landmark.venezia') return '威尼斯广场';
       if (id === 'landmark.etoile') return '星形广场';
       if (id === 'weekly') return S.weekly.title;
       if (id.startsWith('tour.')) return S.tours.stopName(id);
@@ -130,7 +132,7 @@ export default (S: Strings): Words<Strings> => ({
     opens: (t) => {
       const rank = ascensionRank(t.id);
       if (rank !== null) return `声望 ★${rank} 开放`;
-      return t.arms ? `声望 ★${LANDMARK_PRESTIGE} 开放` : S.trials.opensAt(t.level);
+      return t.prestige ? `声望 ★${t.prestige} 开放` : S.trials.opensAt(t.level);
     },
     howTo(t) {
       if (t.goal.k === 'perfects') {
@@ -165,6 +167,10 @@ export default (S: Strings): Words<Strings> => ({
         decoy: '诱饵',
         smuggler: '走私贩',
         kingpin: '大头目',
+        trio: '三人组',
+        bulwark: '堡垒',
+        mirage: '海市蜃楼',
+        wall: '城墙',
       })[k],
     rematch: (k) => `复仇 · ${S.boss.name(k)}`,
     beaten: '已抓获',

@@ -1,6 +1,6 @@
 import { gravity } from './config';
 import type { Arm } from './roundabout';
-import { type Waiting, type Merging, Vehicle, type VehicleType, isInFlow, isEmergency } from './vehicle';
+import { type Waiting, type Merging, Vehicle, type VehicleType, isInFlow, isEmergency, isLoad } from './vehicle';
 import { wrap, angleOf } from './vec2';
 import type { World } from './world';
 import { reservedCriminalArm, criminalDueArm, reservedTransporterArm, joinsTooClose } from './specials';
@@ -78,7 +78,7 @@ export function updateTraffic(w: World, dt: number): void {
           : canPushIn(w, p.arm, veh.lane, veh.type);
     // Runners crossing the arm (a marathon): everyone waits at the line, the criminal too.
     if (p.reaction <= 0 && clear && !w.runnersCrossing(p.arm) && !w.waitsForDucks && !joinsTooClose(w, veh, p.arm) && !joinsClearRoad(w, veh, p.arm)) {
-      const ordinary = !(isEmergency(veh.type) || veh.type === 'learner' || veh.type === 'oversize' || veh.type === 'racer' || veh.type === 'wedding' || veh.type === 'drift');
+      const ordinary = !(isEmergency(veh.type) || veh.type === 'learner' || isLoad(veh.type) || veh.type === 'racer' || veh.type === 'wedding' || veh.type === 'drift');
       const merge: Merging = {
         kind: 'merging',
         arm: p.arm,
