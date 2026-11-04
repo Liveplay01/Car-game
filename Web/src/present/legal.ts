@@ -24,7 +24,7 @@ export const HOSTING = {
   location: 'Germany',
 };
 
-export const LEGAL_UPDATED = '3 November 2026';
+export const LEGAL_UPDATED = '4 November 2026';
 
 export const GAME_NAME = 'Roundabout Timing';
 
@@ -129,7 +129,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: 'Leaderboard',
         paragraphs: [
           'Only if you enter a name for the leaderboard (Social → Ranks), the game sends it to our leaderboard server, which runs on the same machine as the game. From then on it sends your level (with your Prestige rank) and your Unlimited record whenever they improve.',
-          'The server stores the name, a random ID, a secret key that proves the name is yours (only its hash is kept), your best scores and when you reached them. The name and the scores are public: everyone can see them on the leaderboard. Your IP address reaches the server with every request, as with any website; it is used only in memory to stop abuse and is not stored. Offensive names are removed.',
+          'The server stores the name, a random ID, a secret key that proves the name is yours (only its hash is kept), your best scores and when you reached them. With an Unlimited or Daily record it also stores the replay of that run (the moments of your taps and your level and upgrades), which lets us play the run again to check it; it holds nothing else about you. The name and the scores are public: everyone can see them on the leaderboard. Your IP address reaches the server with every request, as with any website; it is used only in memory to stop abuse and is not stored. Offensive names are removed.',
           'If you borrow from the Mafia (Social → Mafia) and the loan is late, the game tells the server so that your name carries a "Mafia" badge next to it on the boards. Only the badge is sent, not the amount or the dates. It goes away when you pay, when the Family writes the debt off, and when your name is removed.',
           'Legal basis: Art. 6(1)(b) GDPR (the leaderboard you chose to join). To remove your name and all your scores at once: Settings → Account → Your player → Remove me from the leaderboard.',
         ],

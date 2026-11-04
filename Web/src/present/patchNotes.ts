@@ -51,6 +51,19 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-11-04',
+    date: '4 November 2026',
+    title: 'Records on the record',
+    impact: 'minor',
+    summary: [
+      'Unlimited and Daily records now carry a replay, so the leaderboard can check how a run was played.',
+    ],
+    items: [
+      'Unlimited and Daily records are sent with the taps of the run. The leaderboard plays the run again and a moderator looks at any record that does not add up.',
+      'Unlimited and the Daily Shift now always start on an empty ring, so every record can be replayed exactly.',
+    ],
+  },
+  {
     id: '2026-11-03',
     date: '3 November 2026',
     title: 'The long climb',

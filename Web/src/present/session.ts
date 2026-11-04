@@ -38,6 +38,8 @@ import { CityLights, LampWave } from './cityLights';
 import { HUD, TopBar, RingSignals, ModeMessage, ModeBanner, ReadyBanner, type TopMessage, ResultBanner, type Popup, type PopupKind, type ShiftSummary, type ConditionIntro, type LiveChallenge, popupLife, settledPops } from './hud';
 import { inPortal, inPlayStore, isInstalled } from '../storage/device';
 import { Tutorial } from './tutorial';
+import { POLICE, PROOF_RULES, ProofLog, REVIVE, TAP, setupOf, type Proof } from '../core/proof';
+import { keepProof } from '../storage/proof';
 import { NoticeQueue, TipQueue, type Tip } from './notices';
 import { bookShift } from './booking';
 import { type Screen, type Tab, type SwipeMode, SWIPE_MODES, type ScreenAction, type ProgressSection, type ShopSection, type SocialSection, PROGRESS, SOCIAL, TAB_BAR, BUILD_PAGES, barTab, screenTab, showsTabBar, BuildLayout } from './flow';
@@ -366,6 +368,8 @@ export class GameSession {
   playingLevel = 1;
   dailySelected = false;
   playingDaily = false;
+  /** The inputs of the fresh Unlimited or Daily world being played, kept as the replay proof of a record (`core/proof.ts`). */
+  private proof: { base: Omit<Proof, 'events'>; log: ProofLog } | null = null;
   /** The waiting shift was set up in the After Work hours and pays for them. */
   private afterWork = false;
   private dailySplash: number | null = null;
@@ -1134,12 +1138,14 @@ export class GameSession {
     this.recordBeatAt = null;
     this.sinceRecord = Infinity;
     const cfg = special ? this.specialConfig(special) : this.shiftConfig(s);
-    // A challenge or trial never carries traffic over: it starts fresh, the same for everyone.
-    if (continuing && !special) this.world = this.world.nextShift(cfg, s);
+    // A challenge or trial never carries traffic over: it starts fresh, the same for everyone. So do the runs that leave a replay proof.
+    const provable = this.provable;
+    if (continuing && !special && !provable) this.world = this.world.nextShift(cfg, s);
     else {
       this.world = new World(cfg, s, { startsOnFirstTap: true, arriving: this.booting });
       this.resetScene();
     }
+    this.proof = provable ? this.newProof(s, this.booting) : null;
     this.pendingSummary = null;
     this.sinceComboTier = Infinity;
     this.sinceMark = Infinity;
@@ -1315,11 +1321,22 @@ export class GameSession {
     this.playingLevel = this.save.career.level;
     this.playingMode = this.save.mode;
     const next = this.shiftConfig(this.world.seed);
-    if (builtArmSlots(next).join() === builtArmSlots(this.world.config).join()) this.world = this.world.nextShift(next, this.world.seed);
+    const provable = this.provable;
+    if (!provable && builtArmSlots(next).join() === builtArmSlots(this.world.config).join()) this.world = this.world.nextShift(next, this.world.seed);
     else {
-      this.world = new World(next, this.world.seed, { startsOnFirstTap: true });
+      this.world = new World(next, this.world.seed, { startsOnFirstTap: true, arriving: this.proof?.base.arriving });
       this.resetScene();
     }
+    this.proof = provable ? this.newProof(this.world.seed, this.proof?.base.arriving ?? false) : null;
+  }
+
+  private get provable(): boolean {
+    return !this.special && !this.versusSelected && !this.tutorial && (this.dailySelected || this.playingMode === 'unlimited');
+  }
+
+  private newProof(seed: number, arriving: boolean): NonNullable<GameSession['proof']> {
+    const daily = this.dailySelected;
+    return { base: { rules: PROOF_RULES, mode: daily ? 'daily' : 'unlimited', seed, day: daily ? this.today : 0, setup: setupOf(this.save.career), arriving }, log: new ProofLog() };
   }
 
   /** The tab bar's height where it shows. */
@@ -1341,6 +1358,7 @@ export class GameSession {
   descend(): void {
     this.boot = new BootDescent(this.reduceMotion);
     this.world = new World(this.world.config, this.world.seed, { startsOnFirstTap: true, arriving: true });
+    if (this.proof) this.proof.base.arriving = true;
   }
 
   /** Loaded: the eye comes down, then the UI fades in and the cars roll onto the ring. */
@@ -1883,7 +1901,9 @@ export class GameSession {
   private tapWorld(ago: number | undefined, simDelta: number): void {
     const present = this.world.time + this.accumulator;
     const back = ago === undefined ? simDelta / 2 : ago * this.timeScale;
-    this.world.tap(Math.max(this.world.time, present - back));
+    const at = Math.max(this.world.time, present - back);
+    this.proof?.log.add(this.world.stepCount, TAP, at);
+    this.world.tap(at);
   }
 
   private handle(a: InputAction, simDelta: number): void {
@@ -2110,7 +2130,10 @@ export class GameSession {
         break;
       }
       case 'dispatch':
-        if (this.screen.k === 'playing') this.world.dispatchPolice();
+        if (this.screen.k === 'playing') {
+          this.proof?.log.add(this.world.stepCount, POLICE);
+          this.world.dispatchPolice();
+        }
         break;
       case 'focusLost':
         if (this.screen.k === 'playing') this.isInterrupted = true;
@@ -3291,7 +3314,9 @@ export class GameSession {
   }
 
   private reviveRun(): void {
+    const step = this.world.stepCount;
     if (!this.revive || !this.world.revive(this.world.time)) return;
+    this.proof?.log.add(step, REVIVE, this.world.time);
     this.revive = null;
     this.sinceFatalCrash = Infinity;
     this.cameraFx.relieve();
@@ -3350,6 +3375,9 @@ export class GameSession {
       shiftConfig: this.world.config,
       splits: this.splits,
     });
+    if (this.proof && (this.playingDaily ? save.dailyDay === this.today && save.dailyScore === result.score && result.outcome === 'completed' : booked.isNew)) {
+      keepProof({ ...this.proof.base, events: this.proof.log.events, score: result.score });
+    }
     this.bookFailure(result);
     this.persist();
     // The Museum's shift: what went on show for the first time, and a shelf that is now full.

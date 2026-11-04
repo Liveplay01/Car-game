@@ -23,3 +23,6 @@ Desktop.ini
 .playwright-mcp/
 .agents/skills/apple-design/.cursorrules
 /.agents/skills/apple-design
+
+# ─── Server ─────────────────────────────────────────────────────────
+Server/proof/

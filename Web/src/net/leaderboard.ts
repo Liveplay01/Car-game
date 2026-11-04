@@ -1,5 +1,6 @@
 import { ACCOUNT_KEY } from '../storage/profile';
 import { storage } from '../storage/store';
+import { loadProofs, type StoredProof } from '../storage/proof';
 import { dayNumber } from '../core/daily';
 import { S } from '../present/strings';
 
@@ -212,7 +213,7 @@ export async function fetchBoard(board: BoardId): Promise<BoardView> {
  * Sends a score. Null without an account (nobody asked for a name yet). Fire and forget is fine:
  * the service keeps the better score, so the next shift simply sends again.
  */
-export async function submitScore(board: BoardId, body: Record<string, number>): Promise<SubmitResult | null> {
+export async function submitScore(board: BoardId, body: Record<string, unknown>): Promise<SubmitResult | null> {
   const account = loadAccount();
   if (!account) return null;
   try {
@@ -286,13 +287,17 @@ const RUSH_BASE = 10_000_000;
 /** Ranked as the service ranks it (`Server/src/modules/leaderboard/boards.ts`): Prestige first. */
 const levelScore = (r: Records): number => r.prestige * 1000 + r.level;
 
-export function due(r: Records): [BoardId, Record<string, number>, number][] {
-  const list: [BoardId, Record<string, number>, number][] = [];
+/** The run's replay proof, when it is the one of this record. */
+const proofOf = (p: StoredProof | undefined, score: number, day = 0): { proof?: StoredProof } => (p && p.score === score && p.day === day ? { proof: p } : {});
+
+export function due(r: Records): [BoardId, Record<string, unknown>, number][] {
+  const list: [BoardId, Record<string, unknown>, number][] = [];
+  const proofs = loadProofs();
   if ((confirmed['shift-level'] ?? -1) < levelScore(r)) list.push(['shift-level', { level: r.level, prestige: r.prestige }, levelScore(r)]);
-  if (r.unlimitedBest > 0 && (confirmed.unlimited ?? -1) < r.unlimitedBest) list.push(['unlimited', { score: r.unlimitedBest, cars: Math.max(1, r.unlimitedCars), ...(r.unlimitedRevived ? { revived: 1 } : {}) }, r.unlimitedBest]);
+  if (r.unlimitedBest > 0 && (confirmed.unlimited ?? -1) < r.unlimitedBest) list.push(['unlimited', { score: r.unlimitedBest, cars: Math.max(1, r.unlimitedCars), ...(r.unlimitedRevived ? { revived: 1 } : {}), ...proofOf(proofs.unlimited, r.unlimitedBest) }, r.unlimitedBest]);
   // A day counts as one growing number with its score, so a new day always counts as better than the day before.
   const daily = r.dailyDay * 1_000_000 + r.dailyScore;
-  if (r.dailyDay >= 0 && r.dailyScore > 0 && (confirmed.daily ?? -1) < daily) list.push(['daily', { score: r.dailyScore, day: r.dailyDay, ...(r.dailyTries > 1 ? { tries: r.dailyTries } : {}) }, daily]);
+  if (r.dailyDay >= 0 && r.dailyScore > 0 && (confirmed.daily ?? -1) < daily) list.push(['daily', { score: r.dailyScore, day: r.dailyDay, ...(r.dailyTries > 1 ? { tries: r.dailyTries } : {}), ...proofOf(proofs.daily, r.dailyScore, r.dailyDay) }, daily]);
   const cs = Math.round(r.rushBest * 100);
   if (r.rushBest > 0 && (confirmed.rush ?? -1) < RUSH_BASE - cs) list.push(['rush', { cs }, RUSH_BASE - cs]);
   const profit = r.casinoProfit;

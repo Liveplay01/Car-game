@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
+    "build:proof": "vite build -c vite.proof.config.ts",
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
     "test": "node --test-reporter=spec scripts/test.mjs && node --test-reporter=spec scripts/cloud-test.mjs",

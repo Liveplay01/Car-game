@@ -8,6 +8,7 @@ import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'vite';
 import { createHmac } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 
 const server = await createServer({ server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' });
 after(() => server.close());
@@ -4274,4 +4275,14 @@ test('a passed Landmark is discovered for the Museum, and a migrated save does n
   assert.ok(!inferredSightings(99, 9, [], { takedowns: 0, transporters: 0, ambulances: 0 }, baseConfig).includes(id));
   Careers.discover(c, [id]);
   assert.ok(c.museumSeen.includes(id));
+});
+
+test('replay proof: a recorded bot run replays to the same points', () => {
+  execFileSync(process.execPath, ['scripts/proof-check.mjs'], { stdio: 'pipe' });
+});
+
+test('replay proof: the golden run still scores the same (else bump PROOF_RULES and run proof-check --golden)', async () => {
+  const { replay } = await load('/src/core/proof.ts');
+  const { proof, score } = JSON.parse(readFileSync(new URL('./proof-golden.json', import.meta.url), 'utf8'));
+  assert.equal(replay(proof).score, score);
 });
