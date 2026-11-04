@@ -1280,7 +1280,7 @@ export class RingSignals {
   }
 
   /** A lost shift's ring at dusk: a slow, dim red glow on the island's edge for as long as the result shows. */
-  static dusk(list: RenderList, rim: number, age: number, reduceMotion: boolean, opacity: number): void {
+  static dusk(list: RenderList, rim: number, age: number, reduceMotion: boolean, opacity: number, breath: number = ResultBanner.breath): void {
     const appear = Ease.outCubic(age / 0.4) * opacity;
     if (appear <= 0.001) return;
     const swell = reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(age * 2.2);
@@ -1288,8 +1288,8 @@ export class RingSignals {
     list.w(arc(v(0, 0), rim, 6, 0, TAU), 'destructive', (0.16 + 0.08 * swell) * appear);
     list.w(arc(v(0, 0), rim, 2.5, 0, TAU), 'destructive', (0.5 + 0.15 * swell) * appear);
     // The breather counts itself down: a brighter line runs round the rim, and taps work again when it closes.
-    const fill = Ease.clamp01(age / ResultBanner.breath);
-    const gone = 1 - Ease.smoothstep((age - ResultBanner.breath) / 0.25);
+    const fill = Ease.clamp01(age / breath);
+    const gone = 1 - Ease.smoothstep((age - breath) / 0.25);
     if (!reduceMotion && fill > 0.002 && gone > 0.001) list.w(arc(v(0, 0), rim, 4, -Math.PI / 2, -Math.PI / 2 + TAU * fill, true), 'destructive', 0.9 * opacity * gone);
   }
 
@@ -1906,6 +1906,8 @@ export interface ShiftSummary {
   closeCall?: { text: string; color: ColorToken } | null;
   /** The Elite track after this shift: the ring runs it, the middle says what is missing (`RingSignals.elite`). */
   elite?: EliteBar | null;
+  /** A shorter breather after a streak of lost shifts (`ResultBanner.breathOf`). */
+  breath?: number;
 }
 
 /** How the waiting screen names a challenge or trial. */
@@ -1927,11 +1929,16 @@ export const ResultBanner = {
   breath: 1.2,
   breathes: (s: ShiftSummary): boolean => (s.mode === 'shift' || s.mode === 'unlimited') && s.result.outcome !== 'completed' && !s.result.detonated,
   /** How long the result ignores taps. */
-  lock: (s: ShiftSummary): number => (ResultBanner.breathes(s) ? ResultBanner.breath : ResultBanner.inputLock),
-  /** 1 while the breather holds, then 0 over its last moment: FAIL and the reason make way for the usual result. */
+  lock: (s: ShiftSummary): number => (ResultBanner.breathes(s) ? ResultBanner.breathOf(s) : ResultBanner.inputLock),
+  /** The breather of this result: shorter from the third lost shift in a row. */
+  breathOf: (s: ShiftSummary): number => s.breath ?? ResultBanner.breath,
+  /** Lost shifts in a row after which the breather is cut to `shortBreath`. */
+  streakForShort: 3,
+  shortBreath: 0.6,
   /** How long FAIL shakes when the breather swallows a tap. */
   denied: 0.4,
-  mourning: (age: number): number => 1 - Ease.smoothstep((age - (ResultBanner.breath - 0.3)) / 0.3),
+  /** 1 while the breather holds, then 0 over its last moment: FAIL and the reason make way for the usual result. */
+  mourning: (age: number, breath: number): number => 1 - Ease.smoothstep((age - (breath - 0.3)) / 0.3),
   enter: 0.25,
   countDelay: 0.35,
   countDuration: 1.2,
@@ -2013,7 +2020,7 @@ export const ResultBanner = {
     if (r.isPerfectRun && shown > 0.001) ResultBanner.addFinish(list, frame, age, shown, reduceMotion);
     const [title, titleColor] = ResultBanner.title(summary);
     const run = summary.run;
-    const mourning = ResultBanner.breathes(summary) ? ResultBanner.mourning(age) : 0;
+    const mourning = ResultBanner.breathes(summary) ? ResultBanner.mourning(age, ResultBanner.breathOf(summary)) : 0;
 
     list.tag = 'topbarLabels';
     if (shown > 0.001) {

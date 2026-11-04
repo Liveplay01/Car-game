@@ -22,6 +22,8 @@ export class Tutorial {
   /** Safe merges after which the island says that tight gaps pay more. */
   static readonly mergesToMaster = 4;
   static readonly hintDuration = 3.5;
+  /** A hint stays until its event happens, but not for ever. */
+  static readonly hintMax = 15;
   static get readyPrompt(): string {
     return S.tutorial.sendCar;
   }
@@ -32,6 +34,8 @@ export class Tutorial {
   taughtTight = false;
   strikeAge: number | null = null;
   isOver = false;
+  /** Seconds since the hint's event happened: it fades out over its first 0.3. */
+  hintLeft: number | null = null;
 
   get isDone(): boolean {
     return this.isOver && (this.strikeAge === null || this.strikeAge >= Tutorial.hintDuration);
@@ -45,13 +49,17 @@ export class Tutorial {
   advance(delta: number): void {
     this.age += delta;
     if (this.strikeAge !== null) this.strikeAge += delta;
-    if ((this.step === 'combo' || this.step === 'tight') && this.age >= Tutorial.hintDuration) this.move('quiet');
+    if (this.step !== 'combo' && this.step !== 'tight') return;
+    if (this.hintLeft === null && this.age >= Tutorial.hintMax) this.hintLeft = 0;
+    else if (this.hintLeft !== null) this.hintLeft += delta;
+    if (this.hintLeft !== null && this.hintLeft >= 0.3) this.move('quiet');
   }
 
   move(next: TutorialStep): void {
     if (next === this.step) return;
     this.step = next;
     this.age = 0;
+    this.hintLeft = null;
   }
 
   react(event: GameEvent): void {
@@ -63,6 +71,8 @@ export class Tutorial {
       case 'merged':
         if (event.rating === 'cutOff') return;
         this.cleanMerges++;
+        // The hint's own event: another clean merge for the combo, a tight one for the gap.
+        if (this.hintLeft === null && ((this.step === 'combo' && this.cleanMerges > Tutorial.mergesToLearn && this.age >= 1) || (this.step === 'tight' && event.rating !== 'clean'))) this.hintLeft = 0;
         if (this.step === 'findGap' && this.cleanMerges >= Tutorial.mergesToLearn) this.move('combo');
         else if (this.step === 'quiet' && !this.taughtTight && this.cleanMerges >= Tutorial.mergesToMaster) {
           this.taughtTight = true;
@@ -90,7 +100,7 @@ export class Tutorial {
     const hint = this.step === 'combo' ? S.tutorial.combo : this.step === 'tight' ? S.tutorial.tightFit : null;
     if (hint) {
       const radius = toScreen(cam, v(world.layout.islandRadius, 0)).x - island.x;
-      Tutorial.islandPill(list, hint, island, radius, this.age, this.age - (Tutorial.hintDuration - 0.3), reduceMotion);
+      Tutorial.islandPill(list, hint, island, radius, this.age, this.hintLeft ?? 0, reduceMotion);
     }
     const sa = this.strikeAge;
     if (sa !== null && sa < Tutorial.hintDuration) {

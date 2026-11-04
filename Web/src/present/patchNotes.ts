@@ -56,14 +56,10 @@ export const PATCH_NOTES: PatchNote[] = [
     title: 'Records on the record',
     impact: 'minor',
     summary: [
-      'Retry sooner: a tap during the FAIL pause is kept and starts the next shift. After three fails in a row the pause is shorter.',
-      'Revive wakes up faster, and a lost shift says how far you were from the goal.',
+      'Retry sooner: a tap during the FAIL pause starts the next shift. Revive wakes up faster.',
       'Tutorial hints stay until you do the thing. The start screen shows one card at a time.',
-      'Fixed: a finished challenge was announced twice, in the news and again in the middle.',
-      'Titles have their own grouped list with progress. Tap a title on a board to see its rule.',
-      'Unlimited and Daily records now carry a replay, so the leaderboard can check how a run was played.',
-      'Chests: a Common opens calm and short. The Collection names where each skin comes from.',
-      'A chest skin can be worn right on its reveal card. Settings are grouped: Controls, Accessibility.',
+      'Chests: a Common opens calm and short. A chest skin can be worn right on its reveal card.',
+      'Titles have their own grouped list with progress. Settings are grouped: Controls, Accessibility.',
     ],
     items: [
       'A tap during the FAIL pause or the short input lock is remembered and starts the next shift as soon as it ends, instead of being thrown away.',

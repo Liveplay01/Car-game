@@ -1003,7 +1003,7 @@ export const baseConfig = {
    */
   reviveAdsPerDay: 3,
   reviveMinShare: 0.6,
-  reviveBreath: 1.2,
+  reviveBreath: 0.5,
   reviveWindow: 5,
   reviveGrace: 2,
   streakRescueMaxMissed: 7,

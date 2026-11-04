@@ -73,7 +73,7 @@ export const Goals = {
       const tier = Scoring.tier(next, config);
       return { k: 'combo', short: next - r.bestCombo, multiplier: Scoring.multiplierOfTier(tier, config) };
     }
-    if (shiftCars > 0 && left <= Math.ceil(shiftCars * 0.4)) return { k: 'cars', left, level };
+    if (shiftCars > 0) return { k: 'cars', left, level };
     return null;
   },
 
