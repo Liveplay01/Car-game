@@ -1486,6 +1486,8 @@ export class ModeMessage {
 
 export interface DailyCard {
   event: CityEvent | null;
+  /** Today's Daily Shift is still to be played; false after it, when the card only keeps the streak in view. */
+  open: boolean;
   streak: number;
   /** The streak pays more on every shift right now. */
   bonus: number | null;
@@ -1495,14 +1497,10 @@ export interface DailyCard {
   freezes: number;
   next: StreakMilestone | null;
   splash: number | null;
-  /** The last seven days, oldest first (`Careers.streakCalendar`). */
-  calendar: { day: number; state: 'done' | 'frozen' | 'missed' | 'open' }[];
-  /** The Perfect Week: clean days so far, and whether one has paid this week. */
-  perfect: { days: number; perfect: boolean; paid: boolean };
+  /** This week, Monday first (`Careers.streakCalendar`). */
+  calendar: { day: number; state: 'done' | 'frozen' | 'missed' | 'open' | 'later' }[];
   /** Today's challenges: done, how many, and what all of them pay. */
   challenges: { done: number; total: number; reward: number };
-  /** Hours until midnight, the next Daily Shift. */
-  midnightIn: number;
 }
 
 /** What a trial asks for, as the ready screen explains it. */
@@ -1579,12 +1577,11 @@ function islandRow(list: RenderList, s: string | null, radius: number, size: num
 
 /**
  * The Daily in the ready screen's top card (Leo, 26.10.2026): the card grows by the strip's height and
- * carries the streak flame with its days, the last seven days, the next prize with its countdown, the
- * Perfect Week and today's challenges. It is the expanded header, not a second card below it; a short
+ * carries the streak flame with its days, this week from Monday and today's challenges. It is the expanded header, not a second card below it; a short
  * screen keeps the one-line pill instead.
  */
 export const DailyStrip = {
-  height: 92,
+  height: 52,
   maxWidth: 440,
 
   /** Fits when the grown card still ends above the prompt and the ring, with the card's own air. */
@@ -1597,16 +1594,12 @@ export const DailyStrip = {
     const left = frame.minX;
     const right = frame.maxX - 14;
     const x0 = left + 14;
-    const w = R.width(frame);
     // A hairline under the numbers, so the card reads as the bar and its Daily section, not one tall block.
     list.s(line(v(left + 12, top + 8), v(right, top + 8), 0.5), 'separator', 0.55 * opacity);
-    list.s(line(v(left + 12, top + 53), v(right, top + 53), 0.5), 'separator', 0.7 * opacity);
 
     DailyStrip.streakBlock(list, daily, x0, top, opacity, reduceMotion, time);
-    const calendarWidth = Math.min(116, w * 0.34);
-    DailyStrip.calendar(list, daily, x0 + 82, top, calendarWidth, opacity, reduceMotion, time);
-    DailyStrip.rewardBlock(list, daily, right, top, Math.min(140, w * 0.4), opacity);
-    DailyStrip.perfectBlock(list, daily, x0, top, opacity, reduceMotion, time);
+    const calendarX = x0 + 88;
+    DailyStrip.calendar(list, daily, calendarX, top, Math.min(right - calendarX - 100, 190), opacity, reduceMotion, time);
     DailyStrip.challengeBlock(list, daily, right, top, opacity);
   },
 
@@ -1620,7 +1613,8 @@ export const DailyStrip = {
     drawText(list, num, v(numX, top + 32), 24, streak > 0 ? 'primary' : 'muted', { weight: 'bold', opacity });
     const numW = textWidth(num, 24, true);
     drawText(list, streak === 1 ? S.daily.stripDay : S.daily.stripDays, v(numX + numW + 4, top + 32), 10, 'muted', { opacity });
-    drawText(list, streak > 0 ? S.daily.stripInARow : S.daily.stripStart, v(x, top + 45), 9, streak > 0 ? 'muted' : 'accent', { opacity });
+    if (daily.endsIn !== null) drawText(list, S.daily.stripEndsIn(daily.endsIn), v(x, top + 45), 9, 'hazard', { weight: 'bold', opacity });
+    else drawText(list, streak > 0 ? S.daily.stripInARow : S.daily.stripStart, v(x, top + 45), 9, streak > 0 ? 'muted' : 'accent', { opacity });
   },
 
   calendar(list: RenderList, daily: DailyCard, x: number, top: number, width: number, opacity: number, reduceMotion: boolean, time: number): void {
@@ -1640,53 +1634,19 @@ export const DailyStrip = {
         list.s(arc(at, 6 + pulse * 1.6, 1.4, 0, TAU), 'hazard', opacity * (0.45 + 0.5 * pulse));
         list.s(circle(at, 3.4), 'hazard', opacity * 0.45);
       } else {
-        list.s(circle(at, 3.8), 'controlFill', opacity * 0.75);
+        list.s(circle(at, 3.8), 'controlFill', opacity * (c.state === 'later' ? 0.4 : 0.75));
       }
     });
-  },
-
-  rewardBlock(list: RenderList, daily: DailyCard, right: number, top: number, width: number, opacity: number): void {
-    if (daily.next) {
-      drawFitted(list, S.daily.prize(daily.next.prize), v(right, top + 21), 11, width, 'accent', { weight: 'bold', align: 'trailing', opacity });
-      drawText(list, S.daily.stripRewardIn(daily.next.left), v(right, top + 34), 9, 'muted', { align: 'trailing', opacity });
-    } else {
-      drawText(list, S.daily.allMilestones, v(right, top + 21), 11, 'accent', { weight: 'bold', align: 'trailing', opacity });
-    }
-    if (daily.endsIn !== null) drawText(list, S.daily.stripEndsIn(daily.endsIn), v(right, top + 47), 9, 'hazard', { align: 'trailing', weight: 'bold', opacity });
-    else drawText(list, daily.calendar[6]?.state === 'open' ? S.daily.stripPlayToday : S.daily.stripNextDay(daily.midnightIn), v(right, top + 47), 9, 'muted', { align: 'trailing', opacity });
-  },
-
-  perfectBlock(list: RenderList, daily: DailyCard, x: number, top: number, opacity: number, reduceMotion: boolean, time: number): void {
-    const p = daily.perfect;
-    const done = Math.min(7, p.days);
-    const pulse = p.perfect && !p.paid && !reduceMotion ? 0.5 + 0.5 * Math.sin(time * 3) : 0;
-    for (let i = 0; i < 7; i++) {
-      const at = v(x + i * 8 + 3, top + 70);
-      if (i < done) list.s(rect(at, v(6, 6), 2), p.perfect && !p.paid ? 'accent' : 'hazard', opacity * (0.75 + 0.25 * pulse));
-      else list.s(rect(at, v(6, 6), 2), 'controlFill', opacity * 0.8);
-    }
-    const label = p.paid ? S.daily.perfectWeekDone : S.daily.perfectWeekProgress(done, 7);
-    drawText(list, label, v(x + 7 * 8 + 6, top + 76), 9, p.paid || p.perfect ? 'accent' : 'muted', { opacity, weight: p.perfect && !p.paid ? 'bold' : 'regular' });
   },
 
   challengeBlock(list: RenderList, daily: DailyCard, right: number, top: number, opacity: number): void {
     const c = daily.challenges;
     if (c.total <= 0) return;
-    const reward = `+${Fmt.number(c.reward)}`;
-    drawText(list, reward, v(right, top + 76), 10, 'accent', { align: 'trailing', weight: 'bold', opacity });
-    const rewardW = textWidth(reward, 10, true);
-    const count = `${c.done}/${c.total}`;
-    drawText(list, count, v(right - rewardW - 6, top + 76), 9, 'muted', { align: 'trailing', opacity });
-    const countW = textWidth(count, 9);
-    const pipsRight = right - rewardW - countW - 10;
     const all = c.done >= c.total;
-    for (let i = 0; i < c.total; i++) {
-      const at = v(pipsRight - (c.total - 1 - i) * 9, top + 72);
-      if (i < c.done) list.s(circle(at, 3.4), 'hazard', opacity);
-      else list.s(arc(at, 3.4, 1.2, 0, TAU), 'controlFill', opacity * 0.9);
-    }
-    const labelX = pipsRight - c.total * 9 - 5;
-    drawText(list, all ? S.daily.challengesComplete : S.daily.challengesLabel, v(labelX, top + 76), 9, all ? 'accent' : 'muted', { align: 'trailing', opacity, weight: all ? 'bold' : 'regular' });
+    drawText(list, `+${Fmt.number(c.reward)}`, v(right, top + 21), 11, 'accent', { align: 'trailing', weight: 'bold', opacity });
+    const count = `${c.done}/${c.total}`;
+    drawText(list, count, v(right, top + 34), 9, 'muted', { align: 'trailing', opacity });
+    drawText(list, all ? S.daily.challengesComplete : S.daily.challengesLabel, v(right - textWidth(count, 9) - 4, top + 34), 9, all ? 'accent' : 'muted', { align: 'trailing', opacity, weight: all ? 'bold' : 'regular' });
   },
 };
 
@@ -1742,10 +1702,10 @@ export const ReadyBanner = {
       ringTop?: number;
       /** The island's radius in world units: the lines in the middle stay inside it. */
       island: number;
-      /** A row for an ad pill (`AdPill`) under the streak pill: the intro makes way for it. */
+      /** An ad pill (`AdPill`) is on offer: it shows only where `out.ad` finds room under the rest. */
       adRow?: boolean;
-      /** Filled with the height the Daily section adds to the top card (0 when the pill is shown): the ad row follows the card. */
-      out?: { strip: number };
+      /** Filled with the height the Daily section adds to the top card, and whether the ad pill has room: the ad row follows the card. */
+      out?: { strip: number; ad: boolean };
     },
   ): number {
     const width = list.camera.viewport.x;
@@ -1778,7 +1738,7 @@ export const ReadyBanner = {
       : run
       ? [run.caption, run.color]
       : o.mode === 'shift'
-        ? o.daily === null
+        ? !o.daily?.open
           ? [S.ready.levelCaption(o.level, o.prestige ?? 0), o.elite ? 'coin' : 'muted']
           : [S.daily.title, 'hazard']
         : o.mode === 'unlimited'
@@ -1812,18 +1772,17 @@ export const ReadyBanner = {
       if (o.out) o.out.strip = DailyStrip.height;
     }
     const foot = TopBar.foot(list);
-    const pillText = run ? run.badge : o.daily && !strip ? S.daily.streakPill(o.daily.streak, o.daily.bonus, o.daily.endsIn, o.daily.freezes) : null;
-    if (!strip && pillText) {
+    const pillText = run ? run.badge : null;
+    if (pillText) {
       const under = v(width / 2, foot + 18);
-      const lineText = pillText;
-      MenuKit.chromePill(list, under, v(textWidth(lineText, 12) + 28, 26), opacity);
-      // A streak about to break says so in the warning colour.
-      list.s(text(lineText, under, 12, 'center'), !run && o.daily?.endsIn != null ? 'hazard' : 'primary', opacity);
+      MenuKit.chromePill(list, under, v(textWidth(pillText, 12) + 28, 26), opacity);
+      list.s(text(pillText, under, 12, 'center'), 'primary', opacity);
     }
-    // The intro rides in the grown top card, under a notice if one is up; the pills hang under the card.
-    const pills = (strip ? DailyStrip.height + 8 : pillText ? 31 : 0) + (o.adRow ? AdPill.row : 0);
+    // Where there is little room the less needed goes first: the notice and the intro, then the run's pill and the Daily, the ad offer last.
+    const pills = strip ? DailyStrip.height + 8 : pillText ? 31 : 0;
     const introTop = frame.maxY + list.topGrow - list.topIntro;
     const intro = o.intro && o.intro.length > 0 && o.time >= ReadyBanner.introDelay ? ReadyBanner.introLayout(o.intro, frame, introTop, bottomLimit - pills, o.textScale ?? 1) : null;
+    if (o.out) o.out.ad = !!o.adRow && introTop + (intro ? R.height(intro.box) : 0) + (strip ? DailyStrip.height + 10 : 18) + AdPill.height / 2 + 8 <= bottomLimit;
     const breath = o.reduceMotion ? 1 : 0.82 + 0.18 * (0.5 + 0.5 * Math.cos(o.time * 2.4));
     islandStack(list, o.island, [
       run?.line ? { s: run.line, size: 14, color: run.color, opacity, weight: 'bold' } : null,

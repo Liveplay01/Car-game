@@ -282,13 +282,6 @@ export default (S: Strings): Words<Strings> => ({
     gotCard: '一张免费刮刮卡',
     giftIn: (hours) => (hours >= 1 ? `明天有免费宝箱 · ${Math.ceil(hours)} 小时后` : `明天有免费宝箱 · ${Math.max(1, Math.ceil(hours * 60))} 分钟后`),
     perfectRunFirst: (pay) => `完美通关 · 零事故 · 报酬 +${pay}%`,
-    streakPill(streak, bonus, endsIn, freezes = 0) {
-      if (streak <= 0) return S.daily.streakLine(0);
-      const days = `连续 ${streak} 天`;
-      if (endsIn !== null) return `${days} · ${endsIn < 1 ? '不到 1 小时' : `${Math.floor(endsIn)} 小时后`}结束`;
-      const freeze = freezes > 0 ? ` · ${S.daily.freezes(freezes)}` : '';
-      return bonus !== null ? `${days} · 报酬 +${Math.round(bonus * 100)}%${freeze || '(每个班次)'}` : `${days}${freeze || ' · 继续保持'}`;
-    },
     challenge(c) {
       switch (c) {
         case 'perfectInputs':

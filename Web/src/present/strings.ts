@@ -2433,14 +2433,6 @@ export const S = {
     /** Tomorrow's gift (`Careers.promiseGift`): counted down on the Game tab. */
     giftIn: (hours: number): string => (hours >= 1 ? `Free chest tomorrow · in ${Math.ceil(hours)} h` : `Free chest tomorrow · in ${Math.max(1, Math.ceil(hours * 60))} min`),
     perfectRunFirst: (pay: number): string => `PERFECT RUN · no crash · +${pay} % pay`,
-    /** The pill over the Daily Shift: the streak, its bonus, and when it breaks. */
-    streakPill(streak: number, bonus: number | null, endsIn: number | null, freezes = 0): string {
-      if (streak <= 0) return S.daily.streakLine(0);
-      const days = `${streak} ${streak === 1 ? 'day' : 'days'} in a row`;
-      if (endsIn !== null) return `${days} · ends in ${endsIn < 1 ? 'under 1 h' : `${Math.floor(endsIn)} h`}`;
-      const freeze = freezes > 0 ? ` · ${S.daily.freezes(freezes)}` : '';
-      return bonus !== null ? `${days} · +${Math.round(bonus * 100)} % pay${freeze || ' on every shift'}` : `${days}${freeze || ' · keep it going'}`;
-    },
     challenge(c: Challenge): string {
       switch (c) {
         case 'perfectInputs':

@@ -1171,17 +1171,17 @@ export const Careers = {
   },
 
   /**
-   * The last `span` days as a calendar: played, covered or missed; today still open when it waits.
+   * This week, Monday to Sunday: played, covered or missed; today still open when it waits, days to come 'later'.
    * Days before the log (an old save) read as missed, which is honest: the game cannot tell.
    */
-  streakCalendar(c: Career, day: number, span = 7): { day: number; state: 'done' | 'frozen' | 'missed' | 'open' }[] {
+  streakCalendar(c: Career, day: number): { day: number; state: 'done' | 'frozen' | 'missed' | 'open' | 'later' }[] {
     const log = new Map(c.streakLog.map((e) => [e.d, e] as const));
-    const out: { day: number; state: 'done' | 'frozen' | 'missed' | 'open' }[] = [];
-    for (let d = day - span + 1; d <= day; d++) {
+    const monday = day - ((day + 3) % 7); // day 0 (1 Jan 1970) was a Thursday
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = monday + i;
       const e = log.get(d);
-      out.push({ day: d, state: e ? (e.f ? 'frozen' : 'done') : d === day ? 'open' : 'missed' });
-    }
-    return out;
+      return { day: d, state: e ? (e.f ? 'frozen' : 'done') : d > day ? 'later' : d === day ? 'open' : 'missed' };
+    });
   },
 
   /** How far the Perfect Week is: clean days up to today (today may still be open), and whether one paid this week. */

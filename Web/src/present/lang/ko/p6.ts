@@ -282,13 +282,6 @@ export default (S: Strings): Words<Strings> => ({
     gotCard: '무료 스크래치 카드 한 장',
     giftIn: (hours) => (hours >= 1 ? `내일은 무료 상자 · ${Math.ceil(hours)}시간 뒤` : `내일은 무료 상자 · ${Math.max(1, Math.ceil(hours * 60))}분 뒤`),
     perfectRunFirst: (pay) => `퍼펙트 런 · 충돌 없음 · 보수 +${pay}%`,
-    streakPill(streak, bonus, endsIn, freezes = 0) {
-      if (streak <= 0) return S.daily.streakLine(0);
-      const days = `${streak}일 연속`;
-      if (endsIn !== null) return `${days} · ${endsIn < 1 ? '1시간 안에' : `${Math.floor(endsIn)}시간 뒤`} 종료`;
-      const freeze = freezes > 0 ? ` · ${S.daily.freezes(freezes)}` : '';
-      return bonus !== null ? `${days} · 보수 +${Math.round(bonus * 100)}%${freeze || ' (모든 시프트)'}` : `${days}${freeze || ' · 계속 가요'}`;
-    },
     challenge(c) {
       switch (c) {
         case 'perfectInputs':

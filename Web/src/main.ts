@@ -9,7 +9,7 @@ import { startAnalytics } from './ui/analytics';
 import { startErrorReports } from './ui/errors';
 import { Casino } from './core/casino';
 import { forgetMeasures } from './present/measure';
-import { Careers, newSave } from './core/career';
+import { Careers, HINTS, newSave } from './core/career';
 import { Elite } from './core/elite';
 import { SAVE_KEYS, writeSave } from './storage/save';
 import { storage } from './storage/store';
@@ -102,6 +102,7 @@ if (boot && fail && 'locks' in navigator && !(await holdPlay({ ifAvailable: true
 // `&level=12&money=5000000` set the level and the money instead of 30 and 50,000.
 // `&elite=300` opens the Elite track (Level 50 unless `level` says otherwise) with that much Elite XP; `&elite=near`
 // stops a few XP short of Elite 2, so the next shift climbs a level.
+// `&streak=12` has played today's Daily on a 12-day streak and met every hint and weather, so the streak card stays up.
 // `npm run dev` only: `?drift` (also with `?demo&level=N`) sends drift cars one after another and no other specials,
 // into any traffic and never called off; `?drift=abort` calls them off on a full ring, as in the game.
 if (import.meta.env.DEV && new URLSearchParams(location.search).has('drift')) {
@@ -125,7 +126,12 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has('demo')) {
     demo.career.eliteXp = elite === 'near' ? Elite.xpTo(2) - 5 : Number(elite);
     demo.career.eliteClaimed = Elite.level(demo.career);
   }
-  const weather = query.get('demo') === 'night' ? shelfEntries(2).filter((e) => e.k === 'weather') : [];
+  const streak = Number(query.get('streak'));
+  if (streak > 0) {
+    Object.assign(demo.career, { dailyStreak: streak, dailyPlayed: dayNumber(), dailyDone: dayNumber() });
+    demo.hints = [...HINTS];
+  }
+  const weather = query.get('demo') === 'night' || streak > 0 ? shelfEntries(2).filter((e) => e.k === 'weather') : [];
   // `&failures` has lost every way there is (the Museum's Failures shelf is full).
   const failures = query.has('failures') ? shelfEntries(3) : [];
   demo.career.museumSeen = [...shelfEntries(0), ...shelfEntries(1), ...weather, ...failures].map(museumId);

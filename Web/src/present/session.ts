@@ -63,7 +63,7 @@ import type { PageHost } from './pageHost';
 import { type SpecialRun, settleSpecial, runCard, advanceRush, newRush } from './specialRuns';
 import { markPassed, markReward } from '../core/tiers';
 import { forHeat, heatPay } from '../core/heat';
-import { conditionChips, ConditionChips, FailChip, streakEndsIn, hoursToMidnight, addNotice, noticePresence, NoticeIsland } from './readyScreen';
+import { conditionChips, ConditionChips, FailChip, streakEndsIn, addNotice, noticePresence, NoticeIsland } from './readyScreen';
 import { Briefings, type Brief } from './briefing';
 import { newPlayerMoment } from './moments';
 
@@ -3972,8 +3972,10 @@ export class GameSession {
     const reach = Careers.reach(career);
     const todaysChallenges = challengesOf(this.today, reach);
     const challengesDone = todaysChallenges.filter((ch) => Careers.isChallengeDone(career, ch, this.today)).length;
-    const daily = this.dailySelected && !this.versusSelected
+    const streakShown = this.screen.k === 'ready' && this.save.mode === 'shift' && !this.special && (this.tutorial?.isOver ?? true) && Unlocks.isOpen(career, 'daily', this.config);
+    const daily = (this.dailySelected || streakShown) && !this.versusSelected
       ? {
+          open: this.dailySelected,
           event: this.world.config.cityEvent,
           streak: Goals.streak(career, this.today),
           next: Careers.nextStreakMilestone(career),
@@ -3982,9 +3984,7 @@ export class GameSession {
           endsIn: streakEndsIn(career, this.today, this.config),
           freezes: career.streakFreezes,
           calendar: Careers.streakCalendar(career, this.today),
-          perfect: Careers.perfectWeekProgress(career, this.today, this.config),
           challenges: { done: challengesDone, total: todaysChallenges.length, reward: todaysChallenges.reduce((n, ch) => n + challengeReward(ch, reach), 0) },
-          midnightIn: hoursToMidnight(),
         }
       : null;
     const run = runCard(this.special, this.world.config, this.playingMode, this.versusSelected, career, this.today);
@@ -3992,9 +3992,9 @@ export class GameSession {
     // While the Daily's opening is on, nothing else of the waiting screen shows through it.
     const opening = daily !== null && daily.splash !== null;
     const chips = opening || this.special?.k === 'trial' || this.versusSelected || (this.tutorial && !this.tutorial.isOver) ? [] : conditionChips(this.world.config, career);
-    const adRow = !opening && (daily !== null || this.screen.k === 'result') && this.gameAd !== null;
+    const adRow = !opening && (daily?.open || this.screen.k === 'result') && this.gameAd !== null;
     const chipsAt = ConditionChips.center(toScreen(list.camera, v(0, 0)), !!run?.line);
-    const chrome = { strip: 0 };
+    const chrome = { strip: 0, ad: false };
     this.introWant = ReadyBanner.add(list, {
       level: this.playingLevel,
       cars: this.world.carsLeft ?? 0,
@@ -4023,10 +4023,7 @@ export class GameSession {
       adRow,
       out: chrome,
     });
-    if (adRow) {
-      const below = chrome.strip > 0 ? chrome.strip + 10 : 18 + (daily ? 31 : 0);
-      this.addGameAd(list, TopBar.foot(list) + below, opacity);
-    }
+    if (adRow && chrome.ad) this.addGameAd(list, TopBar.foot(list) + (chrome.strip > 0 ? chrome.strip + 10 : 18), opacity);
     if (chips.length > 0) {
       ConditionChips.add(list, chips, chipsAt, { time: this.sinceReady - ReadyBanner.introDelay, reduceMotion: this.reduceMotion, opacity, selected: this.conditionShown });
       if (opacity > 0.5 && this.showsChrome) this.conditionTargets = ConditionChips.targets(chips.length, chipsAt).map((rect, i) => ({ id: chips[i].id, rect }));

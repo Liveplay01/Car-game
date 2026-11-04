@@ -60,6 +60,9 @@ export const PATCH_NOTES: PatchNote[] = [
       'Unlimited and Daily records now carry a replay, so the leaderboard can check how a run was played.',
     ],
     items: [
+      'Your Daily streak now stays on the start screen after you have played the Daily. The "days in a row" message under the card is gone.',
+      'The Daily card on the start screen is smaller: one row with your streak, the week from Monday to Sunday and today\'s challenges. Prize and Perfect Week moved to Progress.',
+      'On small screens the start screen drops the least important lines first: the ad offer goes before the Daily streak, which goes before the intro.',
       'Titles are easier to find: the Elite card shows from your first title, and its Titles row opens all of them, grouped by kind, with the progress to the closest one.',
       'Tap a title on any leaderboard to see how to earn it. On your own line you can wear an earned one right there, or change it in Your player.',
       'Unlimited and Daily records are sent with the taps of the run. The leaderboard plays the run again and a moderator looks at any record that does not add up.',

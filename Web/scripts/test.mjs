@@ -2240,14 +2240,15 @@ test('a Freeze covers the missed day, but a covered day is not a clean day for t
   assert.equal(news.perfectWeek, false, 'a covered day breaks the clean week');
   assert.equal(c.perfectWeeks, 0);
   assert.equal(c.money, 0);
-  assert.deepEqual(Careers.streakCalendar(c, 207).map((x) => x.state), ['done', 'done', 'done', 'done', 'done', 'frozen', 'done']);
+  assert.deepEqual(Careers.streakCalendar(c, 206).map((x) => x.state), ['done', 'done', 'done', 'done', 'done', 'done', 'frozen']);
+  assert.deepEqual(Careers.streakCalendar(c, 207).map((x) => x.state), ['done', 'later', 'later', 'later', 'later', 'later', 'later'], 'a new week starts on Monday');
 });
 
 test('the streak calendar tells played, covered, missed and today still open', () => {
   const c = newCareer();
   for (let day = 300; day < 303; day++) Careers.startDaily(c, day, baseConfig);
   assert.deepEqual(Careers.streakCalendar(c, 304).map((x) => x.state), ['missed', 'missed', 'done', 'done', 'done', 'missed', 'open']);
-  assert.deepEqual(Careers.streakCalendar(c, 302).map((x) => x.state), ['missed', 'missed', 'missed', 'missed', 'done', 'done', 'done']);
+  assert.deepEqual(Careers.streakCalendar(c, 302).map((x) => x.state), ['missed', 'missed', 'done', 'done', 'done', 'later', 'later']);
 });
 
 test('the streak road pays its skins and chests once each, up to a year of days', () => {
@@ -2583,8 +2584,6 @@ test('Tailwind and the streak add up on the pay of a shift', () => {
   assert.equal(Goals.daysToFreeze(c, baseConfig), null);
   assert.ok(S.daily.rowLine(4, false, { days: 7, left: 3, prize: { k: 'item', id: 'streakBronze' } }, 0, 3).includes(S.shop.item('streakBronze')), 'the skin is as near as the Freeze: the skin shows');
   assert.ok(S.daily.rowLine(4, false, { days: 7, left: 10, prize: { k: 'item', id: 'streakBronze' } }, 0, 3).includes(S.daily.freezeLine(3)), 'the Freeze is nearer');
-  assert.ok(S.daily.streakPill(8, 0.15, null, 1).includes('1 Streak Freeze'));
-  assert.ok(!S.daily.streakPill(8, 0.15, null, 0).includes('Freeze'));
 });
 
 test('an Unlimited mark pays Elite XP once per career, and tiers show on the board', () => {

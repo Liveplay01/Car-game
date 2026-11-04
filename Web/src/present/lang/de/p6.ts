@@ -299,13 +299,6 @@ export default (S: Strings): Words<Strings> => ({
     gotCard: 'ein Gratis-Rubbellos',
     giftIn: (hours) => (hours >= 1 ? `Gratis-Truhe morgen · in ${Math.ceil(hours)} Std.` : `Gratis-Truhe morgen · in ${Math.max(1, Math.ceil(hours * 60))} Min.`),
     perfectRunFirst: (pay) => `PERFEKTER LAUF · kein Crash · +${pay} % Bezahlung`,
-    streakPill(streak, bonus, endsIn, freezes = 0) {
-      if (streak <= 0) return S.daily.streakLine(0);
-      const days = `${streak} ${streak === 1 ? 'Tag' : 'Tage'} in Folge`;
-      if (endsIn !== null) return `${days} · endet in ${endsIn < 1 ? 'unter 1 Std.' : `${Math.floor(endsIn)} Std.`}`;
-      const freeze = freezes > 0 ? ` · ${S.daily.freezes(freezes)}` : '';
-      return bonus !== null ? `${days} · +${Math.round(bonus * 100)} % Bezahlung${freeze || ' bei jeder Schicht'}` : `${days}${freeze || ' · weiter so'}`;
-    },
     challenge(c) {
       switch (c) {
         case 'perfectInputs':

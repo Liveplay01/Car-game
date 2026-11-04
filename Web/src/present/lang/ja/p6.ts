@@ -282,13 +282,6 @@ export default (S: Strings): Words<Strings> => ({
     gotCard: '無料のスクラッチカード1枚',
     giftIn: (hours) => (hours >= 1 ? `明日は無料の宝箱 · あと${Math.ceil(hours)}時間` : `明日は無料の宝箱 · あと${Math.max(1, Math.ceil(hours * 60))}分`),
     perfectRunFirst: (pay) => `パーフェクトラン · ノークラッシュ · 報酬+${pay}%`,
-    streakPill(streak, bonus, endsIn, freezes = 0) {
-      if (streak <= 0) return S.daily.streakLine(0);
-      const days = `${streak}日連続`;
-      if (endsIn !== null) return `${days} · ${endsIn < 1 ? '1時間以内' : `あと${Math.floor(endsIn)}時間`}で終了`;
-      const freeze = freezes > 0 ? ` · ${S.daily.freezes(freezes)}` : '';
-      return bonus !== null ? `${days} · 報酬+${Math.round(bonus * 100)}%${freeze || ' (すべてのシフト)'}` : `${days}${freeze || ' · その調子'}`;
-    },
     challenge(c) {
       switch (c) {
         case 'perfectInputs':
