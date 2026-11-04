@@ -62,6 +62,7 @@ export const ADMIN_PAGE = `<!doctype html>
   .card.new { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
   .card.done { opacity: .65; }
   .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow); }
+  main h2 { font-size: 16px; margin: 24px 0 12px; }
   .panel h2 { font-size: 16px; margin: 0 0 12px; }
   .meta { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
   .tag { font-weight: 700; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
@@ -102,6 +103,7 @@ export const ADMIN_PAGE = `<!doctype html>
     <button type="button" role="tab" data-tab="bugs">Bugs<span class="badge" id="bBugs">0</span></button>
     <button type="button" role="tab" data-tab="ideas">Ideas<span class="badge" id="bIdeas">0</span></button>
     <button type="button" role="tab" data-tab="errors">Errors<span class="badge" id="bErrors">0</span></button>
+    <button type="button" role="tab" data-tab="ranks">Ranks<span class="badge" id="bRanks">0</span></button>
     <button type="button" role="tab" data-tab="players">Players</button>
   </nav>
   <button type="button" class="signout" id="signout">Sign out</button>
@@ -152,6 +154,24 @@ export const ADMIN_PAGE = `<!doctype html>
     <div id="errList"></div>
   </section>
 
+  <section id="ranks" hidden>
+    <div class="head"><h1>Ranks</h1></div>
+    <p class="sub">Flagged runs are ones the server replayed and could not confirm. Nothing is removed automatically: check, then remove the score or ban the player. A banned player vanishes from every list; Players can lift it.</p>
+    <h2>Flagged</h2>
+    <div id="flagList"></div>
+    <h2>Board</h2>
+    <div class="bar">
+    <div class="seg" id="boardSeg" role="group" aria-label="Board">
+      <button type="button" data-v="unlimited" aria-pressed="true">Unlimited</button>
+      <button type="button" data-v="daily" aria-pressed="false">Daily</button>
+      <button type="button" data-v="shift-level" aria-pressed="false">Shift level</button>
+      <button type="button" data-v="rush" aria-pressed="false">Boss Rush</button>
+      <button type="button" data-v="casino" aria-pressed="false">Arcade</button>
+    </div>
+    </div>
+    <div id="rankList"></div>
+  </section>
+
   <section id="players" hidden>
     <div class="head"><h1>Players</h1></div>
     <p class="sub">Both reach the player the next time they open the game.</p>
@@ -192,6 +212,7 @@ export const ADMIN_PAGE = `<!doctype html>
   let tab = sessionStorage.getItem('ratTab') || 'bugs';
   let ideaStatus = 'pending';
   let bugStatus = '';
+  let board = 'unlimited';
   let toastTimer = 0;
 
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -237,7 +258,7 @@ export const ADMIN_PAGE = `<!doctype html>
     tab = next;
     sessionStorage.setItem('ratTab', next);
     for (const b of $('tabs').children) b.setAttribute('aria-selected', String(b.dataset.tab === next));
-    for (const s of ['bugs', 'ideas', 'errors', 'players']) $(s).hidden = s !== next;
+    for (const s of ['bugs', 'ideas', 'errors', 'ranks', 'players']) $(s).hidden = s !== next;
     load();
   }
 
@@ -249,7 +270,15 @@ export const ADMIN_PAGE = `<!doctype html>
     $('bIdeas').classList.toggle('club', ideas.counts.pending > 0);
     $('bErrors').textContent = errs.items.length;
     $('bErrors').classList.toggle('hot', errs.items.length > 0);
+    const flags = await api('GET', '/flags');
+    $('bRanks').textContent = flags.flags.length;
+    $('bRanks').classList.toggle('hot', flags.flags.length > 0);
   };
+
+  const rankActions = (b, id) => '<button type="button" data-score data-board="' + esc(b) + '" data-player="' + esc(id) + '">Remove score</button>' +
+    '<button type="button" data-ban data-player="' + esc(id) + '">Ban</button>' +
+    '<button type="button" class="danger gap" data-erase data-player="' + esc(id) + '">Delete player</button>';
+  const reasons = { mismatch: 'replay scored differently', invalid: 'proof invalid', no_proof: 'no proof, top 10' };
 
   const loaders = {
     async bugs() {
@@ -296,6 +325,17 @@ export const ADMIN_PAGE = `<!doctype html>
         '<div class="meta"><span class="tag bug">' + esc(x.type) + '</span><span class="pill">' + x.count + '×</span><span>' + esc(x.channel) + '</span><span>last ' + when(x.lastAt) + '</span><span>first ' + when(x.firstAt) + '</span></div>' +
         '<p class="text">' + esc(x.message) + '</p>' + (x.stack ? '<pre class="orig">' + esc(x.stack) + '</pre>' : '') +
         '<div class="actions"><button type="button" data-dismiss>Dismiss</button></div></article>').join('') : '<p class="empty">No errors. Good.</p>';
+    },
+    async ranks() {
+      const [flags, list] = await Promise.all([api('GET', '/flags'), api('GET', '/boards/' + board)]);
+      $('flagList').innerHTML = flags.flags.length ? flags.flags.map((f) =>
+        '<article class="card bug"><div class="meta"><span class="tag bug">' + esc(f.board) + '</span><span class="pill">' + esc(reasons[f.reason] || f.reason) + '</span><strong>' + esc(f.name) + '</strong>' +
+        '<span>claimed ' + f.claimed + (f.replayed === null ? '' : ' · replayed ' + f.replayed) + '</span><span>' + when(f.flaggedAt) + '</span></div>' +
+        '<div class="actions">' + rankActions(f.board, f.playerId) +
+        '<button type="button" data-dismissflag data-board="' + esc(f.board) + '" data-period="' + esc(f.period) + '" data-player="' + esc(f.playerId) + '" data-reason="' + esc(f.reason) + '">Dismiss flag</button></div></article>').join('') : '<p class="empty">No flags.</p>';
+      $('rankList').innerHTML = list.entries.length ? list.entries.map((e) =>
+        '<article class="card"><div class="meta"><span class="pill">#' + e.rank + '</span><strong>' + esc(e.name) + '</strong><span>' + e.score + '</span><span>' + when(e.at) + '</span></div>' +
+        '<div class="actions">' + rankActions(list.board, e.playerId) + '</div></article>').join('') : '<p class="empty">Empty.</p>';
     },
     async players() {
       const data = await api('GET', '/messages');
@@ -359,6 +399,19 @@ export const ADMIN_PAGE = `<!doctype html>
     try {
       if ('delete' in b.dataset) { if (!confirm('Delete this idea from the Game fund and permanently remove its gifts?')) return; await api('DELETE', '/ideas/' + id); }
       else { await api('PATCH', '/ideas/' + id, { status: b.dataset.to, title: card.querySelector('[data-title]').value, text: card.querySelector('[data-text]').value }); toast('Saved.'); }
+      load();
+    } catch (err) { fail(err); }
+  });
+
+  $('boardSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; board = b.dataset.v; pick($('boardSeg'), b); load(); });
+  $('ranks').addEventListener('click', async (e) => {
+    const b = e.target.closest('button'); if (!b || !b.dataset.player) return;
+    const id = b.dataset.player;
+    try {
+      if ('score' in b.dataset) { if (!confirm('Remove this score?')) return; await api('DELETE', '/scores/' + b.dataset.board + '/' + id); }
+      else if ('ban' in b.dataset) { if (!confirm('Ban this player? They disappear from every list.')) return; await api('PATCH', '/players/' + id, { banned: true }); }
+      else if ('erase' in b.dataset) { if (!confirm('Delete this player and all their data for good?')) return; await api('DELETE', '/players/' + id); }
+      else await api('DELETE', '/flags/' + [b.dataset.board, b.dataset.period, id, b.dataset.reason].map(encodeURIComponent).join('/'));
       load();
     } catch (err) { fail(err); }
   });

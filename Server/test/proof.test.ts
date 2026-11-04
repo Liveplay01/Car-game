@@ -18,7 +18,8 @@ function setup() {
       headers: { 'x-forwarded-for': '10.0.0.1', authorization: `Bearer ${token}`, 'content-type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
-    return { status: r.status, json: await r.json() };
+    const text = await r.text();
+    return { status: r.status, json: text ? JSON.parse(text) : null };
   };
   const join = async (name: string) => {
     const r = await app.request('/v1/players', { method: 'POST', headers: { 'x-forwarded-for': '10.1.0.1', 'content-type': 'application/json' }, body: JSON.stringify({ name }) });
@@ -66,4 +67,20 @@ test('a daily proof with a seed that is not the day\'s is invalid', { skip }, as
   const day = Math.floor(1_700_000_000_000 / 86_400_000);
   await call('PUT', '/v1/boards/daily/score', token, { score: 900, day, proof: { ...golden.proof, mode: 'daily', day } });
   assert.deepEqual((await flags()).map((f) => f.reason), ['invalid']);
+});
+
+test('admin lists a board with player ids, dismisses a flag, and drops a banned player', { skip }, async () => {
+  const { call, join } = setup();
+  const token = await join('Cheater');
+  await call('PUT', '/v1/boards/unlimited/score', token, { cars: 5, score: 500 });
+  assert.equal((await call('GET', '/v1/admin/boards/unlimited', 'wrong')).status, 401);
+  const list = async () => (await call('GET', '/v1/admin/boards/unlimited', ADMIN)).json as { entries: { playerId: string }[] };
+  const { entries } = await list();
+  assert.equal(entries.length, 1);
+  const flagged = ((await call('GET', '/v1/admin/flags', ADMIN)).json as { flags: { board: string; period: string; playerId: string; reason: string }[] }).flags;
+  assert.equal(flagged.length, 1);
+  const f = flagged[0]!;
+  assert.equal((await call('DELETE', `/v1/admin/flags/${f.board}/${f.period}/${f.playerId}/${f.reason}`, ADMIN)).status, 204);
+  await call('PATCH', `/v1/admin/players/${entries[0]!.playerId}`, ADMIN, { banned: true });
+  assert.equal((await list()).entries.length, 0);
 });

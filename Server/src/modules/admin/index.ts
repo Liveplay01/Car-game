@@ -20,12 +20,14 @@ import { ADMIN_PAGE } from './page.ts';
 
 /**
  * Moderation with a shared secret (`ADMIN_TOKEN` in Coolify); without it these routes do not
- * exist. All of it is meant for curl, there is no admin page.
+ * exist. The page at `/admin` covers bugs, ideas, errors, ranks (flags and board lists) and players; curl works too.
  *
  *   GET    /v1/admin/players?q=text                 find players by name
  *   PATCH  /v1/admin/players/:id  {banned, name}    block or unblock; rename (skips the name filter)
  *   DELETE /v1/admin/players/:id                    remove the player and all of their scores
  *   DELETE /v1/admin/scores/:board/:playerId        remove one score, keep the player
+ *   DELETE /v1/admin/flags/:board/:period/:playerId/:reason   dismiss a flag
+ *   GET    /v1/admin/boards/:board?day=N            a board's top 100 with player ids (blocked players are not listed)
  *   GET    /v1/admin/flags                          scores to look at: a replay that did not match, an invalid proof, a top score without proof (flag only, nobody is banned for it)
  *   GET    /v1/admin/feedback?kind=bug&status=new   bug reports and ideas, newest first
  *   PATCH  /v1/admin/feedback/:id  {status}          new · seen · done · wontfix
@@ -104,6 +106,20 @@ export function adminModule(): ServerModule {
       });
 
       admin.get('/flags', (c) => c.json({ flags: scores.flags(200) }));
+
+      admin.delete('/flags/:board/:period/:playerId/:reason', (c) => {
+        const { board, period, playerId, reason } = c.req.param();
+        if (!scores.unflag(board, period, playerId, reason)) throw new ApiError(404, 'not_found', 'No such flag.');
+        return c.body(null, 204);
+      });
+
+      admin.get('/boards/:board', (c) => {
+        const board = boardById(c.req.param('board'));
+        const day = Number(c.req.query('day'));
+        const period = board.period(ctx.now(), Number.isInteger(day) ? day : undefined);
+        const entries = scores.top(board.id, period, 100).map((e) => ({ rank: e.rank, playerId: e.playerId, name: e.name, score: e.score, meta: e.meta, at: e.achievedAt }));
+        return c.json({ board: board.id, period, entries });
+      });
 
       admin.get('/feedback', (c) => {
         const kind = c.req.query('kind') as FeedbackKind | undefined;

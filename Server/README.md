@@ -133,7 +133,7 @@ promise: use the admin routes for what slips through.
 (seed, level and upgrades, and every tap with its step). A better score than the player's own is replayed on the game's
 own rules, bundled from `Web/src/core` into `Server/proof/proof.mjs` (`npm run build:proof` in `Web/`; the Docker build does
 it), in a worker thread (10 s timeout, 2 at a time). **Flag only, never refuse or ban:** a mismatch, a malformed proof or a
-top-10 score without proof lands in `score_flags` and shows at `GET /v1/admin/flags` (curl; no page yet). A stale `rules`
+top-10 score without proof lands in `score_flags` and shows at `GET /v1/admin/flags` and in the `/admin` tab **Ranks**, which also lists each board's top 100 with Remove score / Ban / Delete player (`GET /v1/admin/boards/:board`; banned players are not listed). A stale `rules`
 number (`PROOF_RULES` in `core/proof.ts`, bumped when core changes what a run scores; `npm test` in `Web/` fails until then),
 a busy or timed-out replay and a missing bundle are not flagged. Limits: level and upgrades (`setup`) are self-reported;
 Boss Rush, Shift-level and Casino are not verified. Run the tests with the bundle built (`Server/test/proof.test.ts` skips without it).

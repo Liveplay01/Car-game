@@ -145,6 +145,10 @@ export class ScoreStore {
     return rows.map((r) => ({ board: r.board, period: r.period, playerId: r.player_id, name: r.name, reason: r.reason, claimed: r.claimed, replayed: r.replayed, flaggedAt: r.flagged_at }));
   }
 
+  unflag(board: string, period: string, playerId: string, reason: string): boolean {
+    return Number(this.db.prepare('DELETE FROM score_flags WHERE board = ? AND period = ? AND player_id = ? AND reason = ?').run(board, period, playerId, reason).changes) > 0;
+  }
+
   remove(board: string, playerId: string): boolean {
     return Number(this.db.prepare('DELETE FROM scores WHERE board = ? AND player_id = ?').run(board, playerId).changes) > 0;
   }

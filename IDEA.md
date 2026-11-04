@@ -161,7 +161,6 @@ Offen, grob nach Nutzen:
 2. **Setup beweisen.** Level und Upgrades im Beweis sind selbst gemeldet; ein Server-Seed (Token mit Startzeit) oder die Cloud-Kopie könnte sie prüfen.
 3. **Casino-Profit absichern.** Zuwachs pro Tag begrenzen (Einsatz-Limits × Rundenzahl) oder eine signierte Rundenliste
    verlangen; heute bis 1 Billion, „latest“ überschreibt.
-4. **Flags-Seite im `/admin`** statt nur `GET /v1/admin/flags`.
 5. **Tap-Verteilung prüfen.** Roboter treffen Fenster auf die Millisekunde oder mit konstantem Abstand; ein Signal im Replay.
 6. **Quarantäne (Shadow-Ban).** Geflaggte Scores sieht nur der Einreicher, bis ein Admin sie prüft.
 7. **Siegel härten.** Schlüssel pro Installation, Zähler gegen Zurückspielen; Cloud-Sync-Sprünge prüfen (hängt mit „Geld zurückspulen über die Cloud-Kopie“ zusammen).
