@@ -16,7 +16,8 @@ mkdirSync(OUT, { recursive: true });
 
 const name = process.argv[2];
 const range = process.argv.find((a) => a.startsWith('--frames='))?.slice(9).split('-').map(Number);
-const edl = (await import(pathToFileURL(join(import.meta.dirname, 'cuts', `${name}.mjs`)).href)).default;
+const cuts = (file) => import(pathToFileURL(join(import.meta.dirname, 'cuts', file)).href);
+const edl = name.startsWith('gen-') ? (await cuts('gen.mjs')).build(name.slice(4)) : (await cuts(`${name}.mjs`)).default;
 
 const integrate = (speed, local) => {
   if (typeof speed === 'number') return local * speed;

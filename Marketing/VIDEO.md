@@ -24,6 +24,31 @@ bekommt einen eigenen Klang. Wo ein Sound doch öfter kommt: selten, mit anderer
 | `reel-7-cash-out` | „Cash out… NOW!“ | `reel-greed.mjs`: Clutch-Cash-out, Double or nothing gewonnen, dann zu gierig | `s-greed` |
 | `reel-8-legendary` | „Tap fast.“ / „Legendary?“ | `reel-chest.mjs`: Truhe mit 8 Taps aufbrechen, Reel kriecht, Legendary, dann auf der Straße | `s-chest`, `w-extreme` |
 
+## Generator (04.11.2026)
+
+38 Reels (`reel-9` bis `reel-46`) entstehen nicht mehr von Hand, sondern aus Rezepten. Ein Rezept in
+`trailer/compose/cuts/gen-recipes.mjs` ist ein Hook plus Schritte (Momentart, Anzahl, Länge, Texte, Zeitlupe).
+`gen.mjs` zieht die Momente aus den Event-Logs des ganzen Footage-Pools (Perfect, Tight Fit, Near Miss, Crash,
+Takedown, Explosion, Polizei, Ambulanz, Rush Hour), schneidet sie im Beat, variiert Sounds (Tonhöhe, Pegel) und
+nimmt eines von fünf Musikprofilen. Ein neues Reel sind rund drei Zeilen Daten. Neue Rezepte **ans Ende** hängen,
+damit die Nummern stabil bleiben.
+
+```powershell
+cd Marketing/trailer
+node compose/batch.mjs --jobs=6 --from=9            # alle Rezepte, parallel (ca. 12 min je 15 Reels)
+node compose/batch.mjs at-3am --from=9              # nur eines
+```
+
+Das Ergebnis landet als `videos/reel-<9+Index>-<id>.mp4`. Die Momente stammen aus dem Oktober-Footage; der Pool
+ist klein (46 Perfects, 4 Takedowns, 7 Explosionen), darum kommen einzelne Momente in mehreren Reels vor, mit anderem
+Schnitt und Text. Mehr Vielfalt bringt neues Footage (`capture/batch.mjs`), dann stehen die Momente automatisch im Pool.
+
+Rezepte: closest-calls, worst-timing, pov-patient, pov-impatient, barely-fits, perfect-or-nothing,
+expectation-reality, wanted, ten-explosions, how, three-drivers, dont-blink, day-1-day-100, wait-for-it,
+reaction-test, level-up, satisfying, rush-hour, make-way, that-friend, dodged, free-in-browser, one-button,
+tap-or-wait, my-last-brain-cell, rating-every-merge, no-skill-needed, one-more-try, adrenaline, big-brain-timing,
+tourists, at-3am, stress-test, brake-check, smooth-operator, tiny-gap-huge-risk, pure-chaos, trust-the-process.
+
 ## Ideen
 
 | Idee | Hook | Inhalt |
