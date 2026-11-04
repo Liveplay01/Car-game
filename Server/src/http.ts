@@ -4,9 +4,9 @@ import { ApiError } from './errors.ts';
 const MAX_BODY = 4096;
 
 /** The JSON object of a request body; anything else is a 400. */
-export async function readJson(c: Context): Promise<Record<string, unknown>> {
+export async function readJson(c: Context, maxBody = MAX_BODY): Promise<Record<string, unknown>> {
   const text = await c.req.text();
-  if (text.length > MAX_BODY) throw new ApiError(413, 'too_large', 'The request is too large.');
+  if (text.length > maxBody) throw new ApiError(413, 'too_large', 'The request is too large.');
   let body: unknown;
   try {
     body = JSON.parse(text);

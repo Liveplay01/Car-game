@@ -26,6 +26,7 @@ import { ADMIN_PAGE } from './page.ts';
  *   PATCH  /v1/admin/players/:id  {banned, name}    block or unblock; rename (skips the name filter)
  *   DELETE /v1/admin/players/:id                    remove the player and all of their scores
  *   DELETE /v1/admin/scores/:board/:playerId        remove one score, keep the player
+ *   GET    /v1/admin/flags                          scores to look at: a replay that did not match, an invalid proof, a top score without proof (flag only, nobody is banned for it)
  *   GET    /v1/admin/feedback?kind=bug&status=new   bug reports and ideas, newest first
  *   PATCH  /v1/admin/feedback/:id  {status}          new · seen · done · wontfix
  *   DELETE /v1/admin/feedback/:id                    remove one
@@ -101,6 +102,8 @@ export function adminModule(): ServerModule {
         if (!scores.remove(board.id, c.req.param('playerId'))) throw new ApiError(404, 'not_found', 'No such score.');
         return c.body(null, 204);
       });
+
+      admin.get('/flags', (c) => c.json({ flags: scores.flags(200) }));
 
       admin.get('/feedback', (c) => {
         const kind = c.req.query('kind') as FeedbackKind | undefined;

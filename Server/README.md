@@ -128,9 +128,15 @@ insults and slurs, also when disguised (l33t, dots between letters, stretched le
 innocent names alone (`src/modules/players/profanity.ts`). It is a first line of defence, not a
 promise: use the admin routes for what slips through.
 
-**Anti-cheat is plausibility only.** A score beyond what the rules allow is refused with
-`422 invalid_score` (limits in `LIMITS`, `boards.ts`); everything below that is believed. Anyone
-with DevTools can post a believable fake, so look at the lists now and then and remove entries.
+**Anti-cheat: plausibility, then replay (Leo, 04.11.2026).** A score beyond what the rules allow is refused with
+`422 invalid_score` (limits in `LIMITS`, `boards.ts`). On the Unlimited and Daily boards the game also sends `proof`
+(seed, level and upgrades, and every tap with its step). A better score than the player's own is replayed on the game's
+own rules, bundled from `Web/src/core` into `Server/proof/proof.mjs` (`npm run build:proof` in `Web/`; the Docker build does
+it), in a worker thread (10 s timeout, 2 at a time). **Flag only, never refuse or ban:** a mismatch, a malformed proof or a
+top-10 score without proof lands in `score_flags` and shows at `GET /v1/admin/flags` (curl; no page yet). A stale `rules`
+number (`PROOF_RULES` in `core/proof.ts`, bumped when core changes what a run scores; `npm test` in `Web/` fails until then),
+a busy or timed-out replay and a missing bundle are not flagged. Limits: level and upgrades (`setup`) are self-reported;
+Boss Rush, Shift-level and Casino are not verified. Run the tests with the bundle built (`Server/test/proof.test.ts` skips without it).
 
 **Rate limits** (in memory, `src/rateLimit.ts`; a restart only resets the counters; `429 rate_limited` with `Retry-After`):
 
@@ -182,8 +188,8 @@ Two small losses are accepted: an invite does not pay when the inviter erased th
 
 A second resource next to the game, from the same GitHub repository:
 
-1. **New Resource → GitHub repository → Build Pack: Dockerfile.** Base Directory `/Server`,
-   Dockerfile location `/Dockerfile`. **Ports Exposes: `5051`.**
+1. **New Resource → GitHub repository → Build Pack: Dockerfile.** Base Directory `/` (the image also bundles `Web/src/core`),
+   Dockerfile location `/Server/Dockerfile`. **Ports Exposes: `5051`.**
 2. **Domain:** a subdomain, e.g. `https://api.your-domain.tld` (Coolify's proxy does HTTPS).
 3. **Persistent Storage:** add a volume with destination path `/data`. **Without it the database is
    gone at every deploy.**

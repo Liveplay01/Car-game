@@ -77,9 +77,11 @@ export function createApp(options: AppOptions): Hono<AppEnv> {
       maxAge: 86_400,
     }),
   );
-  // Small requests everywhere, except the cloud save, which carries a whole save (its route sets its own limit).
+  // Small requests everywhere, except the cloud save, which carries a whole save (its route sets its own limit),
+  // and a record with its replay proof (the inputs of one run: a few thousand taps).
   const small = bodyLimit({ maxSize: 8192, onError: () => { throw new ApiError(413, 'too_large', 'The request is too large.'); } });
-  app.use('*', (c, next) => (c.req.path === '/v1/sync' ? next() : small(c, next)));
+  const withProof = bodyLimit({ maxSize: 786_432, onError: () => { throw new ApiError(413, 'too_large', 'The request is too large.'); } });
+  app.use('*', (c, next) => (c.req.path === '/v1/sync' ? next() : /^\/v1\/boards\/(unlimited|daily)\/score$/.test(c.req.path) ? withProof(c, next) : small(c, next)));
   app.use('*', async (c, next) => {
     c.set('ip', clientIp(c, ctx.config));
     c.header('X-Content-Type-Options', 'nosniff');

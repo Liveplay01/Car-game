@@ -293,7 +293,7 @@ test('CORS follows CORS_ORIGINS', async () => {
 test('bodies that are too large are refused', async () => {
   const { call, join } = setup();
   const { token } = await join('Leo');
-  const r = await call('PUT', '/v1/boards/unlimited/score', { token, body: { score: 1, cars: 1, junk: 'x'.repeat(10_000) } });
+  const r = await call('PUT', '/v1/boards/shift-level/score', { token, body: { level: 1, prestige: 0, junk: 'x'.repeat(10_000) } });
   assert.equal(r.status, 413);
 });
 

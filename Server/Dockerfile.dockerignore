@@ -1,0 +1,12 @@
+**
+!Web
+!Web/**
+!Server/package.json
+!Server/package-lock.json
+!Server/src
+!Server/src/**
+Web/node_modules
+Web/dist
+Web/test-results
+Web/playwright-report
+Web/**/*.local

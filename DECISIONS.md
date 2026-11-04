@@ -17,7 +17,7 @@ Auslagerung aus [CLAUDE.md](CLAUDE.md). Dort steht je Eintrag eine Kurzfassung; 
   Vorschaubild zeichnet der Server selbst, kein Upload; `net/challengeLink.ts`), seit 03.10.2026 **Build with us**
   (Bug-Reports und Ideen vom Formular auf timing.love/build, je 1 pro Tag, Inbox unter `/admin`; ein Bug-Report mit
   Freundescode zahlt den Ladybug-Skin, das Spiel holt Belohnungen über `net/rewards.ts` ab); seit 04.10.2026 **Einladungen** (der Freundescode ist die Einladung, `/i/K7M29QXA`; erreicht der Eingeladene Level 5, bekommen beide eine Standard Chest, `Server/src/modules/referrals`, Spiel: `net/invite.ts`), weitere Funktionen kommen als Module in
-  `Server/src/modules/`. Anti-Cheat nur über Plausibilitätsgrenzen.
+  `Server/src/modules/`. Anti-Cheat: Plausibilitätsgrenzen, seit 04.11.2026 zusätzlich Replay-Prüfung für Unlimited und Daily (nur Flaggen im `/admin`, nie sperren; Details Server/README.md).
   Das Spiel läuft auch ohne ihn (offline-first, `net/leaderboard.ts`, `net/cloud.ts` und `net/rtc.ts` sind abgeschaltet
   bzw. fallen zurück ohne `VITE_API_URL`). Die Quelle des Spielstands bleibt der Browser (Cloud = optionale Kopie);
   Geld und Truhen werden lokal berechnet, die Casino-Regel gilt weiter. Details: [Server/README.md](Server/README.md).

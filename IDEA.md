@@ -154,32 +154,17 @@ heutigen Quests kaum etwas. Die Quests bleiben ein stiller Hintergrund, kein neu
 
 ## Anti-Cheat (Claude, 03.11.2026)
 
-Stand: nur Plausibilität (Obergrenzen in `Server/src/modules/leaderboard/boards.ts`, Entscheidung Leo, 30.09.2026), Spielstand
-HMAC-versiegelt mit Schlüssel im Bundle (`storage/seal.ts`, nur Abschreckung). Wer die Obergrenzen kennt, kann sie per `curl`
-einreichen; am schwächsten ist die Casino-Profit-Bestenliste (bis 1 Billion, „latest“ überschreibt). Ideen, grob nach Nutzen:
+Umgesetzt am 04.11.2026: Replay-Prüfung für Unlimited und Daily, Flaggen im `/admin` (siehe Server/README.md, „Anti-cheat“).
+Offen, grob nach Nutzen:
 
-1. **Replay-Verifikation.** Das Spiel ist deterministisch (Seed + Taps). Der Client schickt Seed, Tap-Zeitstempel und
-   Konfig-Version; der Server rechnet `core/` nach (läuft ohne DOM in Node) und nimmt nur den selbst berechneten Score an.
-   Gilt für Daily, Unlimited, Boss Rush, Shift-Level. Kosten: CPU je Einreichung (Rate Limit), ältere Konfig-Versionen
-   brauchen eine Versionsnummer, sonst werden ehrliche Scores abgelehnt.
-2. **Server-Seed für Daily und Challenge.** Der Server gibt beim Start ein Token mit Seed und Startzeit aus und prüft beim
-   Einreichen die Mindestspielzeit. Stoppt erfundene Scores ohne Spiel und frei gewählte Seeds.
-3. **Engere Plausibilität.** Höchstpunkte pro Sekunde und Mindestdauer pro Auto, abgeleitet aus dem Balancing-Bot
-   (`npm run sim`), statt der heutigen großzügigen Grenzen.
-4. **Auffälligkeiten im `/admin`.** Flaggen statt automatisch sperren: Score weit über dem 99. Perzentil, plötzlicher Sprung
-   eines neuen Spielers, Einreichungen im Sekundentakt.
-5. **Tap-Verteilung prüfen.** Menschliche Taps haben Jitter; Roboter treffen Fenster auf die Millisekunde oder mit
-   konstantem Abstand. Ein Signal im Replay (Idee 1).
-6. **Quarantäne (Shadow-Ban).** Auffällige Scores sieht nur der Einreicher, bis ein Admin sie prüft. Der Cheater merkt
-   nichts und wechselt den Trick nicht.
-7. **Casino-Profit absichern.** Zuwachs pro Tag begrenzen (Einsatz-Limits × Rundenzahl) oder eine signierte Rundenliste
-   verlangen.
-8. **Siegel härten.** Schlüssel pro Installation statt global, Zähler/Zeitstempel gegen Zurückspielen alter Stände. Bleibt
-   Abschreckung, der Client ist nie vertrauenswürdig. Mit Cloud-Sync liegt der Stand auf dem Server: dort Sprünge prüfen
-   (z. B. +10 Mio. Geld in einer Minute). Hängt mit dem offenen Bug „Geld zurückspulen über die Cloud-Kopie“ zusammen.
-9. **Multiplayer.** Beide Seiten simulieren deterministisch und vergleichen Zustands-Hashes; bei Abweichung zählt die Runde
-   nicht und wird gemeldet.
-10. **Melden und Aufräumen.** „Melden“ an Bestenlisteneinträgen, automatisches Entfernen ab mehreren Meldungen, später
-    rückwirkende Prüfung alter Einträge, sobald Replays gespeichert werden.
+1. **Replay für Boss Rush und Shift-Level.** Gleiches Verfahren; Boss Rush braucht frische Welten und Aufnahme.
+2. **Setup beweisen.** Level und Upgrades im Beweis sind selbst gemeldet; ein Server-Seed (Token mit Startzeit) oder die Cloud-Kopie könnte sie prüfen.
+3. **Casino-Profit absichern.** Zuwachs pro Tag begrenzen (Einsatz-Limits × Rundenzahl) oder eine signierte Rundenliste
+   verlangen; heute bis 1 Billion, „latest“ überschreibt.
+4. **Flags-Seite im `/admin`** statt nur `GET /v1/admin/flags`.
+5. **Tap-Verteilung prüfen.** Roboter treffen Fenster auf die Millisekunde oder mit konstantem Abstand; ein Signal im Replay.
+6. **Quarantäne (Shadow-Ban).** Geflaggte Scores sieht nur der Einreicher, bis ein Admin sie prüft.
+7. **Siegel härten.** Schlüssel pro Installation, Zähler gegen Zurückspielen; Cloud-Sync-Sprünge prüfen (hängt mit „Geld zurückspulen über die Cloud-Kopie“ zusammen).
+8. **Multiplayer.** Zustands-Hashes vergleichen; bei Abweichung zählt die Runde nicht.
+9. **Melden.** „Melden“ an Bestenlisteneinträgen, später rückwirkende Prüfung gespeicherter Replays.
 
-Empfohlene Reihenfolge: 1 + 6 zuerst, dann 4. Bis dahin reichen 3 + 4.

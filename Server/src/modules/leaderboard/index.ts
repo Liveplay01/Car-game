@@ -6,8 +6,12 @@ import { rateLimit } from '../../rateLimit.ts';
 import { maybePlayer, PlayerStore, requirePlayer, type PlayerEnv } from '../players/index.ts';
 import { nameKey } from '../players/names.ts';
 import { BOARDS, boardById, type BoardDef } from './boards.ts';
+import { loadProofParts, type ProofParts } from './proofModule.ts';
 import { LEADERBOARD_MIGRATIONS, ScoreStore } from './store.ts';
+import { verify } from './verify.ts';
 
+/** A top score without a replay proof is looked at (older clients send none). */
+const UNPROVEN_TOP = 10;
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
 
@@ -24,6 +28,7 @@ export function leaderboardModule(): ServerModule {
     name: 'leaderboard',
     migrations: LEADERBOARD_MIGRATIONS,
     routes(app, ctx: ServerContext) {
+      let proofParts: ProofParts | null | undefined;
       const scores = new ScoreStore(ctx.db);
       const players = new PlayerStore(ctx.db);
       const guest = maybePlayer(players);
@@ -75,12 +80,20 @@ export function leaderboardModule(): ServerModule {
         rateLimit<PlayerEnv>({ max: 30, windowMs: 60_000 }, (c) => c.get('player').id, ctx.now),
         async (c) => {
           const board = boardById(c.req.param('board'));
-          const { score, meta, day } = board.parse(await readJson(c), ctx.now());
+          const body = await readJson(c, 786_432);
+          proofParts ??= await loadProofParts();
+          const { score, meta, day } = board.parse(body, ctx.now());
           const player = c.get('player');
           const period = board.period(ctx.now(), day);
+          // Only a better score needs proof; a mismatch is flagged for a moderator and still counts.
+          const proven = board.id === 'unlimited' || board.id === 'daily';
+          const own = proven ? scores.of(board.id, period, player.id) : null;
+          const check = proven && (!own || score > own.score) ? await verify(proofParts, { board: board.id as 'unlimited' | 'daily', score, day }, body.proof) : null;
+          if (check && (check.verdict === 'mismatch' || check.verdict === 'invalid')) scores.flag(board.id, period, player.id, check.verdict, score, check.replayed ?? null, ctx.now());
           const accepted = scores.submit(board.id, period, player.id, score, meta, ctx.now(), board.latest === true);
           const best = scores.of(board.id, period, player.id);
           if (!best) throw new ApiError(500, 'internal', 'The score was not saved.');
+          if (check?.verdict === 'none' && accepted && best.rank <= UNPROVEN_TOP) scores.flag(board.id, period, player.id, 'no_proof', score, null, ctx.now());
           // Also an unchanged best counts: whoever hears it (an invite waiting for level 5) looks at the standing, not at news.
           for (const listen of ctx.onScore) listen({ playerId: player.id, board: board.id, score: best.score });
           return c.json({ accepted, best: { rank: best.rank, score: best.score, meta: best.meta } });

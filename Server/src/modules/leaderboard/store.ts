@@ -12,7 +12,29 @@ export const LEADERBOARD_MIGRATIONS: readonly string[] = [
     PRIMARY KEY (board, period, player_id)
   ) WITHOUT ROWID`,
   'CREATE INDEX scores_ranking ON scores (board, period, score DESC, achieved_at ASC)',
+  // Scores a moderator should look at (Leo, 04.11.2026): a replay that did not match, or a top score without proof. Flag only, never a ban.
+  `CREATE TABLE score_flags (
+    board TEXT NOT NULL,
+    period TEXT NOT NULL,
+    player_id TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    reason TEXT NOT NULL,
+    claimed INTEGER NOT NULL,
+    replayed INTEGER,
+    flagged_at INTEGER NOT NULL,
+    PRIMARY KEY (board, period, player_id, reason)
+  ) WITHOUT ROWID`,
 ];
+
+export interface Flag {
+  board: string;
+  period: string;
+  playerId: string;
+  name: string;
+  reason: string;
+  claimed: number;
+  replayed: number | null;
+  flaggedAt: number;
+}
 
 export interface Entry {
   rank: number;
@@ -105,6 +127,22 @@ export class ScoreStore {
   /** Daily lists before `fromDay` are never asked for again (only today and a day either side are): they go. */
   purgeDaily(fromDay: number): number {
     return Number(this.db.prepare("DELETE FROM scores WHERE board = 'daily' AND CAST(substr(period, 5) AS INTEGER) < ?").run(fromDay).changes);
+  }
+
+  flag(board: string, period: string, playerId: string, reason: string, claimed: number, replayed: number | null, now: number): void {
+    this.db
+      .prepare(
+        `INSERT INTO score_flags (board, period, player_id, reason, claimed, replayed, flagged_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT (board, period, player_id, reason) DO UPDATE SET claimed = excluded.claimed, replayed = excluded.replayed, flagged_at = excluded.flagged_at`,
+      )
+      .run(board, period, playerId, reason, claimed, replayed, now);
+  }
+
+  flags(limit: number): Flag[] {
+    const rows = this.db
+      .prepare('SELECT f.*, p.name FROM score_flags f JOIN players p ON p.id = f.player_id ORDER BY f.flagged_at DESC LIMIT ?')
+      .all(limit) as unknown as { board: string; period: string; player_id: string; name: string; reason: string; claimed: number; replayed: number | null; flagged_at: number }[];
+    return rows.map((r) => ({ board: r.board, period: r.period, playerId: r.player_id, name: r.name, reason: r.reason, claimed: r.claimed, replayed: r.replayed, flaggedAt: r.flagged_at }));
   }
 
   remove(board: string, playerId: string): boolean {
