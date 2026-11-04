@@ -56,9 +56,18 @@ export interface ChallengeProgress {
   met: boolean;
 }
 
+/**
+ * How much bigger a goal and its pay get with the Prestige rank (Leo, 04.11.2026): ★2 ×1.5, ★5 ×2.
+ * A goal of one (a Perfect Run, one takedown) stays one; only its pay grows.
+ */
+export const questScale = (prestige: number): number => (prestige >= 5 ? 2 : prestige >= 2 ? 1.5 : 1);
+
 /** The live counter behind a challenge: the same rule `challengeMet` pays. */
-export function challengeProgress(c: Challenge, s: ChallengeStats): ChallengeProgress {
-  const goal = (have: number, need: number): ChallengeProgress => ({ have: Math.min(have, need), need, met: have >= need });
+export function challengeProgress(c: Challenge, s: ChallengeStats, prestige = 0): ChallengeProgress {
+  const goal = (have: number, base: number): ChallengeProgress => {
+    const need = base === 1 ? 1 : Math.round(base * questScale(prestige));
+    return { have: Math.min(have, need), need, met: have >= need };
+  };
   switch (c) {
     case 'perfectInputs':
       return goal(s.perfects, 3);
@@ -91,17 +100,22 @@ export function challengeProgress(c: Challenge, s: ChallengeStats): ChallengePro
   }
 }
 
-export function challengeMet(c: Challenge, r: ShiftResult): boolean {
-  return challengeProgress(c, r).met;
+export function challengeMet(c: Challenge, r: ShiftResult, prestige = 0): boolean {
+  return challengeProgress(c, r, prestige).met;
 }
+
+const NOTHING: ChallengeStats = { perfects: 0, tightFits: 0, takedowns: 0, transporters: 0, bestChain: 0, bestCombo: 0, cleanMerges: 0, nearMisses: 0 };
+
+/** The number a challenge asks for at this rank. */
+export const challengeNeed = (c: Challenge, prestige: number): number => challengeProgress(c, NOTHING, prestige).need;
 
 /**
  * What a challenge pays at `reach` (`Careers.reach`): it grows with the shift pay of that level (players, 19.10.2026:
  * a fixed 500 meant nothing late on), rounded to 50.
  */
-export function challengeReward(c: Challenge, reach: number, config: Config = baseConfig): number {
+export function challengeReward(c: Challenge, reach: number, prestige = 0, config: Config = baseConfig): number {
   const pay = (level: number): number => config.shiftPayBase + config.shiftPayPerLevel * level;
-  return Math.round((challengeBase(c) * pay(Math.max(1, reach))) / pay(1) / 50) * 50;
+  return Math.round((challengeBase(c) * questScale(prestige) * pay(Math.max(1, reach))) / pay(1) / 50) * 50;
 }
 
 function challengeBase(c: Challenge): number {

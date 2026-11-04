@@ -1,4 +1,5 @@
 import type { Strings } from '../../strings';
+import type { TourId } from '../../../core/tours';
 import type { Words } from '../../i18n';
 import { Fmt, money, percent, multiplier } from '../../format';
 import { MONEY_MARK } from '../../icons';
@@ -124,7 +125,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.source.kind === 'pass') return `赛季通行证${S.pass.seasonName(item.source.season)}的第 ${item.source.tier} 级。每年都会回来。`;
       if (item.source.kind === 'hall') return '来自已经不能再购买的旧名人堂。';
       if (item.source.kind === 'unlimited') return `在无限模式中放出 ${Fmt.number(item.source.cars)} 辆车。`;
-      if (item.source.kind === 'tour') return `巡游“${S.tours.name(item.source.tour as 'halloween' | 'winter')}”的一个站点。每年都会回来。`;
+      if (item.source.kind === 'tour') return `巡游“${S.tours.name(item.source.tour as TourId)}”的一个站点。每年都会回来。`;
       if (item.source.kind === 'auction') return '只作为拍卖行(社交 → 俱乐部)的拍品出现。每隔几天换一件新拍品。';
       if (item.source.kind === 'failures') return '找齐输掉班次的每一种方式(进度 → 博物馆 → 失败)。只改变外观。';
       if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}:只有游戏厅会授予(商店 → 游戏厅)。只改变外观。`;
@@ -346,7 +347,7 @@ export default (S: Strings): Words<Strings> => ({
           return '擦肩而过';
       }
     },
-    challengeDone: (c, reward) => `任务 · ${S.daily.challenge(c)} · +${money(reward)}`,
+    challengeDone: (c, reward, prestige = 0) => `任务 · ${S.daily.quest(c, prestige)} · +${money(reward)}`,
   },
 
   albums: {

@@ -1,6 +1,6 @@
 # Idea.md – offene Ideen
 
-Stand: 04.10.2026
+Stand: 04.11.2026
 
 Diese Datei enthält nur Ideen, die **noch nicht umgesetzt** sind. Was gebaut ist, steht in
 [Spiel.md](Spiel.md) und [FOUNDATION.md](FOUNDATION.md), die Zahlen in `Web/src/core/config.ts`.
@@ -35,37 +35,12 @@ einer Stadt, die mit dem Spieler wächst.
 
 ---
 
-## Für Vielspieler und Verzahnung (Leo, 05.10.2026)
-
-Gebaut am 05.10.: Streak Freeze, Unlimited-Stufen und -Marken (Ring, Elite-XP, Titel, Bestenliste), Legendary-Pity,
-Rückenwind, **Heat** (freiwillige Schwierigkeit ab Level 50), Bestenlisten **Daily** und **Boss Rush**. Offen:
-
-- **Gauntlet:** Unlimited mit Auswahl: nach jeder Marke (25, 50, 100 …) wählt man 1 von 3 Lauf-Effekten, die nur
-  für den Lauf gelten. Eigene Rangliste, damit die reine Unlimited-Liste ehrlich bleibt. Mittel bis groß, braucht Balancing.
-- **Teams:** Teamcode wie der Freundescode, Team-Ranking und ein wöchentliches Gemeinschaftsziel mit Truhe für alle.
-  Ein neuer Baustein im Dienst (`teams`).
-- **Neue Elemente für späte Level:** z. B. Falschfahrer, Traktor oder eine zusätzliche Boss-Runde ab ★5. Regeln,
-  Grafik und Museum. Der Hochzeitskorso (Level 100) ist gebaut.
-- **Endowed Progress:** bewusst nicht als Fake-Vorsprung gebaut; echte Vorsprünge gibt es schon.
-
-**Bewusst nicht gebaut (nicht neu vorschlagen):**
-- Luck-Bonus aus der Serie auf Casino, Truhen oder Verkehr: bricht die ehrlichen Odds und die Rückzahlquote.
-- Set-Boni mit Münzen oder Spawn-Chancen: Skins geben keine Boni (Alben zahlen schon Geld und Rahmen).
-- Style Profiling, Session-Bonus, Retry-Bonus, Lucky-Drop-Boost: unsichtbar oder Anreiz zum Dauerspielen.
-- Prestige-Vorsprung über ★4 hinaus: Heat übernimmt das, freiwillig und mit Lohn.
-- Boss Rush, Daily-Kalender, Pity-Zähler, Sammlungs-Hinweise: gab es schon.
-
----
-
 ## Aus der Langzeit-Liste (Leo, 07.10.2026)
 
-Gebaut am 07.10.: Touren (Haunted Ring, Winter Lights), Saison-Regeln, Achievements (Mutator des Tages und Chill sind am 18.10. wieder entfernt).
-Offen, grob nach Wirkung:
+Gebaut: Touren (Haunted Ring, Winter Lights, Blossom Run, Sunset Boulevard), Saison-Regeln, Achievements (Mutator des Tages und Chill sind am 18.10. wieder entfernt).
+Offen:
 
-- **Co-op-Multiplayer:** zwei bis vier Spieler auf einem Ring in Unlimited, ein Crash trifft alle.
 - **Challenge-Builder:** Wetter, Boss, Autozahl und Level selbst einstellen und als Link teilen (kein Freitext, keine Moderation).
-- **Neue Verkehrselemente:** Falschfahrer, Traktor, Hochzeitskorso, Radrennen; Parade und Straßenbahn stehen schon offen.
-- **Mehr Touren:** weitere Einträge in `TOURS`, z. B. im Frühling und Sommer, jeder mit drei Skins.
 
 ---
 
@@ -76,15 +51,9 @@ bringen dürfte, grob nach Aufwand und Wirkung:
 
 1. **Ein Discord für das Spiel.** Der Discord-Webhook für „Build with us“ existiert; ein Discord, in dem
    Patch Notes erscheinen (aus `/changelog.json`), macht daraus einen Ort.
-2. **Google-Play-Eintrag als Suchmaschine.** Titel, Kurztext und die ersten zwei Screenshots entscheiden,
-   nicht das Spiel. Screenshots mit Beschriftung („Tap. Merge. Don't crash.“), ein 15-Sekunden-Video aus dem
-   Crash-Material, Stichwörter „roundabout“, „traffic“, „one tap“.
-3. **Landeseiten für Suchbegriffe** auf timing.love: „Car Circle Alternative“, „Kreisverkehr Spiel“, „One-Tap-Spiel
+2. **Landeseiten für Suchbegriffe** auf timing.love: „Car Circle Alternative“, „Kreisverkehr Spiel“, „One-Tap-Spiel
    im Browser“. Das Museum liefert schon Text zu Bossen und Wetter; kurze Anleitungsseiten dazu ziehen Suchende an.
-4. **Teams statt Einzelner.** Ein Teamcode (wie der Freundescode) für Klassen, Büros, Discords: eine Rangliste
-   nur dafür. Schulklassen und Streamer-Communities teilen Links in Gruppen, nicht einzeln. Braucht ein Modul im
-   Server (`teams`), kein neues System.
-5. **Web Push für die Daily** („Neue Daily: Marathon“). Wirkt auf Wiederkehr, nicht auf Neue; braucht einen
+3. **Web Push für die Daily** („Neue Daily: Marathon“). Wirkt auf Wiederkehr, nicht auf Neue; braucht einen
    Push-Dienst im Server und einen Absatz in `legal.ts`. Erst wenn die Zahlen aus Umami zeigen, dass
    Spieler nach Tag 2 gehen.
 
@@ -121,36 +90,16 @@ Erst bauen, wenn eine konkrete Neuerung es braucht: dann steht fest, wo der Punk
 Wie die Entenfamilie (`core/ducks.ts`, etwa eine Schicht von 500): keine Punkte, keine Meldung, nur etwas, das man
 weitererzählt. Was die Straße verändert, gehört in `core/` und darf nur aus dem Seed kommen (nie aus einem Strom, den
 der Verkehr nutzt), damit Replays und Ranglisten gleich bleiben; was nur aussieht, gehört nach `present/`.
+Gebaut am 04.11.2026 (Ballon, Hochzeitsauto, Sternschnuppe: `present/skyMoments.ts`, ab Prestige ★5 oder 30 Tagen Serie); die übrigen kommen mit derselben Schwelle.
 
-- **Der verlorene Ballon:** Ein roter Ballon steigt von einem Dach auf und treibt quer über den Ring aus dem Bild. Nur Optik.
-- **Das Hochzeitsauto ohne Hochzeit:** Ein einzelnes geschmücktes Auto mit Blechdosen hinten dran, das ganz normal
-  mitfährt und hupt. Nur Optik (anders als der Hochzeitskorso).
 - **Der Geburtstag:** Am Geburtstag des Spielers (falls er ihn im Konto angibt) trägt ein Auto in seiner Schlange
   Luftballons am Dach. Bräuchte ein neues, freiwilliges Feld; nur mit Zustimmung.
 - **Die Katze auf der Insel:** Auf der Mittelinsel liegt eine Katze in der Sonne, steht nach einer Weile auf und geht.
   Nur Optik, nie bei Nacht.
 - **Der Oldtimer-Korso:** Drei Oldtimer hintereinander, die eine Ehrenrunde drehen. Wie die Enten aus dem Seed, ohne
   Punkte, aber auf dem Ring: bräuchte dieselbe Absicherung wie der Hochzeitskorso.
-- **Sternschnuppe:** In einer klaren Nacht-Schicht zieht ein Lichtstreif über den Himmel. Nur Optik.
 - **Das Streifenwagen-Eis:** Ein Polizeiauto hält kurz an der Bushaltestelle der Schulweg-Schicht, ein Eiswagen steht
   daneben. Nur Optik.
-
-## Seltene Momente für Weitgekommene (Leo, 03.11.2026)
-
-Die seltenen Momente aus dem Abschnitt darüber (Ballon, Katze auf der Insel, Sternschnuppe und die übrigen) sollen nicht
-von Anfang an laufen, sondern erst ab einem Prestige-Rang (etwa ★5) oder bei langer Daily-Serie. Wer weit ist, hat
-sonst alles gesehen; sie bleiben Optik ohne Punkte und Meldung, aus dem Seed.
-
-## Weitere Touren und eine harte Tour-Variante (Leo, 03.11.2026)
-
-Frühling und Sommer als Einträge in `TOURS`, jeder mit drei Skins. Dazu eine harte Variante jeder Tour ab Prestige ★3:
-dieselben sieben Stopps mit höherem Level, eigene Belohnung (Rahmen oder Titel), damit die Touren auch für Weitgekommene
-etwas sind.
-
-## Prestige-Quests (Leo, 03.11.2026)
-
-Der Quest-Pool skaliert mit dem Prestige-Rang: größere Ziele, mehr Geld. Wer Millionen hat, bekommt von den
-heutigen Quests kaum etwas. Die Quests bleiben ein stiller Hintergrund, kein neues Menü.
 
 ## Anti-Cheat (Claude, 03.11.2026)
 

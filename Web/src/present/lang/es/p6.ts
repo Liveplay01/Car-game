@@ -1,4 +1,5 @@
 import type { Strings } from '../../strings';
+import type { TourId } from '../../../core/tours';
 import type { Words } from '../../i18n';
 import { Fmt, money, percent, multiplier } from '../../format';
 import { MONEY_MARK } from '../../icons';
@@ -124,7 +125,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.source.kind === 'pass') return `Nivel ${item.source.tier} del Pase de ${S.pass.seasonName(item.source.season)}. Vuelve cada año.`;
       if (item.source.kind === 'hall') return 'Se obtenía con el antiguo Salón de la fama, que ya no se vende.';
       if (item.source.kind === 'unlimited') return `Envía ${Fmt.number(item.source.cars)} coches en Sin límites.`;
-      if (item.source.kind === 'tour') return `Parada del tour «${S.tours.name(item.source.tour as 'halloween' | 'winter')}». Vuelve cada año.`;
+      if (item.source.kind === 'tour') return `Parada del tour «${S.tours.name(item.source.tour as TourId)}». Vuelve cada año.`;
       if (item.source.kind === 'auction') return 'Solo como lote en la casa de subastas (Social → Club). Nuevos lotes periódicos.';
       if (item.source.kind === 'failures') return 'Encuentra todas las formas de perder un turno (Progreso → Museo → Fracasos). Solo estética.';
       if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: solo lo da la Arcade (Tienda → Arcade). Solo estética.`;
@@ -346,7 +347,7 @@ export default (S: Strings): Words<Strings> => ({
           return 'Casi choques';
       }
     },
-    challengeDone: (c, reward) => `MISIÓN · ${S.daily.challenge(c)} · +${money(reward)}`,
+    challengeDone: (c, reward, prestige = 0) => `MISIÓN · ${S.daily.quest(c, prestige)} · +${money(reward)}`,
   },
 
   albums: {

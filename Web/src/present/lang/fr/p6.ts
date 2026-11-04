@@ -1,4 +1,5 @@
 import type { Strings } from '../../strings';
+import type { TourId } from '../../../core/tours';
 import type { Words } from '../../i18n';
 import { Fmt, money, percent, multiplier } from '../../format';
 import { MONEY_MARK } from '../../icons';
@@ -124,7 +125,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.source.kind === 'pass') return `Palier ${item.source.tier} du Passe ${S.pass.seasonName(item.source.season)}. Revient chaque année.`;
       if (item.source.kind === 'hall') return 'Offert avec l’ancien Panthéon, qui n’est plus en vente.';
       if (item.source.kind === 'unlimited') return `Lancez ${Fmt.number(item.source.cars)} voitures en mode Sans limites.`;
-      if (item.source.kind === 'tour') return `Une étape du tour « ${S.tours.name(item.source.tour as 'halloween' | 'winter')} ». Revient chaque année.`;
+      if (item.source.kind === 'tour') return `Une étape du tour « ${S.tours.name(item.source.tour as TourId)} ». Revient chaque année.`;
       if (item.source.kind === 'auction') return 'En vente exclusive aux enchères (Social → Club).';
       if (item.source.kind === 'failures') return 'Trouvez toutes les façons de perdre un service (Progression → Musée → Échecs). Purement esthétique.';
       if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)} : seule l’Arcade le donne (Boutique → Arcade). Purement esthétique.`;
@@ -346,7 +347,7 @@ export default (S: Strings): Words<Strings> => ({
           return 'Frôlements';
       }
     },
-    challengeDone: (c, reward) => `MISSION · ${S.daily.challenge(c)} · +${money(reward)}`,
+    challengeDone: (c, reward, prestige = 0) => `MISSION · ${S.daily.quest(c, prestige)} · +${money(reward)}`,
   },
 
   albums: {

@@ -1,4 +1,5 @@
 import type { Strings } from '../../strings';
+import type { TourId } from '../../../core/tours';
 import type { Words } from '../../i18n';
 import { Fmt, money } from '../../format';
 
@@ -45,6 +46,8 @@ export default (S: Strings): Words<Strings> => ({
         blazing: 'Ardiente',
         wildfire: 'Incendio',
         sunborn: 'Hijo del Sol',
+        trailblazer: 'Pionero',
+        globetrotter: 'Trotamundos',
         ascended: 'Ascendido',
         eternal: 'Inmortal',
         grandmaster: 'Gran maestro',
@@ -88,6 +91,8 @@ export default (S: Strings): Words<Strings> => ({
           return 'Alcanza el nivel V en todas las maestrías';
         case 'crew':
           return r.place === 1 ? 'Termina una semana de crew en primer puesto de la liga' : 'Termina una semana de crew entre los 3 primeros de la liga';
+        case 'hardTours':
+          return r.n === 1 ? 'Completa la ronda difícil de un tour' : `Completa la ronda difícil de ${r.n} tours`;
         case 'collector':
           return 'Consigue todos los aspectos que aún se pueden obtener';
         case 'completionist':
@@ -199,16 +204,18 @@ export default (S: Strings): Words<Strings> => ({
 
   tours: {
     caption: 'TOUR',
-    name: (id) => ({ halloween: 'Rotonda embrujada', winter: 'Luces de invierno' })[id],
+    name: (id) => ({ halloween: 'Rotonda embrujada', winter: 'Luces de invierno', spring: 'Carrera en flor', summer: 'Atardecer' })[id],
     tagline: (id) =>
       ({
         halloween: 'Siete paradas tras el anochecer. Tres aspectos exclusivos.',
         winter: 'Siete paradas nevadas. Tres aspectos exclusivos.',
+        spring: 'Siete paradas luminosas bajo las flores. Tres aspectos exclusivos.',
+        summer: 'Siete paradas soleadas junto al mar. Tres aspectos exclusivos.',
       })[id],
     stop: (n, of) => `Parada ${n}/${of}`,
     stopName: (id) => {
       const m = /^tour\.([a-z]+)\.(\d+)$/.exec(id);
-      return m ? `${S.tours.name(m[1] as 'halloween' | 'winter')} · Parada ${m[2]}` : '';
+      return m ? `${S.tours.name(m[1] as TourId)} · Parada ${m[2]}` : '';
     },
     left: (n) => (n <= 1 ? 'último día' : `${n} días restantes`),
     opensIn: (n) => (n === 1 ? 'mañana' : `en ${n} días`),

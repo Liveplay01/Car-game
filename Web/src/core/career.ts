@@ -1225,9 +1225,9 @@ export const Careers = {
     }
     const completed: Challenge[] = [];
     for (const ch of challengesOf(day, Careers.reach(c))) {
-      if (c.challengesDone.includes(ch) || !challengeMet(ch, r)) continue;
+      if (c.challengesDone.includes(ch) || !challengeMet(ch, r, c.prestige)) continue;
       c.challengesDone.push(ch);
-      c.money += challengeReward(ch, Careers.reach(c));
+      c.money += challengeReward(ch, Careers.reach(c), c.prestige);
       completed.push(ch);
     }
     return completed;

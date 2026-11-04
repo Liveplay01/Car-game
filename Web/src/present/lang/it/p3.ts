@@ -1,4 +1,5 @@
 import type { Strings } from '../../strings';
+import type { TourId } from '../../../core/tours';
 import type { Words } from '../../i18n';
 import { Fmt, money } from '../../format';
 
@@ -45,6 +46,8 @@ export default (S: Strings): Words<Strings> => ({
         blazing: 'Rovente',
         wildfire: 'Incendio',
         sunborn: 'Figlio del Sole',
+        trailblazer: 'Pioniere',
+        globetrotter: 'Giramondo',
         ascended: 'Asceso',
         eternal: 'Eterno',
         grandmaster: 'Gran maestro',
@@ -88,6 +91,8 @@ export default (S: Strings): Words<Strings> => ({
           return 'Raggiungi il grado V in ogni maestria';
         case 'crew':
           return r.place === 1 ? 'Chiudi una settimana di crew al primo posto della lega' : 'Chiudi una settimana di crew tra i primi 3 della lega';
+        case 'hardTours':
+          return r.n === 1 ? 'Completa il giro difficile di un tour' : `Completa il giro difficile di ${r.n} tour`;
         case 'collector':
           return 'Ottieni ogni skin ancora disponibile';
         case 'completionist':
@@ -199,16 +204,18 @@ export default (S: Strings): Words<Strings> => ({
 
   tours: {
     caption: 'TOUR',
-    name: (id) => ({ halloween: 'Anello stregato', winter: 'Luci invernali' })[id],
+    name: (id) => ({ halloween: 'Anello stregato', winter: 'Luci invernali', spring: 'Corsa in fiore', summer: 'Tramonto' })[id],
     tagline: (id) =>
       ({
         halloween: 'Sette tappe dopo il tramonto. Tre skin esclusive.',
         winter: 'Sette tappe innevate. Tre skin esclusive.',
+        spring: 'Sette tappe luminose tra i fiori. Tre skin esclusive.',
+        summer: 'Sette tappe soleggiate in riva al mare. Tre skin esclusive.',
       })[id],
     stop: (n, of) => `Tappa ${n}/${of}`,
     stopName: (id) => {
       const m = /^tour\.([a-z]+)\.(\d+)$/.exec(id);
-      return m ? `${S.tours.name(m[1] as 'halloween' | 'winter')} · Tappa ${m[2]}` : '';
+      return m ? `${S.tours.name(m[1] as TourId)} · Tappa ${m[2]}` : '';
     },
     left: (n) => (n <= 1 ? 'ultimo giorno' : `ancora ${n} giorni`),
     opensIn: (n) => (n === 1 ? 'domani' : `tra ${n} giorni`),

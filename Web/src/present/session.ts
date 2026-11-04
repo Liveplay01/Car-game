@@ -80,6 +80,7 @@ import { Intros, type Intro } from './intros';
 import { News, NEWS_DWELL, type NewsItem } from './news';
 import { TyreMarks, BrakeMarks } from './marks';
 import { Ducks } from './ducks';
+import { SkyMoments } from './skyMoments';
 import { type Holiday, Holidays } from './holidays';
 import { DriftFx } from './driftFx';
 import { type DriftSound, type TrafficSound, type TrafficEngine, engineOf } from './feedback';
@@ -1307,7 +1308,7 @@ export class GameSession {
     if (run.k === 'trial') {
       const quests = Careers.recordChallenges(career, result, this.today);
       const goals = Careers.recordMastery(career, result);
-      settled.news.push(...quests.map((ch) => S.daily.challengeDone(ch, Fmt.number(challengeReward(ch, Careers.reach(career))))));
+      settled.news.push(...quests.map((ch) => S.daily.challengeDone(ch, Fmt.number(challengeReward(ch, Careers.reach(career), career.prestige)), career.prestige)));
       if (goals.length > 0) settled.news.push(S.mastery.toast(goals));
     }
     if (settled.news.length > 0) this.announce(...settled.news);
@@ -3415,7 +3416,7 @@ export class GameSession {
           line: '',
           color: 'coin',
           power: 1.2,
-          count: booked.challenges.reduce((n, ch) => n + challengeReward(ch, Careers.reach(career)), 0),
+          count: booked.challenges.reduce((n, ch) => n + challengeReward(ch, Careers.reach(career), career.prestige), 0),
         }
       : null;
     this.resultBurst = newPlayerMoment(career, this.playingMode, this.playingDaily, result.outcome, levelBefore, this.config) ?? this.resultBurst ?? museumBurst ?? challengeBurst;
@@ -3429,7 +3430,7 @@ export class GameSession {
     const careerWin = result.outcome === 'completed' && this.playingMode === 'shift' && !this.playingDaily && !this.special && !this.versusSelected && !this.tutorial;
     this.resultShiftPay = careerWin && save.firstDay !== this.today ? this.world.config.shiftPay : 0;
     // A challenge the burst celebrates is not told a second time in the news.
-    const told = this.resultBurst === challengeBurst && challengeBurst ? booked.challenges.map((ch) => S.daily.challengeDone(ch, Fmt.number(challengeReward(ch, Careers.reach(career))))) : [];
+    const told = this.resultBurst === challengeBurst && challengeBurst ? booked.challenges.map((ch) => S.daily.challengeDone(ch, Fmt.number(challengeReward(ch, Careers.reach(career), career.prestige)), career.prestige)) : [];
     this.notices.announce(...GameSession.budget([...booked.news.filter((n) => !told.includes(n)), ...(museumNew.length > 0 ? [S.museum.newFinds(museumNew.length)] : [])]));
     this.tips.add(...booked.tips);
     for (const hint of booked.due) this.onHint?.(hint);
@@ -3708,6 +3709,7 @@ export class GameSession {
     }
     this.effects.addAir(list);
     this.explosions.addAir(list);
+    SkyMoments.add(list, world, alpha, rm, SkyMoments.eligible(career.prestige, career.dailyStreak));
     if (holiday === 'newYear' && !rm) Holidays.addFireworks(list, world, this.sceneTime, thin ? 10 : 18);
     if (!this.sceneThin) WeatherLayer.addAir(list, world, this.sceneTime, rm, weather, this.lowDetail);
     const island = { center: toScreen(camera, v(0, 0)), radius: (world.layout.islandRadius) * camera.scale };
@@ -3754,7 +3756,7 @@ export class GameSession {
     // Only the goal closest to done: the strip says one thing while the street stays in view.
     const open = challengesOf(this.today, Careers.reach(career))
       .filter((ch) => !Careers.isChallengeDone(career, ch, this.today))
-      .map((ch) => ({ label: S.daily.challengeShort(ch), ...challengeProgress(ch, stats) }));
+      .map((ch) => ({ label: S.daily.challengeShort(ch), ...challengeProgress(ch, stats, career.prestige) }));
     const ratio = (g: LiveChallenge): number => g.have / g.need;
     return open.slice(0, 1).map((first) => open.reduce((best, g) => (ratio(g) > ratio(best) ? g : best), first));
   }
@@ -4003,7 +4005,7 @@ export class GameSession {
           endsIn: streakEndsIn(career, this.today, this.config),
           freezes: career.streakFreezes,
           calendar: Careers.streakCalendar(career, this.today),
-          challenges: { done: challengesDone, total: todaysChallenges.length, reward: todaysChallenges.reduce((n, ch) => n + challengeReward(ch, reach), 0) },
+          challenges: { done: challengesDone, total: todaysChallenges.length, reward: todaysChallenges.reduce((n, ch) => n + challengeReward(ch, reach, career.prestige), 0) },
         }
       : null;
     const run = runCard(this.special, this.world.config, this.playingMode, this.versusSelected, career, this.today);

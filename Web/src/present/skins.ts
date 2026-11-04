@@ -155,6 +155,12 @@ export const Skins = {
       candyCane: 'skinRacingRed',
       snowGlobe: 'skinIce',
       sleigh: 'skinRuby',
+      tulip: 'skinRose',
+      bumblebee: 'skinLemon',
+      cherryBlossom: 'skinHanami',
+      popsicle: 'skinCoral',
+      surfboard: 'skinTeal',
+      sunsetCruiser: 'skinSunset',
       sterling: 'skinChrome',
       magnate: 'skinCarbon',
       baron: 'skinRuby',
@@ -298,7 +304,14 @@ export const Skins = {
       case 'snowGlobe':
         return 'skinPearl';
       case 'sleigh':
+      case 'sunsetCruiser':
         return 'skinGold';
+      case 'bumblebee':
+        return 'skinObsidian';
+      case 'cherryBlossom':
+        return 'skinBlossom';
+      case 'surfboard':
+        return 'skinCream';
       default:
         return null;
     }
@@ -354,6 +367,8 @@ export const Skins = {
       wraith: 'ghost',
       snowGlobe: 'snowTrail',
       sleigh: 'halo',
+      cherryBlossom: 'bloom',
+      sunsetCruiser: 'halo',
       sterling: 'halo',
       magnate: 'laurel',
       baron: 'embers',
@@ -513,10 +528,16 @@ export const Skins = {
       case 'biolume':
       case 'wraith':
       case 'candyCane':
+      case 'bumblebee':
+      case 'surfboard':
         return 'shiny';
       case 'jackOLantern':
       case 'snowGlobe':
+      case 'tulip':
+      case 'popsicle':
         return 'glitter';
+      case 'cherryBlossom':
+      case 'sunsetCruiser':
       case 'sleigh':
       case 'sterling':
       case 'magnate':

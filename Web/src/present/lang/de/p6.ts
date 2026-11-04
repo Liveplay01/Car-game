@@ -1,4 +1,5 @@
 import type { Strings } from '../../strings';
+import type { TourId } from '../../../core/tours';
 import type { Words } from '../../i18n';
 import { Fmt, money, percent, multiplier } from '../../format';
 import { MONEY_MARK } from '../../icons';
@@ -124,7 +125,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.source.kind === 'pass') return `Stufe ${item.source.tier} des Saisonpasses ${S.pass.seasonName(item.source.season)}. Er kehrt jedes Jahr wieder.`;
       if (item.source.kind === 'hall') return 'Gab es mit der alten Ruhmeshalle, die nicht mehr zu kaufen ist.';
       if (item.source.kind === 'unlimited') return `Schicke ${Fmt.number(item.source.cars)} Autos in einem Unlimited-Lauf los.`;
-      if (item.source.kind === 'tour') return `Ein Stopp der Tour „${S.tours.name(item.source.tour as 'halloween' | 'winter')}“. Sie kehrt jedes Jahr wieder.`;
+      if (item.source.kind === 'tour') return `Ein Stopp der Tour „${S.tours.name(item.source.tour as TourId)}“. Sie kehrt jedes Jahr wieder.`;
       if (item.source.kind === 'auction') return 'Nur als Los im Auktionshaus (Social → Club). Alle paar Tage ein neues Los.';
       if (item.source.kind === 'failures') return 'Finde jede Art, eine Schicht zu verlieren (Fortschritt → Museum → Scheitern). Nur Aussehen.';
       if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: Nur die Arcade vergibt ihn (Shop → Arcade). Nur Aussehen.`;
@@ -363,7 +364,7 @@ export default (S: Strings): Words<Strings> => ({
           return 'Beinahe-Crashs';
       }
     },
-    challengeDone: (c, reward) => `AUFTRAG · ${S.daily.challenge(c)} · +${money(reward)}`,
+    challengeDone: (c, reward, prestige = 0) => `AUFTRAG · ${S.daily.quest(c, prestige)} · +${money(reward)}`,
   },
 
   albums: {

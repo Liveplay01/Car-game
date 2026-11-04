@@ -4,7 +4,7 @@ import type { MasteryGoal, MasteryCompletion, StreakMilestone } from '../core/ca
 import { MASTERY_THRESHOLDS, masteryNumeral } from '../core/career';
 import type { SwipeMode } from './flow';
 import type { Rarity, ChestKind, Cosmetic, ChestOpening, Album, CasinoFeat } from '../core/loot';
-import type { Challenge } from '../core/daily';
+import { type Challenge, challengeNeed } from '../core/daily';
 import type { NearMiss } from '../core/goals';
 import type { CasinoGame, SlotSymbol } from '../core/casino';
 import type { VehicleType, VehicleRole } from '../core/vehicle';
@@ -749,6 +749,8 @@ export const S = {
         blazing: 'Blazing',
         wildfire: 'Wildfire',
         sunborn: 'Sunborn',
+        trailblazer: 'Trailblazer',
+        globetrotter: 'Globetrotter',
         ascended: 'Ascended',
         eternal: 'Eternal',
         grandmaster: 'Grandmaster',
@@ -792,6 +794,8 @@ export const S = {
           return 'Reach tier V in every mastery';
         case 'crew':
           return r.place === 1 ? 'Finish a crew week first in the league' : 'Finish a crew week in the top 3 of the league';
+        case 'hardTours':
+          return r.n === 1 ? 'Finish the hard round of a tour' : `Finish the hard round of ${r.n} tours`;
         case 'collector':
           return 'Collect every skin that can still be had';
         case 'completionist':
@@ -919,11 +923,13 @@ export const S = {
   /** Tours (core/tours.ts). */
   tours: {
     caption: 'TOUR',
-    name: (id: TourId): string => ({ halloween: 'Haunted Ring', winter: 'Winter Lights' })[id],
+    name: (id: TourId): string => ({ halloween: 'Haunted Ring', winter: 'Winter Lights', spring: 'Blossom Run', summer: 'Sunset Boulevard' })[id],
     tagline: (id: TourId): string =>
       ({
         halloween: 'Seven stops after dark. Three skins, only here.',
         winter: 'Seven snowy stops. Three skins, only here.',
+        spring: 'Seven bright stops under the blossoms. Three skins, only here.',
+        summer: 'Seven sunny stops by the sea. Three skins, only here.',
       })[id],
     stop: (n: number, of: number): string => `Stop ${n}/${of}`,
     stopName: (id: string): string => {
@@ -2196,6 +2202,12 @@ export const S = {
         candyCane: 'Candy Cane',
         snowGlobe: 'Snow Globe',
         sleigh: 'Midnight Sleigh',
+        tulip: 'Tulip',
+        bumblebee: 'Bumblebee',
+        cherryBlossom: 'Cherry Blossom',
+        popsicle: 'Popsicle',
+        surfboard: 'Surfboard',
+        sunsetCruiser: 'Sunset Cruiser',
         sterling: 'Sterling',
         magnate: 'Magnate',
         baron: 'Baron',
@@ -2503,7 +2515,9 @@ export const S = {
           return 'Near misses';
       }
     },
-    challengeDone: (c: Challenge, reward: string): string => `CHALLENGE · ${S.daily.challenge(c)} · +${money(reward)}`,
+    /** The challenge's text with its goal at this Prestige rank (the first number in the text). */
+    quest: (c: Challenge, prestige = 0): string => S.daily.challenge(c).replace(/\d+/, String(challengeNeed(c, prestige))),
+    challengeDone: (c: Challenge, reward: string, prestige = 0): string => `CHALLENGE · ${S.daily.quest(c, prestige)} · +${money(reward)}`,
   },
 
   albums: {

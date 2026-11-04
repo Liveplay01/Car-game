@@ -1,4 +1,5 @@
 import type { Strings } from '../../strings';
+import type { TourId } from '../../../core/tours';
 import type { Words } from '../../i18n';
 import { Fmt, money } from '../../format';
 
@@ -45,6 +46,8 @@ export default (S: Strings): Words<Strings> => ({
         blazing: '烈焰',
         wildfire: '燎原',
         sunborn: '日耀',
+        trailblazer: '开拓者',
+        globetrotter: '环球旅人',
         ascended: '飞升者',
         eternal: '永恒',
         grandmaster: '宗师',
@@ -88,6 +91,8 @@ export default (S: Strings): Words<Strings> => ({
           return '每项精通都达到 V 级';
         case 'crew':
           return r.place === 1 ? '车队在一周联赛中夺得第一名' : '车队在一周联赛中进入前三名';
+        case 'hardTours':
+          return r.n === 1 ? '通关一次巡游的困难回合' : `通关 ${r.n} 次巡游的困难回合`;
         case 'collector':
           return '集齐所有仍可获得的外观';
         case 'completionist':
@@ -198,16 +203,18 @@ export default (S: Strings): Words<Strings> => ({
 
   tours: {
     caption: '巡游',
-    name: (id) => ({ halloween: '闹鬼环岛', winter: '冬日彩灯' })[id],
+    name: (id) => ({ halloween: '闹鬼环岛', winter: '冬日彩灯', spring: '花开之旅', summer: '日落大道' })[id],
     tagline: (id) =>
       ({
         halloween: '天黑之后的七个站点。三款皮肤，只在这里。',
         winter: '白雪覆盖的七个站点。三款皮肤，只在这里。',
+        spring: '花下明亮的七个站点。三款皮肤，只在这里。',
+        summer: '海边阳光下的七个站点。三款皮肤，只在这里。',
       })[id],
     stop: (n, of) => `站点 ${n}/${of}`,
     stopName: (id) => {
       const m = /^tour\.([a-z]+)\.(\d+)$/.exec(id);
-      return m ? `${S.tours.name(m[1] as 'halloween' | 'winter')} · 站点 ${m[2]}` : '';
+      return m ? `${S.tours.name(m[1] as TourId)} · 站点 ${m[2]}` : '';
     },
     left: (n) => (n <= 1 ? '最后一天' : `还剩 ${n} 天`),
     opensIn: (n) => (n === 1 ? '明天' : `${n} 天后`),

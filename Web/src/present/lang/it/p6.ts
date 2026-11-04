@@ -1,4 +1,5 @@
 import type { Strings } from '../../strings';
+import type { TourId } from '../../../core/tours';
 import type { Words } from '../../i18n';
 import { Fmt, money, percent, multiplier } from '../../format';
 import { MONEY_MARK } from '../../icons';
@@ -124,7 +125,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.source.kind === 'pass') return `Livello ${item.source.tier} del Pass ${S.pass.seasonName(item.source.season)}. Ritorna ogni anno.`;
       if (item.source.kind === 'hall') return 'Si otteneva con il vecchio Tempio della gloria, non più in vendita.';
       if (item.source.kind === 'unlimited') return `Invia ${Fmt.number(item.source.cars)} auto in Senza limiti.`;
-      if (item.source.kind === 'tour') return `Una tappa del tour «${S.tours.name(item.source.tour as 'halloween' | 'winter')}». Ritorna ogni anno.`;
+      if (item.source.kind === 'tour') return `Una tappa del tour «${S.tours.name(item.source.tour as TourId)}». Ritorna ogni anno.`;
       if (item.source.kind === 'auction') return 'Esclusiva della casa d’aste (Social → Club).';
       if (item.source.kind === 'failures') return 'Trova ogni modo di perdere un turno (Progressi → Museo → Fallimenti). Solo estetica.';
       if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: solo l’Arcade la assegna (Negozio → Arcade). Solo estetica.`;
@@ -346,7 +347,7 @@ export default (S: Strings): Words<Strings> => ({
           return 'Quasi-schianti';
       }
     },
-    challengeDone: (c, reward) => `INCARICO · ${S.daily.challenge(c)} · +${money(reward)}`,
+    challengeDone: (c, reward, prestige = 0) => `INCARICO · ${S.daily.quest(c, prestige)} · +${money(reward)}`,
   },
 
   albums: {

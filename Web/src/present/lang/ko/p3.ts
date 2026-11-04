@@ -1,4 +1,5 @@
 import type { Strings } from '../../strings';
+import type { TourId } from '../../../core/tours';
 import type { Words } from '../../i18n';
 import { Fmt, money } from '../../format';
 
@@ -45,6 +46,8 @@ export default (S: Strings): Words<Strings> => ({
         blazing: '블레이징',
         wildfire: '들불',
         sunborn: '선본',
+        trailblazer: '개척자',
+        globetrotter: '세계 여행자',
         ascended: '승천한 자',
         eternal: '영원',
         grandmaster: '그랜드마스터',
@@ -88,6 +91,8 @@ export default (S: Strings): Words<Strings> => ({
           return '모든 마스터리에서 V단계 달성';
         case 'crew':
           return r.place === 1 ? '크루가 한 주를 리그 1위로 마치기' : '크루가 한 주를 리그 상위 3위 안으로 마치기';
+        case 'hardTours':
+          return r.n === 1 ? '투어의 어려운 라운드 클리어' : `투어 ${r.n}개의 어려운 라운드 클리어`;
         case 'collector':
           return '지금도 얻을 수 있는 스킨을 모두 모으기';
         case 'completionist':
@@ -198,16 +203,18 @@ export default (S: Strings): Words<Strings> => ({
 
   tours: {
     caption: '투어',
-    name: (id) => ({ halloween: '유령의 링', winter: '윈터 라이트' })[id],
+    name: (id) => ({ halloween: '유령의 링', winter: '윈터 라이트', spring: '블로섬 런', summer: '선셋 로드' })[id],
     tagline: (id) =>
       ({
         halloween: '해가 진 뒤의 일곱 정거장. 스킨 세 개는 여기서만.',
         winter: '눈 덮인 일곱 정거장. 스킨 세 개는 여기서만.',
+        spring: '꽃 아래 밝은 일곱 정거장. 스킨 세 개는 여기서만.',
+        summer: '바닷가의 햇살 가득한 일곱 정거장. 스킨 세 개는 여기서만.',
       })[id],
     stop: (n, of) => `정거장 ${n}/${of}`,
     stopName: (id) => {
       const m = /^tour\.([a-z]+)\.(\d+)$/.exec(id);
-      return m ? `${S.tours.name(m[1] as 'halloween' | 'winter')} · 정거장 ${m[2]}` : '';
+      return m ? `${S.tours.name(m[1] as TourId)} · 정거장 ${m[2]}` : '';
     },
     left: (n) => (n <= 1 ? '마지막 날' : `${n}일 남음`),
     opensIn: (n) => (n === 1 ? '내일' : `${n}일 뒤`),

@@ -11,6 +11,8 @@ import { drift } from './passArt';
 export const TOUR_TINT: Record<TourId, ColorToken> = {
   halloween: 'rarityEpic',
   winter: 'skinIce',
+  spring: 'skinBlossom',
+  summer: 'skinSunset',
 };
 
 /**
@@ -31,7 +33,9 @@ export const TourArt = {
     list.clip = tile;
     MenuKit.glow(list, add(c, v(0, 8)), w * 0.62, tint, (0.5 + 0.12 * Math.sin(t * 2.2)) * o);
     if (tour === 'halloween') TourArt.haunted(list, tile, t, o);
-    else TourArt.winter(list, tile, t, o);
+    else if (tour === 'winter') TourArt.winter(list, tile, t, o);
+    else if (tour === 'spring') TourArt.spring(list, tile, t, o);
+    else TourArt.summer(list, tile, t, o);
     if (skin) ShopPage.addPreview(list, skin, add(c, v(0, 0.06 * h + 1.5 * Math.sin(t * 1.6))), (1.25 * h) / 96, o);
     list.clip = saved;
   },
@@ -64,5 +68,22 @@ export const TourArt = {
       list.s(line(add(at, v(0, -size)), add(at, v(0, size)), 1), 'primary', glint * o);
     }
     for (let i = 0; i < 16; i++) list.s(circle(drift(tile, t, i, 0.06 + 0.05 * hash(i, 5), 0.03, 11), 1 + 1.1 * hash(i, 7)), 'primary', (0.5 + 0.4 * hash(i, 9)) * o);
+  },
+
+  spring(list: RenderList, tile: Rect, t: number, o: number): void {
+    for (let i = 0; i < 14; i++) {
+      const at = drift(tile, t, i, 0.05 + 0.04 * hash(i, 5), 0.04, 21);
+      list.s(circle(at, 1.4 + 1.2 * hash(i, 7)), i % 3 ? 'skinBlossom' : 'skinRose', (0.55 + 0.4 * hash(i, 9)) * o);
+    }
+  },
+
+  summer(list: RenderList, tile: Rect, t: number, o: number): void {
+    const sun = v(tile.maxX - 24, tile.minY + 24);
+    list.s(circle(sun, 20 + 1.5 * Math.sin(t * 1.8)), 'skinSunset', 0.18 * o);
+    list.s(circle(sun, 12), 'skinGold', o);
+    for (let i = 0; i < 3; i++) {
+      const y = tile.maxY - 10 - i * 7;
+      for (let x = tile.minX; x < tile.maxX; x += 14) list.s(line(v(x, y + Math.sin(t * 2 + x * 0.2 + i) * 1.5), v(x + 8, y), 1), 'primary', 0.35 * o);
+    }
   },
 };

@@ -1,4 +1,5 @@
 import type { Strings } from '../../strings';
+import type { TourId } from '../../../core/tours';
 import type { Words } from '../../i18n';
 import { Fmt, money, percent, multiplier } from '../../format';
 import { MONEY_MARK } from '../../icons';
@@ -124,7 +125,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.source.kind === 'pass') return `시즌 패스 ${S.pass.seasonName(item.source.season)}의 ${item.source.tier}단계. 해마다 돌아와요.`;
       if (item.source.kind === 'hall') return '이제 살 수 없는 예전 명예의 전당에 있었어요.';
       if (item.source.kind === 'unlimited') return `언리미티드에서 차 ${Fmt.number(item.source.cars)}대를 보내세요.`;
-      if (item.source.kind === 'tour') return `투어 “${S.tours.name(item.source.tour as 'halloween' | 'winter')}”의 정거장 하나. 해마다 돌아와요.`;
+      if (item.source.kind === 'tour') return `투어 “${S.tours.name(item.source.tour as TourId)}”의 정거장 하나. 해마다 돌아와요.`;
       if (item.source.kind === 'auction') return '경매장(소셜 → 클럽)의 로트로만. 며칠마다 새 로트가 나와요.';
       if (item.source.kind === 'failures') return '시프트에서 지는 모든 방식을 찾으세요(진행 → 박물관 → 실패). 겉모습만.';
       if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: 아케이드만 줘요(상점 → 아케이드). 겉모습만.`;
@@ -346,7 +347,7 @@ export default (S: Strings): Words<Strings> => ({
           return '니어 미스';
       }
     },
-    challengeDone: (c, reward) => `퀘스트 · ${S.daily.challenge(c)} · +${money(reward)}`,
+    challengeDone: (c, reward, prestige = 0) => `퀘스트 · ${S.daily.quest(c, prestige)} · +${money(reward)}`,
   },
 
   albums: {

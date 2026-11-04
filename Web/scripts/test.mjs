@@ -17,7 +17,7 @@ const load = (path) => server.ssrLoadModule(path);
 const { World } = await load('/src/core/world.ts');
 const { Habits } = await load('/src/core/habits.ts');
 const { detourArmSlot } = await load('/src/core/modules.ts');
-const { CHALLENGES, challengesOf, challengeMet, challengeProgress, challengeReward } = await load('/src/core/daily.ts');
+const { CHALLENGES, challengesOf, challengeMet, challengeProgress, challengeReward, challengeNeed } = await load('/src/core/daily.ts');
 const { baseConfig, BOSS_KINDS } = await load('/src/core/config.ts');
 const { forLevel, upgraded, UPGRADES, upgradeMaxSteps, bossPlace } = await load('/src/core/levels.ts');
 const { Elite, TITLES, TITLE_RULES, ELITE_LAST_MILESTONE } = await load('/src/core/elite.ts');
@@ -77,7 +77,7 @@ const { MapTheme, MAP_THEMES } = await load('/src/present/mapThemes.ts');
 const { upgradePrice, upgradeIntroLevel } = await load('/src/core/levels.ts');
 const { forSeason } = await load('/src/core/seasons.ts');
 const { drawWeather } = await load('/src/core/levels.ts');
-const { TOURS, tourOn, nextTour, tourTrial, tourStopOf, completeStop, tourStopsDone, stopDoneKey } = await load('/src/core/tours.ts');
+const { TOURS, tourOn, nextTour, tourTrial, tourStopOf, completeStop, tourStopsDone, tourStopCount, tourStopAt, stopDoneKey } = await load('/src/core/tours.ts');
 const { FAMILIES, Achievements, achievementTotal, STAT_KEYS, TIER_PAY } = await load('/src/core/achievements.ts');
 const { Skins } = await load('/src/present/skins.ts');
 const { CarModels, CAR_MODELS } = await load('/src/present/carModels.ts');
@@ -1868,6 +1868,20 @@ test('there are plenty of daily quests: three different ones a day, each with a 
   assert.ok(challengeMet('twoNearMisses', { ...none, nearMisses: 2 }));
 });
 
+test('quests grow with the Prestige rank: bigger goals, more pay, goals of one stay one, the text follows', () => {
+  assert.equal(challengeNeed('bigCombo', 0), 15);
+  assert.equal(challengeNeed('bigCombo', 2), 23);
+  assert.equal(challengeNeed('bigCombo', 5), 30);
+  assert.equal(challengeNeed('perfectRun', 5), 1);
+  assert.equal(challengeNeed('oneTakedown', 5), 1);
+  assert.ok(Math.abs(challengeReward('bigCombo', 10, 5) - 2 * challengeReward('bigCombo', 10, 0)) <= 50);
+  assert.ok(S.daily.quest('bigCombo', 5).includes('30') && !S.daily.quest('bigCombo', 5).includes('15'));
+  assert.ok(S.daily.challengeDone('fivePerfects', '900', 5).includes('10'));
+  const stats = { perfects: 9, tightFits: 0, takedowns: 0, transporters: 0, bestChain: 0, bestCombo: 0, cleanMerges: 0, nearMisses: 0 };
+  assert.equal(challengeMet('fivePerfects', stats, 0), true);
+  assert.equal(challengeMet('fivePerfects', stats, 5), false);
+});
+
 test("a live challenge shows its short label and the same count that pays it", () => {
   const none = { perfects: 0, tightFits: 0, takedowns: 0, transporters: 0, bestChain: 0, bestCombo: 0, isPerfectRun: false, cleanMerges: 0, nearMisses: 0 };
   assert.deepEqual(challengeProgress('tightFits', none), { have: 0, need: 3, met: false });
@@ -2866,7 +2880,7 @@ test('a passed tour stop settles through the special run and says so', () => {
 
 test('every tour reward is a real skin with a look, and the tours have an album', () => {
   const items = COSMETICS.filter((x) => x.source.kind === 'tour');
-  assert.equal(items.length, 6);
+  assert.equal(items.length, 12);
   for (const x of items) assert.ok(Skins.color(x.id), `${x.id} has a colour`);
   const ids = new Set(items.map((x) => x.id));
   for (const tour of TOURS) {
@@ -2874,8 +2888,29 @@ test('every tour reward is a real skin with a look, and the tours have an album'
     assert.equal(tour.stops.filter((s) => s.reward.item).length, 3);
     assert.equal(tour.stops.at(-1).goal.k, 'boss');
   }
-  assert.equal(albumItems('tours').length, 6);
+  assert.equal(albumItems('tours').length, 12);
   assert.ok(!albumItems('honours').some((x) => x.source.kind === 'tour'), 'a missed tour does not block the Honours album');
+});
+
+test('from Prestige 3 a tour has a second, harder round that pays coins and a chest', () => {
+  const run = tourOn(dayOf(2026, 10, 28));
+  const c = newCareer();
+  c.level = 20;
+  assert.equal(tourStopCount(run.tour, c), 7);
+  assert.equal(tourTrial(run, 8, c), null);
+  assert.equal(completeStop(c, run, 8), null);
+  c.prestige = 3;
+  assert.equal(tourStopCount(run.tour, c), 14);
+  const easy = tourTrial(run, 7, c);
+  const hard = tourTrial(run, 14, c);
+  assert.equal(hard.cars, easy.cars + 4);
+  assert.equal(hard.level, easy.level + 6);
+  assert.equal(tourStopAt(run.tour, 14).reward.chest, 'premium');
+  assert.equal(tourTrial(run, 15, c), null);
+  const before = c.money;
+  assert.ok(completeStop(c, run, 8));
+  assert.equal(c.money, before + 4000);
+  assert.equal(completeStop(c, run, 8), null, 'pays once');
 });
 
 test('achievements pay each tier once, count what the shift did, and survive the save', () => {

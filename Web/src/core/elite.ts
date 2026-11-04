@@ -64,7 +64,9 @@ export type TitleId =
   | 'titan'
   | 'blazing'
   | 'wildfire'
-  | 'sunborn';
+  | 'sunborn'
+  | 'trailblazer'
+  | 'globetrotter';
 
 export const TITLES: TitleId[] = [
   'eliteDriver',
@@ -132,7 +134,12 @@ export const TITLES: TitleId[] = [
   'blazing',
   'wildfire',
   'sunborn',
+  // The hard round of the tours (Leo, 03.11.2026).
+  'trailblazer',
+  'globetrotter',
 ];
+
+const hardRounds = (c: Career): number => c.toursDone.filter((k) => /^[a-z]+-\d+\.14$/.test(k)).length;
 
 /** What earns a title. */
 export type TitleRule =
@@ -157,6 +164,8 @@ export type TitleRule =
   /** Every skin that can still be had. */
   | { k: 'collector' }
   /** Every other title. */
+  /** Hard rounds of tours finished (a tour's fourteenth stop; core/tours.ts). */
+  | { k: 'hardTours'; n: number }
   | { k: 'completionist' };
 
 export type TitleGroup = 'track' | 'play' | 'collection' | 'crew';
@@ -234,6 +243,8 @@ export const TITLE_RULES: Record<TitleId, TitleRule> = {
   blazing: { k: 'heat', level: 10 },
   wildfire: { k: 'heat', level: 20 },
   sunborn: { k: 'heat', level: 30 },
+  trailblazer: { k: 'hardTours', n: 1 },
+  globetrotter: { k: 'hardTours', n: 4 },
 };
 
 /**
@@ -297,6 +308,8 @@ export const TITLE_TIER: Record<TitleId, TitleTier> = {
   blazing: 2,
   wildfire: 3,
   sunborn: 4,
+  trailblazer: 3,
+  globetrotter: 4,
 };
 
 
@@ -454,6 +467,8 @@ export const Elite = {
         return c.prestige >= rule.rank;
       case 'heat':
         return c.heatCleared >= rule.level;
+      case 'hardTours':
+        return hardRounds(c) >= rule.n;
       case 'cars':
         return c.unlimitedCars >= rule.cars;
       case 'fund':
@@ -481,6 +496,8 @@ export const Elite = {
         return { have: Math.min(c.prestige, rule.rank), need: rule.rank };
       case 'heat':
         return { have: Math.min(c.heatCleared, rule.level), need: rule.level };
+      case 'hardTours':
+        return { have: Math.min(hardRounds(c), rule.n), need: rule.n };
       case 'cars':
         return { have: Math.min(c.unlimitedCars, rule.cars), need: rule.cars };
       case 'fund':

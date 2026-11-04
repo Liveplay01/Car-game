@@ -26,7 +26,7 @@ import { TourArt, TOUR_TINT } from './tourArt';
 import { PROGRESS, type ProgressSection } from './flow';
 import { MuseumPage, MuseumState } from './museum';
 import { Scroller, clipTo } from './scroll';
-import { type TourId, type TourDef, TOURS, tourOn, nextTour, tourOpen, tourStopsDone, stopDoneKey } from '../core/tours';
+import { type TourId, type TourDef, TOURS, tourOn, nextTour, tourOpen, tourStopsDone, tourStopCount, stopDoneKey } from '../core/tours';
 import { FAMILIES, Achievements, achievementTotal, type Family } from '../core/achievements';
 import { seasonOf } from '../core/loot';
 import { News } from './news';
@@ -352,8 +352,8 @@ export const ProgressPage = {
   nextStop(career: Career, today: number): number {
     const run = tourOn(today);
     if (!run) return 1;
-    const open = run.tour.stops.findIndex((_, i) => !career.toursDone.includes(stopDoneKey(run.key, i + 1)));
-    return open < 0 ? 1 : open + 1;
+    for (let i = 1; i <= tourStopCount(run.tour, career); i++) if (!career.toursDone.includes(stopDoneKey(run.key, i))) return i;
+    return 1;
   },
 
   /** How far the section's list can scroll in its window. */
@@ -838,8 +838,8 @@ export const ProgressPage = {
     const done = Careers.isChallengeDone(career, challenge, today);
     ProgressPage.panel(list, r, o);
     ProgressPage.check(list, v(r.minX + 24, c.y), done, o);
-    const label = S.daily.challenge(challenge);
-    const status = done ? `${S.daily.done} ✓` : Fmt.number(challengeReward(challenge, Careers.reach(career)));
+    const label = S.daily.quest(challenge, career.prestige);
+    const status = done ? `${S.daily.done} ✓` : Fmt.number(challengeReward(challenge, Careers.reach(career), career.prestige));
     const tag = textWidth(status, 13) + (done ? 0 : 18);
     drawFitted(list, label, v(r.minX + 44, c.y), 13, R.width(r) - 44 - 16 - tag - 12, done ? 'muted' : 'primary', { opacity: o, weight: 'bold' });
     if (done) drawText(list, status, v(r.maxX - 16, c.y), 13, 'coin', { opacity: o, weight: 'bold', align: 'trailing' });
@@ -949,7 +949,7 @@ export const ProgressPage = {
     const tile = R.make(r.minX + 12, r.minY + 12, r.minX + 12 + side, r.maxY - 12);
     TourArt.add(list, tile, run.tour.id, ProgressPage.tourSkin(run.tour), clock, reduceMotion, o);
     const done = tourStopsDone(career, run);
-    const total = run.tour.stops.length;
+    const total = tourStopCount(run.tour, career);
     const x = tile.maxX + 14;
     const right = r.maxX - 16;
     const name = S.tours.name(run.tour.id);
@@ -959,12 +959,15 @@ export const ProgressPage = {
     drawFitted(list, S.tours.tagline(run.tour.id), v(x, r.minY + 44), 12, right - x, 'muted', { opacity: o });
     // The stops as dots; the next one has a ring, and the last one is bigger (it holds the boss).
     const next = ProgressPage.nextStop(career, today);
-    const gap = Math.min(30, (right - x - 18) / Math.max(1, total - 1));
-    for (let i = 0; i < total; i++) {
+    // Seven dots at a time: the round the next stop belongs to.
+    const round = run.tour.stops.length;
+    const from = Math.floor((next - 1) / round) * round;
+    const gap = Math.min(30, (right - x - 18) / Math.max(1, round - 1));
+    for (let i = 0; i < round; i++) {
       const at = v(x + 9 + i * gap, r.minY + 72);
-      const finished = career.toursDone.includes(stopDoneKey(run.key, i + 1));
-      const last = i === total - 1;
-      if (i + 1 === next && done < total) list.s(circle(at, (last ? 11 : 9.5) + 1.5), 'accent', 0.55 * o);
+      const finished = career.toursDone.includes(stopDoneKey(run.key, from + i + 1));
+      const last = i === round - 1;
+      if (from + i + 1 === next && done < total) list.s(circle(at, (last ? 11 : 9.5) + 1.5), 'accent', 0.55 * o);
       list.s(circle(at, last ? 9 : 7.5), finished ? 'coin' : 'controlFill', o);
       if (finished) {
         list.s(line(add(at, v(-3.5, 0)), add(at, v(-1, 2.8)), 1.8), 'accentInk', o);

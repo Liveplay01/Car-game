@@ -58,10 +58,14 @@ export const PATCH_NOTES: PatchNote[] = [
     summary: [
       'Retry sooner: a tap during the FAIL pause starts the next shift. Revive wakes up faster.',
       'Tutorial hints stay until you do the thing. The start screen shows one card at a time.',
-      'Chests: a Common opens calm and short. A chest skin can be worn right on its reveal card.',
+      'Two new tours, Spring and Summer, with six skins. From Prestige ★3 every tour has a hard round.',
       'Titles have their own grouped list with progress. Settings are grouped: Controls, Accessibility.',
     ],
     items: [
+      'Two new tours: Blossom Run in spring (1-14 April) and Sunset Boulevard in summer (12-26 July), each with seven stops and three skins to earn by playing.',
+      'From Prestige ★3 every tour has a second, harder round: the same seven stops, six levels up with four more cars. It pays coins and a Premium chest at the end, plus two new titles.',
+      'Daily quests grow with your Prestige rank: bigger goals from ★2 and again from ★5, and a larger reward to match. The quest text and the finish line show the real number.',
+      'Veterans may now see something rare on the sky or the road. It is only a view: no points, no message, and it never changes the traffic.',
       'A tap during the FAIL pause or the short input lock is remembered and starts the next shift as soon as it ends, instead of being thrown away.',
       'From the third lost shift in a row the FAIL pause is 0.6 s instead of 1.2 s.',
       'Revive and the crash moment before it wait 0.5 s instead of 1.2 s.',

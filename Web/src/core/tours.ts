@@ -11,7 +11,7 @@ import type { Trial, TrialGoal } from './trials';
  * chest or one of the tour's skins. The skins are earned only here and only by playing; a missed
  * tour comes round again next year. Looks and rewards only, never a bonus on the road.
  */
-export type TourId = 'halloween' | 'winter';
+export type TourId = 'halloween' | 'winter' | 'spring' | 'summer';
 
 export interface TourReward {
   money?: number;
@@ -74,6 +74,36 @@ export const TOURS: TourDef[] = [
       { weather: 'snow', darkness: 'night', cars: 20, offset: 2, goal: { k: 'boss' }, boss: 'convoy', reward: { item: 'sleigh', money: 5000 } },
     ],
   },
+  {
+    id: 'spring',
+    from: [4, 1],
+    to: [4, 14],
+    map: 'sakura',
+    stops: [
+      { weather: 'clear', darkness: 'day', cars: 12, offset: -4, goal: { k: 'complete' }, reward: { money: 1500 } },
+      { weather: 'lightRain', darkness: 'day', cars: 14, offset: -3, goal: { k: 'complete' }, reward: { chest: 'standard' } },
+      { weather: 'clear', darkness: 'day', cars: 14, offset: -2, goal: { k: 'perfects', n: 5 }, reward: { item: 'tulip' } },
+      { weather: 'fog', darkness: 'day', cars: 14, offset: -1, goal: { k: 'complete' }, reward: { money: 2500 } },
+      { weather: 'lightRain', darkness: 'day', cars: 16, offset: 0, goal: { k: 'complete' }, legendary: 'dragnet', reward: { item: 'bumblebee', chest: 'event' } },
+      { weather: 'clear', darkness: 'day', cars: 18, offset: 1, goal: { k: 'complete' }, rule: 'flawless', reward: { chest: 'premium' } },
+      { weather: 'clear', darkness: 'day', cars: 20, offset: 2, goal: { k: 'boss' }, boss: 'twins', reward: { item: 'cherryBlossom', money: 5000 } },
+    ],
+  },
+  {
+    id: 'summer',
+    from: [7, 12],
+    to: [7, 26],
+    map: 'beach',
+    stops: [
+      { weather: 'clear', darkness: 'day', cars: 12, offset: -4, goal: { k: 'complete' }, reward: { money: 1500 } },
+      { weather: 'clear', darkness: 'day', cars: 14, offset: -3, goal: { k: 'perfects', n: 5 }, reward: { chest: 'standard' } },
+      { weather: 'sandstorm', darkness: 'day', cars: 14, offset: -2, goal: { k: 'complete' }, reward: { item: 'popsicle' } },
+      { weather: 'clear', darkness: 'day', cars: 14, offset: -1, goal: { k: 'complete' }, legendary: 'heavyLoad', reward: { money: 2500 } },
+      { weather: 'storm', darkness: 'day', cars: 16, offset: 0, goal: { k: 'complete' }, reward: { item: 'surfboard', chest: 'event' } },
+      { weather: 'clear', darkness: 'day', cars: 18, offset: 1, goal: { k: 'complete' }, rule: 'flawless', reward: { chest: 'premium' } },
+      { weather: 'clear', darkness: 'day', cars: 20, offset: 2, goal: { k: 'boss' }, boss: 'getaway', reward: { item: 'sunsetCruiser', money: 5000 } },
+    ],
+  },
 ];
 
 export interface TourRun {
@@ -121,7 +151,34 @@ export function nextTour(day: number): { tour: TourDef; inDays: number } | null 
 
 export const stopId = (tour: TourId, stop: number): `tour.${string}.${number}` => `tour.${tour}.${stop}`;
 export const stopDoneKey = (key: string, stop: number): string => `${key}.${stop}`;
-export const tourStopsDone = (c: Career, run: TourRun): number => run.tour.stops.filter((_, i) => c.toursDone.includes(stopDoneKey(run.key, i + 1))).length;
+
+/** Prestige rank from which every tour has a second, harder round (Leo, 03.11.2026). */
+export const HARD_RANK = 3;
+export const hardOpen = (c: Career): boolean => c.prestige >= HARD_RANK;
+
+/** The hard round: the same seven stops, six levels up with four more cars, paying coins and, at the end, a chest. */
+const hardOf = (s: TourStop, last: boolean): TourStop => ({
+  ...s,
+  cars: s.cars + 4,
+  offset: s.offset + 6,
+  reward: last ? { chest: 'premium', money: 20000 } : { money: 4000 },
+});
+
+/** Stop `stop` (1…) of the tour: 1…7 as written, 8…14 the hard round. */
+export function tourStopAt(tour: TourDef, stop: number): TourStop | null {
+  const n = tour.stops.length;
+  if (stop >= 1 && stop <= n) return tour.stops[stop - 1];
+  return stop > n && stop <= 2 * n ? hardOf(tour.stops[stop - n - 1], stop === 2 * n) : null;
+}
+
+/** How many stops this player can play on the tour. */
+export const tourStopCount = (tour: TourDef, c: Career): number => tour.stops.length * (hardOpen(c) ? 2 : 1);
+
+export const tourStopsDone = (c: Career, run: TourRun): number => {
+  let n = 0;
+  for (let i = 1; i <= tourStopCount(run.tour, c); i++) if (c.toursDone.includes(stopDoneKey(run.key, i))) n++;
+  return n;
+};
 
 /** A tour opens with the Trials. */
 export const TOUR_LEVEL = 9;
@@ -135,8 +192,8 @@ const hash = (text: string): number => {
 
 /** Stop `stop` (1…) of a run as a trial, at the player's level. */
 export function tourTrial(run: TourRun, stop: number, c: Career): Trial | null {
-  const s = run.tour.stops[stop - 1];
-  if (!s) return null;
+  const s = tourStopAt(run.tour, stop);
+  if (!s || stop > run.tour.stops.length && !hardOpen(c)) return null;
   return {
     id: stopId(run.tour.id, stop),
     level: Math.max(3, Math.min(140, c.level + Careers.headStart(c) + s.offset)),
@@ -159,7 +216,7 @@ export function tourStopOf(id: string, day: number): { run: TourRun; stop: numbe
   const run = tourOn(day);
   if (!m || !run || run.tour.id !== m[1]) return null;
   const stop = Number(m[2]);
-  return stop >= 1 && stop <= run.tour.stops.length ? { run, stop } : null;
+  return stop >= 1 && stop <= 2 * run.tour.stops.length ? { run, stop } : null;
 }
 
 export interface TourPaid {
@@ -171,8 +228,8 @@ export interface TourPaid {
 /** A passed stop pays once per run. Null when it was done before. */
 export function completeStop(c: Career, run: TourRun, stop: number): TourPaid | null {
   const key = stopDoneKey(run.key, stop);
-  const s = run.tour.stops[stop - 1];
-  if (!s || c.toursDone.includes(key)) return null;
+  const s = tourStopAt(run.tour, stop);
+  if (!s || c.toursDone.includes(key) || stop > run.tour.stops.length && !hardOpen(c)) return null;
   c.toursDone.push(key);
   if (s.reward.money) c.money += s.reward.money;
   if (s.reward.chest) c.chests.push(s.reward.chest);

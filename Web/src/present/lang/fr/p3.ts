@@ -1,4 +1,5 @@
 import type { Strings } from '../../strings';
+import type { TourId } from '../../../core/tours';
 import type { Words } from '../../i18n';
 import { Fmt, money } from '../../format';
 
@@ -45,6 +46,8 @@ export default (S: Strings): Words<Strings> => ({
         blazing: 'Ardent',
         wildfire: 'Brasier',
         sunborn: 'Né du soleil',
+        trailblazer: 'Pionnier',
+        globetrotter: 'Globe-trotter',
         ascended: 'Ascendant',
         eternal: 'Éternel',
         grandmaster: 'Grand maître',
@@ -88,6 +91,8 @@ export default (S: Strings): Words<Strings> => ({
           return 'Atteignez le rang V dans chaque maîtrise';
         case 'crew':
           return r.place === 1 ? 'Termine une semaine de crew à la première place de la ligue' : 'Termine une semaine de crew dans le top 3 de la ligue';
+        case 'hardTours':
+          return r.n === 1 ? 'Termine la manche difficile d’un tour' : `Termine la manche difficile de ${r.n} tours`;
         case 'collector':
           return 'Obtenez tous les skins encore disponibles';
         case 'completionist':
@@ -199,16 +204,18 @@ export default (S: Strings): Words<Strings> => ({
 
   tours: {
     caption: 'TOUR',
-    name: (id) => ({ halloween: 'Anneau Hanté', winter: 'Lumières d’Hiver' })[id],
+    name: (id) => ({ halloween: 'Anneau Hanté', winter: 'Lumières d’Hiver', spring: 'Course en Fleurs', summer: 'Soleil Couchant' })[id],
     tagline: (id) =>
       ({
         halloween: 'Sept étapes après la tombée du jour. Trois skins exclusifs.',
         winter: 'Sept étapes enneigées. Trois skins exclusifs.',
+        spring: 'Sept étapes lumineuses sous les fleurs. Trois skins exclusifs.',
+        summer: 'Sept étapes ensoleillées au bord de la mer. Trois skins exclusifs.',
       })[id],
     stop: (n, of) => `Étape ${n}/${of}`,
     stopName: (id) => {
       const m = /^tour\.([a-z]+)\.(\d+)$/.exec(id);
-      return m ? `${S.tours.name(m[1] as 'halloween' | 'winter')} · Étape ${m[2]}` : '';
+      return m ? `${S.tours.name(m[1] as TourId)} · Étape ${m[2]}` : '';
     },
     left: (n) => (n <= 1 ? 'dernier jour' : `encore ${n} jours`),
     opensIn: (n) => (n === 1 ? 'demain' : `dans ${n} jours`),

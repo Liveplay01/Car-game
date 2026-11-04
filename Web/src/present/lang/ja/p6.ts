@@ -1,4 +1,5 @@
 import type { Strings } from '../../strings';
+import type { TourId } from '../../../core/tours';
 import type { Words } from '../../i18n';
 import { Fmt, money, percent, multiplier } from '../../format';
 import { MONEY_MARK } from '../../icons';
@@ -124,7 +125,7 @@ export default (S: Strings): Words<Strings> => ({
       if (item.source.kind === 'pass') return `シーズンパス${S.pass.seasonName(item.source.season)}の${item.source.tier}段階目。毎年めぐってきます。`;
       if (item.source.kind === 'hall') return '今は購入できなくなった、昔の殿堂にありました。';
       if (item.source.kind === 'unlimited') return `アンリミテッドで車を${Fmt.number(item.source.cars)}台送り出そう。`;
-      if (item.source.kind === 'tour') return `ツアー「${S.tours.name(item.source.tour as 'halloween' | 'winter')}」のストップのひとつ。毎年めぐってきます。`;
+      if (item.source.kind === 'tour') return `ツアー「${S.tours.name(item.source.tour as TourId)}」のストップのひとつ。毎年めぐってきます。`;
       if (item.source.kind === 'auction') return 'オークションハウス(ソーシャル → クラブ)のロットとしてだけ。数日ごとに新しいロットが出ます。';
       if (item.source.kind === 'failures') return 'シフトの負けかたをすべて見つけよう(進捗 → ミュージアム → 失敗)。見た目だけ。';
       if (item.source.kind === 'casino') return `${S.casino.feat(item.source.feat)}: アーケードだけが贈ります(ショップ → アーケード)。見た目だけ。`;
@@ -346,7 +347,7 @@ export default (S: Strings): Words<Strings> => ({
           return 'ニアミス';
       }
     },
-    challengeDone: (c, reward) => `クエスト · ${S.daily.challenge(c)} · +${money(reward)}`,
+    challengeDone: (c, reward, prestige = 0) => `クエスト · ${S.daily.quest(c, prestige)} · +${money(reward)}`,
   },
 
   albums: {

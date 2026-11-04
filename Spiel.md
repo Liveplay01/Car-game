@@ -497,6 +497,8 @@ Ein voller Satz zahlt einmal Geld und legt einen **Rahmen** in seiner Farbe um d
 
 3 kleine Ziele pro Tag, für alle gleich, je einmal bezahlt, wechseln um Mitternacht. Unter **Progress → Today**. Vierzehn mögliche (seit 06.10.2026, `core/daily.ts`): 3 Perfect Inputs (250) · 3 Tight Fits (250) · Combo 15 (250) · ein Takedown (250) · 8 Clean Merges (250) · 2 Takedowns (350) · 2 Transporter (350) · Perfect Chain 8 (350) · Perfect Chain 5 (350) · 2 Near Misses (350) · 6 Tight Fits (400) · 5 Perfect Inputs (400) · Combo 25 (400) · ein Perfect Run (500).
 
+**Mit dem Prestige-Rang (04.11.2026):** Ziele ×1,5 ab ★2, ×2 ab ★5 (Ziele von 1 bleiben 1), die Belohnung wächst im selben Maß (`questScale`, `challengeNeed`). Kein neues Menü; Text und Abschluss-Zeile zeigen die echte Zahl.
+
 ### Tours (Leo, 07.10.2026, `core/tours.ts`)
 
 Zeitlich begrenzte Ereignisse, die jedes Jahr wiederkommen (Progress → Today, ab Level 9 wie die Trials). Eine Tour hat **sieben Stopps**, jeder ein fester Trial mit eigenem Himmel und Ziel; sein **Level folgt dem Spieler** (Karrierelevel + Prestige-Vorsprung + Versatz −4 … +2), der Seed ist fest, alle treffen denselben Verkehr. Jeder Stopp zahlt **einmal pro Lauf der Tour** (`toursDone`: `halloween-2026.3`): Geld, Truhe oder ein Skin der Tour. Die Stopps werden auf der Karte der Tour gezeichnet (`autumn`, `snowfall`), egal was der Spieler trägt. Der letzte Stopp ist ein Boss (Phantom / Convoy, eine Runde härter) und gibt den legendären Skin. Die Skins gibt es nur dort (Quelle `tour`, Regal Honours, eigenes Album **Tours**, 30.000; die Honours-Alben warten nicht auf sie), eine verpasste Tour kommt nächstes Jahr wieder.
@@ -505,6 +507,12 @@ Zeitlich begrenzte Ereignisse, die jedes Jahr wiederkommen (Progress → Today, 
 |---|---|---|
 | **Haunted Ring** | 24.10. – 02.11. | Jack-o'-Lantern (Rare) · Witching Hour (Epic) · Wraith (Legendary) |
 | **Winter Lights** | 18.12. – 03.01. | Candy Cane (Rare) · Snow Globe (Epic) · Midnight Sleigh (Legendary) |
+| **Blossom Run** | 01.04. – 14.04. | Tulip (Rare) · Bumblebee (Epic) · Cherry Blossom (Legendary) |
+| **Sunset Boulevard** | 12.07. – 26.07. | Popsicle (Rare) · Surfboard (Epic) · Sunset Cruiser (Legendary) |
+
+**Harte Runde (03.11.2026):** ab Prestige ★3 hat jede Tour sieben weitere Stopps (gleiche Stopps, 6 Level höher, 4 Autos mehr; 4.000 je Stopp, am Ende Premium Chest + 20.000), dazu die Titel Trailblazer und Globetrotter.
+
+**Seltene Himmelsmomente (04.11.2026, `present/skyMoments.ts`):** ab ★5 oder 30 Tagen Serie, etwa jede 120. Schicht höchstens einer: Ballon, Hochzeitsauto mit Dosen, Sternschnuppe (nur klare Nacht). Nur Optik aus dem Seed, ohne Punkte und Meldung.
 
 Stopps Haunted Ring: Dusk, Fog Bank, Blackout (Skin), Perfects bei Regen, Nebel im Blackout (Skin, Event Chest), flawless bei Nacht (Premium Chest), das Phantom (Skin, 5.000). Neue Touren stehen als Eintrag in `TOURS`; ein Skin braucht Eintrag in `loot.ts`, `skins.ts` und `strings.ts`. `node scripts/tour-sim.mjs` prüft, dass der vorsichtige Bot auf keinem Level crasht.
 

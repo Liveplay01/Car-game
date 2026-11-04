@@ -1,4 +1,5 @@
 import type { Strings } from '../../strings';
+import type { TourId } from '../../../core/tours';
 import type { Words } from '../../i18n';
 import { Fmt, money } from '../../format';
 
@@ -45,6 +46,8 @@ export default (S: Strings): Words<Strings> => ({
         blazing: 'ブレイジング',
         wildfire: 'ワイルドファイア',
         sunborn: 'サンボーン',
+        trailblazer: '開拓者',
+        globetrotter: '世界の旅人',
         ascended: '昇天者',
         eternal: '永遠',
         grandmaster: 'グランドマスター',
@@ -88,6 +91,8 @@ export default (S: Strings): Words<Strings> => ({
           return 'すべてのマスタリーでレベルVに到達';
         case 'crew':
           return r.place === 1 ? 'クルーの週をリーグ1位で終える' : 'クルーの週をリーグ上位3位以内で終える';
+        case 'hardTours':
+          return r.n === 1 ? 'ツアーの高難度ラウンドをクリア' : `${r.n}つのツアーの高難度ラウンドをクリア`;
         case 'collector':
           return '今も入手できるスキンをすべて集める';
         case 'completionist':
@@ -198,16 +203,18 @@ export default (S: Strings): Words<Strings> => ({
 
   tours: {
     caption: 'ツアー',
-    name: (id) => ({ halloween: 'ホーンテッドリング', winter: 'ウィンターライツ' })[id],
+    name: (id) => ({ halloween: 'ホーンテッドリング', winter: 'ウィンターライツ', spring: 'ブロッサムラン', summer: 'サンセットロード' })[id],
     tagline: (id) =>
       ({
         halloween: '日が暮れてからの7つのストップ。スキン3種はここだけ。',
         winter: '雪景色の7つのストップ。スキン3種はここだけ。',
+        spring: '花の下の明るい7つのストップ。スキン3種はここだけ。',
+        summer: '海辺の陽ざしの7つのストップ。スキン3種はここだけ。',
       })[id],
     stop: (n, of) => `ストップ ${n}/${of}`,
     stopName: (id) => {
       const m = /^tour\.([a-z]+)\.(\d+)$/.exec(id);
-      return m ? `${S.tours.name(m[1] as 'halloween' | 'winter')} · ストップ ${m[2]}` : '';
+      return m ? `${S.tours.name(m[1] as TourId)} · ストップ ${m[2]}` : '';
     },
     left: (n) => (n <= 1 ? '最終日' : `あと${n}日`),
     opensIn: (n) => (n === 1 ? '明日' : `${n}日後`),

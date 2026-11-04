@@ -379,6 +379,12 @@ Nur an den Stopps 3, 5 und 7 einer Tour, nie in Truhen. Eine verpasste Tour komm
 | Candy Cane | Winter Lights · Stopp 3 | Rare | Rot mit weißem Streifen, Glanz |
 | Snow Globe | Winter Lights · Stopp 5 | Epic | Eisblau, Schneespur, Glitzer |
 | Midnight Sleigh | Winter Lights · Stopp 7 (Convoy) | Legendary | Rubinrot mit Gold, Lichtkrone |
+| Tulip | Blossom Run · Stopp 3 | Rare | Siehe Spiel (Frühling) |
+| Bumblebee | Blossom Run · Stopp 5 | Epic | Siehe Spiel (Frühling) |
+| Cherry Blossom | Blossom Run · Stopp 7 (Twins) | Legendary | Siehe Spiel (Frühling) |
+| Popsicle | Sunset Boulevard · Stopp 3 | Rare | Siehe Spiel (Sommer) |
+| Surfboard | Sunset Boulevard · Stopp 5 | Epic | Siehe Spiel (Sommer) |
+| Sunset Cruiser | Sunset Boulevard · Stopp 7 (Getaway) | Legendary | Siehe Spiel (Sommer) |
 
 ## Alben
 

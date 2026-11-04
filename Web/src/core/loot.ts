@@ -239,6 +239,12 @@ export const COSMETICS: Cosmetic[] = [
   c('candyCane', 'carSkin', 'rare', { kind: 'tour', tour: 'winter' }),
   c('snowGlobe', 'carSkin', 'epic', { kind: 'tour', tour: 'winter' }),
   c('sleigh', 'carSkin', 'legendary', { kind: 'tour', tour: 'winter' }),
+  c('tulip', 'carSkin', 'rare', { kind: 'tour', tour: 'spring' }),
+  c('bumblebee', 'carSkin', 'epic', { kind: 'tour', tour: 'spring' }),
+  c('cherryBlossom', 'carSkin', 'legendary', { kind: 'tour', tour: 'spring' }),
+  c('popsicle', 'carSkin', 'rare', { kind: 'tour', tour: 'summer' }),
+  c('surfboard', 'carSkin', 'epic', { kind: 'tour', tour: 'summer' }),
+  c('sunsetCruiser', 'carSkin', 'legendary', { kind: 'tour', tour: 'summer' }),
   // The Auction House (Leo, 10.10.2026): only ever won at a lot, for a lot of money. Looks only.
   c('sterling', 'carSkin', 'legendary', { kind: 'auction' }),
   c('magnate', 'carSkin', 'legendary', { kind: 'auction' }),
