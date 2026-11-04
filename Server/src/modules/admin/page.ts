@@ -278,7 +278,7 @@ export const ADMIN_PAGE = `<!doctype html>
   const rankActions = (b, id) => '<button type="button" data-score data-board="' + esc(b) + '" data-player="' + esc(id) + '">Remove score</button>' +
     '<button type="button" data-ban data-player="' + esc(id) + '">Ban</button>' +
     '<button type="button" class="danger gap" data-erase data-player="' + esc(id) + '">Delete player</button>';
-  const reasons = { mismatch: 'replay scored differently', invalid: 'proof invalid', no_proof: 'no proof, top 10' };
+  const reasons = { mismatch: 'replay scored differently', invalid: 'proof invalid', no_proof: 'no proof, top 10', bot_taps: 'machine-like taps', casino_jump: 'profit rose too fast' };
 
   const loaders = {
     async bugs() {

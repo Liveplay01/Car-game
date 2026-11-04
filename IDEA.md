@@ -103,16 +103,13 @@ Gebaut am 04.11.2026 (Ballon, Hochzeitsauto, Sternschnuppe: `present/skyMoments.
 
 ## Anti-Cheat (Claude, 03.11.2026)
 
-Umgesetzt am 04.11.2026: Replay-Prüfung für Unlimited und Daily, Flaggen im `/admin` (siehe Server/README.md, „Anti-cheat“).
+Umgesetzt am 04.11.2026: Replay-Prüfung für Unlimited und Daily, Flaggen im `/admin`, Casino-Zuwachs-Flagge und Tap-Verteilung (siehe Server/README.md, „Anti-cheat“).
 Offen, grob nach Nutzen:
 
 1. **Replay für Boss Rush und Shift-Level.** Gleiches Verfahren; Boss Rush braucht frische Welten und Aufnahme.
 2. **Setup beweisen.** Level und Upgrades im Beweis sind selbst gemeldet; ein Server-Seed (Token mit Startzeit) oder die Cloud-Kopie könnte sie prüfen.
-3. **Casino-Profit absichern.** Zuwachs pro Tag begrenzen (Einsatz-Limits × Rundenzahl) oder eine signierte Rundenliste
-   verlangen; heute bis 1 Billion, „latest“ überschreibt.
-5. **Tap-Verteilung prüfen.** Roboter treffen Fenster auf die Millisekunde oder mit konstantem Abstand; ein Signal im Replay.
-6. **Quarantäne (Shadow-Ban).** Geflaggte Scores sieht nur der Einreicher, bis ein Admin sie prüft.
-7. **Siegel härten.** Schlüssel pro Installation, Zähler gegen Zurückspielen; Cloud-Sync-Sprünge prüfen (hängt mit „Geld zurückspulen über die Cloud-Kopie“ zusammen).
-8. **Multiplayer.** Zustands-Hashes vergleichen; bei Abweichung zählt die Runde nicht.
-9. **Melden.** „Melden“ an Bestenlisteneinträgen, später rückwirkende Prüfung gespeicherter Replays.
+3. **Quarantäne (Shadow-Ban).** Geflaggte Scores sieht nur der Einreicher, bis ein Admin sie prüft.
+4. **Siegel härten.** Schlüssel pro Installation, Zähler gegen Zurückspielen; Cloud-Sync-Sprünge prüfen (hängt mit „Geld zurückspulen über die Cloud-Kopie“ zusammen).
+5. **Multiplayer.** Zustands-Hashes vergleichen; bei Abweichung zählt die Runde nicht.
+6. **Melden.** „Melden“ an Bestenlisteneinträgen, später rückwirkende Prüfung gespeicherter Replays.
 

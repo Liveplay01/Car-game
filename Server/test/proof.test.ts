@@ -84,3 +84,29 @@ test('admin lists a board with player ids, dismisses a flag, and drops a banned 
   await call('PATCH', `/v1/admin/players/${entries[0]!.playerId}`, ADMIN, { banned: true });
   assert.equal((await list()).entries.length, 0);
 });
+
+test('robotTaps: evenly spaced taps are a machine, uneven ones are not', async () => {
+  const { robotTaps } = await import('../src/modules/leaderboard/verify.ts');
+  const taps = (gaps: number[]) => {
+    let t = 0;
+    return gaps.flatMap((g, i) => [i, 0, (t += g)]);
+  };
+  assert.equal(robotTaps(taps(Array.from({ length: 60 }, () => 0.4))), true);
+  assert.equal(robotTaps(taps(Array.from({ length: 60 }, (_, i) => 0.3 + ((i * 37) % 100) / 400))), false);
+  assert.equal(robotTaps(taps(Array.from({ length: 10 }, () => 0.4))), false);
+});
+
+test('the golden proof is not machine-like', { skip }, async () => {
+  const { robotTaps } = await import('../src/modules/leaderboard/verify.ts');
+  assert.equal(robotTaps(golden.proof.events as number[]), false);
+});
+
+test('casino profit that jumps is flagged, a normal climb is not', async () => {
+  const { call, join, flags } = setup();
+  const token = await join('Whale');
+  await call('PUT', '/v1/boards/casino/score', token, { profit: 1_000_000 });
+  await call('PUT', '/v1/boards/casino/score', token, { profit: 50_000_000 });
+  assert.deepEqual(await flags(), []);
+  await call('PUT', '/v1/boards/casino/score', token, { profit: 900_000_000 });
+  assert.deepEqual((await flags()).map((f) => f.reason), ['casino_jump']);
+});

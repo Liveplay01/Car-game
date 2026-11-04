@@ -136,7 +136,7 @@ it), in a worker thread (10 s timeout, 2 at a time). **Flag only, never refuse o
 top-10 score without proof lands in `score_flags` and shows at `GET /v1/admin/flags` and in the `/admin` tab **Ranks**, which also lists each board's top 100 with Remove score / Ban / Delete player (`GET /v1/admin/boards/:board`; banned players are not listed). A stale `rules`
 number (`PROOF_RULES` in `core/proof.ts`, bumped when core changes what a run scores; `npm test` in `Web/` fails until then),
 a busy or timed-out replay and a missing bundle are not flagged. Limits: level and upgrades (`setup`) are self-reported;
-Boss Rush, Shift-level and Casino are not verified. Run the tests with the bundle built (`Server/test/proof.test.ts` skips without it).
+Boss Rush, Shift-level and Casino are not verified. Two more flags (Leo, 04.11.2026, flag only): `bot_taps` when 40 or more taps of a proof share one gap to the millisecond in half of the cases (`robotTaps`, `verify.ts`), and `casino_jump` when Arcade profit rises more than 200,000,000 a day since the last entry, or a first entry is above 2,000,000,000 (`CASINO_GAIN_PER_DAY`, `index.ts`). Run the tests with the bundle built (`Server/test/proof.test.ts` skips without it).
 
 **Rate limits** (in memory, `src/rateLimit.ts`; a restart only resets the counters; `429 rate_limited` with `Retry-After`):
 

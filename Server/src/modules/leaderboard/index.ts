@@ -10,6 +10,11 @@ import { loadProofParts, type ProofParts } from './proofModule.ts';
 import { LEADERBOARD_MIGRATIONS, ScoreStore } from './store.ts';
 import { verify } from './verify.ts';
 
+const DAY_MS = 86_400_000;
+/** Arcade profit that climbs faster than this is looked at: the odds favour the house, so a steady climb is out of reach (flag only). */
+const CASINO_GAIN_PER_DAY = 200_000_000;
+const CASINO_FIRST_MAX = 2_000_000_000;
+
 /** A top score without a replay proof is looked at (older clients send none). */
 const UNPROVEN_TOP = 10;
 const DEFAULT_LIMIT = 50;
@@ -90,9 +95,13 @@ export function leaderboardModule(): ServerModule {
           const own = proven ? scores.of(board.id, period, player.id) : null;
           const check = proven && (!own || score > own.score) ? await verify(proofParts, { board: board.id as 'unlimited' | 'daily', score, day }, body.proof) : null;
           if (check && (check.verdict === 'mismatch' || check.verdict === 'invalid')) scores.flag(board.id, period, player.id, check.verdict, score, check.replayed ?? null, ctx.now());
+          if (check?.robot) scores.flag(board.id, period, player.id, 'bot_taps', score, null, ctx.now());
+          const before = board.id === 'casino' ? scores.of(board.id, period, player.id) : null;
           const accepted = scores.submit(board.id, period, player.id, score, meta, ctx.now(), board.latest === true);
           const best = scores.of(board.id, period, player.id);
           if (!best) throw new ApiError(500, 'internal', 'The score was not saved.');
+          if (before && score - before.score > CASINO_GAIN_PER_DAY * Math.max(1, (ctx.now() - before.achievedAt) / DAY_MS)) scores.flag(board.id, period, player.id, 'casino_jump', score, before.score, ctx.now());
+          if (!before && board.id === 'casino' && score > CASINO_FIRST_MAX) scores.flag(board.id, period, player.id, 'casino_jump', score, null, ctx.now());
           if (check?.verdict === 'none' && accepted && best.rank <= UNPROVEN_TOP) scores.flag(board.id, period, player.id, 'no_proof', score, null, ctx.now());
           // Also an unchanged best counts: whoever hears it (an invite waiting for level 5) looks at the standing, not at news.
           for (const listen of ctx.onScore) listen({ playerId: player.id, board: board.id, score: best.score });
