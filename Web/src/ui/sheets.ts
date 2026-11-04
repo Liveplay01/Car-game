@@ -12,6 +12,7 @@ import { cloudEnabled } from '../net/cloud';
 import { PUSH_CHOICES, type PushChoice, type PushState } from '../net/push';
 import { S } from '../present/strings';
 import { LANGUAGES, currentLanguage, chooseLanguage } from '../present/i18n';
+import { Haptics } from '../audio/player';
 
 interface OpenSheet {
   root: HTMLElement;
@@ -804,7 +805,7 @@ let lastSettingsTab: SettingsTab = 'play';
  * notifications, install, Delete account) and About (What's new, Build with us, links, the legal pages).
  */
 export function settingsSheet(layer: HTMLElement, s: Settings, actions: SettingsActions): () => void {
-  const hasVibration = typeof navigator.vibrate === 'function';
+  const hasVibration = Haptics.available;
   const motionOptions: [Settings['reduceMotion'], string][] = [
     ['system', S.settings.motion.system],
     ['on', S.settings.motion.on],

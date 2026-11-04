@@ -1199,11 +1199,38 @@ export class Haptics {
     earned: [12, 60, 20, 60, 28],
   };
   readonly supported = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+  /** iOS Safari (17.4+) has no vibrate, but toggling a `<input switch>` through its label ticks the Taptic Engine. */
+  private static readonly ios = typeof navigator !== 'undefined' && typeof navigator.vibrate !== 'function' && /iP(hone|ad|od)|Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 0;
+  static readonly available = typeof navigator !== 'undefined' && (typeof navigator.vibrate === 'function' || Haptics.ios);
+  private static tickLabel: HTMLLabelElement | null = null;
+
+  private static tick(): void {
+    if (!Haptics.tickLabel) {
+      const label = document.createElement('label');
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      box.setAttribute('switch', '');
+      label.setAttribute('aria-hidden', 'true');
+      label.style.cssText = 'position:fixed;left:-100px;top:0;width:1px;height:1px;opacity:0;pointer-events:none';
+      label.append(box);
+      document.body.append(label);
+      Haptics.tickLabel = label;
+    }
+    Haptics.tickLabel.click();
+  }
 
   play(id: HapticID, softness: number): void {
-    if (!this.supported) return;
+    if (!Haptics.available) return;
     const scale = 1 - 0.35 * clamp(softness, 0, 1);
     const pattern = Haptics.patterns[id].map((ms, i) => (i % 2 === 0 ? Math.max(1, Math.round(ms * scale)) : ms));
+    if (!this.supported) {
+      let at = 0;
+      pattern.forEach((ms, i) => {
+        if (i % 2 === 0) setTimeout(Haptics.tick, at);
+        at += ms;
+      });
+      return;
+    }
     try {
       navigator.vibrate(pattern);
     } catch {
