@@ -145,6 +145,11 @@
       .boot.late .learn-late { display: flex; }
       .learn-late p { margin: 0; max-width: 32ch; color: #99a2af; font-size: 14px; line-height: 1.5; text-wrap: balance; }
       .learn-late button { appearance: none; border: 1px solid rgba(255, 255, 255, 0.1); background: #23282f; color: #f4f6f9; min-height: 44px; padding: 0 20px; border-radius: 14px; font-family: inherit; font-size: 15px; font-weight: 600; line-height: 1; cursor: pointer; }
+      /* The game is loaded while the lesson still runs: the wait is over, so a big way past it replaces the note. */
+      .boot.ready .learn-late { display: flex; }
+      .boot.ready .learn-late p, .boot.ready .learn-wait { display: none; }
+      .boot.ready .learn-late button { width: min(100%, 320px); min-height: 56px; border: 0; background: #ffb703; color: #14171c; font-size: 17px; font-weight: 700; border-radius: 16px; transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1); }
+      .boot.ready .learn-late button:active { transform: scale(0.97); }
       .learn-late button:focus-visible { outline: 2px solid #ffb703; outline-offset: 3px; }
       @keyframes learn-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
       @media (prefers-reduced-motion: reduce) {

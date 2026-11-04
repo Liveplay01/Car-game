@@ -193,7 +193,10 @@ const tapped = new Promise<void>((resolve) => {
   if (firstVisit) boot?.querySelector('.learn-late button')?.addEventListener('click', () => resolve(), { once: true });
   else boot?.addEventListener('pointerdown', () => resolve(), { once: true });
 });
-if (firstVisit) void pause(LEARN_MS).then(() => boot?.classList.add('late'));
+if (firstVisit) {
+  void pause(LEARN_MS).then(() => boot?.classList.add('late'));
+  void shell.preload().then(() => boot?.classList.add('ready'));
+}
 await Promise.race([
   Promise.all([shell.preload(), firstVisit ? pause(LEARN_MS) : null]),
   tapped,
