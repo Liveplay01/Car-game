@@ -302,7 +302,7 @@ export function crewPanel(host: CrewHost): HTMLElement {
         { class: 'row-main' },
         h('div', { class: 'row-title' }, S.crew.goal),
         h('div', { class: 'row-sub' }, week.xp >= week.goal ? S.crew.goalDone : S.crew.goalLine(Fmt.number(week.xp), Fmt.number(week.goal))),
-        h('div', { class: 'crew-meter', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(week.goal), 'aria-valuenow': String(Math.min(week.xp, week.goal)) }, h('span', { style: `width: ${(share * 100).toFixed(1)}%` })),
+        h('div', { class: 'crew-meter', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(week.goal), 'aria-valuenow': String(Math.min(week.xp, week.goal)) }, h('span', { style: `transform: scaleX(${share.toFixed(3)})` })),
       ),
     );
     const rows = [

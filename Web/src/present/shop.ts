@@ -955,7 +955,7 @@ export const ShopPage = {
     const since = age - ShopPage.stages(reel).reveal;
     const kick = reduceMotion || since < 0 || since > 0.7 ? v(0, 0) : mul(v(Math.sin(since * 80), Math.cos(since * 63) * 0.6), 11 * power * Math.exp(-since * 6));
     const center = add(sub(mul(vp, 0.5), v(0, 20)), kick);
-    list.s(rect(mul(vp, 0.5), vp), 'background', 0.92 * Math.min(1, age / 0.25));
+    list.s(rect(mul(vp, 0.5), vp), 'background', Math.min(1, age / 0.25));
     if (reduceMotion) {
       ShopPage.addRevealCard(list, opening, center, 10, color, true, pityLeft);
       const fade = 1 - Math.min(1, age / 0.3);
@@ -1094,7 +1094,7 @@ export const ShopPage = {
   addCharge(list: RenderList, c: NonNullable<ShopState['charging']>, taps: number, window: number, reduceMotion: boolean): void {
     const vp = list.camera.viewport;
     const center = sub(mul(vp, 0.5), v(0, 20));
-    list.s(rect(mul(vp, 0.5), vp), 'background', 0.92 * Math.min(1, c.age / 0.25));
+    list.s(rect(mul(vp, 0.5), vp), 'background', Math.min(1, c.age / 0.25));
     const strong = strongTaps(c.times, window);
     const hits = c.times.length;
     let streak = 0;

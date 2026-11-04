@@ -2132,6 +2132,7 @@ export class GameSession {
         const index = Math.max(0, pages.indexOf(screenTab(this.screen)));
         this.perform({ k: 'showTab', tab: pages[(index + 1) % pages.length] });
         break;
+        if (this.shopPage.busy) return;
       }
       case 'dispatch':
         if (this.screen.k === 'playing') {

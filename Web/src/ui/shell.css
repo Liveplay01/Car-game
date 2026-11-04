@@ -372,6 +372,12 @@ button {
     visibility 0s;
 }
 
+/* A chest opening owns the screen: the dock stays but cannot be used. */
+.app[data-locked='true'] .tabbar {
+  pointer-events: none;
+  opacity: 0.4;
+}
+
 /* Driving off: pull in onto the selected pill (the outer tabs go first, `--dist`), then drop out of sight. */
 .app[data-phase='playing'] .tabbar,
 .app[data-phase='ended'] .tabbar,
@@ -4803,7 +4809,8 @@ button.mod:active {
   height: 100%;
   border-radius: inherit;
   background: var(--state-live);
-  transition: width 400ms var(--ease-out);
+  transform-origin: left;
+  transition: transform 240ms var(--ease-out);
 }
 
 /* The league table: a thin edge marks the places that go up (gold, earned) and down (red, lost) on Monday. */

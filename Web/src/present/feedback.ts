@@ -262,7 +262,7 @@ export const Feedback = {
     switch (e.type) {
       case 'merged':
         if (e.critical) return 'critical';
-        return e.rating === 'cutOff' ? null : e.rating === 'clean' ? 'merge' : e.rating;
+        return e.rating === 'clean' || e.rating === 'cutOff' ? 'merge' : e.rating;
       case 'crash':
         return e.isStrike ? 'crash' : null;
       case 'comboChanged':

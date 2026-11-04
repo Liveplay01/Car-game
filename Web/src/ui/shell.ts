@@ -865,7 +865,7 @@ export class Shell {
       if (i > 0) modsStr += ',';
       modsStr += modList[i].label;
     }
-    const key = `${screen.k}|${selected}|${onSocial ? s.socialPage.section : -1}|${this.size.x}|${badgeKey}|${s.world.shift.phase}|${s.playingMode}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.save.settings.dispatchSize}|${s.save.settings.largeText}|${s.notesUnread}|${this.unbacked}|${s.showsChrome}|${s.chestOffer}|${s.save.career.chests[0] ?? ''}|${s.world.dispatchesLeft}|${modsStr}`;
+    const key = `${screen.k}|${selected}|${onSocial ? s.socialPage.section : -1}|${this.size.x}|${badgeKey}|${s.world.shift.phase}|${s.playingMode}|${s.special?.k ?? ''}|${s.shareable ? 1 : 0}|${match ? 1 : 0}|${versusKey}|${s.save.settings.leftHanded}|${s.save.settings.dispatchSize}|${s.save.settings.largeText}|${s.notesUnread}|${this.unbacked}|${s.showsChrome}|${s.shopPage.busy ? 1 : 0}|${s.chestOffer}|${s.save.career.chests[0] ?? ''}|${s.world.dispatchesLeft}|${modsStr}`;
     if (!force && key === this.chromeKey) return;
     this.chromeKey = key;
     this.social.sync(onSocial, s.socialPage.section, SocialPage.column(this.size));
@@ -887,6 +887,7 @@ export class Shell {
     this.revengeBtn.classList.toggle('show', watching && match.canRevenge);
     this.app.dataset.tabbar = s.showsChrome && !match ? 'shown' : 'hidden';
     this.app.dataset.screen = screen.k;
+    this.app.dataset.locked = String(s.shopPage.busy);
     this.shownTabIndex = TAB_BAR.indexOf(selected);
     if (!this.scrubbing) this.moveTabIndicator(this.shownTabIndex);
     for (const [tab, { button, badge: el }] of this.tabs) {

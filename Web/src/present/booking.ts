@@ -83,6 +83,7 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   Careers.record(career, result, ctx.level);
   if (ctx.mode === 'shift') Careers.noteShift(career, result.outcome === 'completed');
   Achievements.record(career, result, ctx.shiftConfig, ctx.mode);
+  const records: string[] = [];
   const news: string[] = milestones.map((id) => S.modes.milestone(id));
   // A late loan takes its share of the pay before anything else is booked against it.
   const garnished = Mafia.garnish(career, career.money - bankBefore, Date.now(), ctx.config);
@@ -142,7 +143,7 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
     const times = [...ctx.splits];
     if ((times[times.length - 1] ?? -1) < result.time - 0.001) times.push(result.time);
     const hadBest = Careers.bestTimes(career, ctx.level) !== null;
-    if (Careers.recordTimes(career, times, ctx.level) && hadBest) news.push(S.race.newBest);
+    if (Careers.recordTimes(career, times, ctx.level) && hadBest) records.push(S.race.newBest);
   }
   const completedChallenges = Careers.recordChallenges(career, result, ctx.today);
   news.push(...completedChallenges.map((ch) => S.daily.challengeDone(ch, Fmt.number(challengeReward(ch, Careers.reach(career))))));
@@ -167,5 +168,5 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   if (pass) for (const step of pass.steps) if (step.reward.k !== 'chest') news.push(S.pass.reached(step));
   // A reason to come back tomorrow, from the first shift on: not told, but counted down on the Game tab.
   Careers.promiseGift(career, ctx.today);
-  return { isNew, previous, bank: { before: bankBefore, after: career.money }, news, tips, elite: elite ? Elite.bar(career, xpBefore, ctx.config) : null, due, challenges: completedChallenges };
+  return { isNew, previous, bank: { before: bankBefore, after: career.money }, news: [...records, ...news], tips, elite: elite ? Elite.bar(career, xpBefore, ctx.config) : null, due, challenges: completedChallenges };
 }
