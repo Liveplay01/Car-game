@@ -954,9 +954,11 @@ export class GameSession {
       case 'prestige':
         this.tryPrestige();
         break;
+      case 'showTitles':
       case 'showElite':
       case 'showPass':
-        if (action.k === 'showElite') this.eliteSeen = true;
+        if (action.k !== 'showPass') this.eliteSeen = true;
+        this.titlesShown = action.k === 'showTitles';
         if (!this.detailOpen) this.tick();
         this.detailOpen = true;
         break;
@@ -1230,6 +1232,8 @@ export class GameSession {
   private prestigeArmed = -Infinity;
   /** The Elite sheet was opened this session: Prestige in reach stops lighting the Progress tab. */
   private eliteSeen = false;
+  /** The Elite sheet shows the Titles list instead (from its Titles row). */
+  private titlesShown = false;
   /** The condition whose sheet is open over the Game tab (a tap on its icon). */
   private conditionShown: string | null = null;
   /** The condition icons' tap targets as last drawn; empty while there are none to tap. */
@@ -2683,6 +2687,7 @@ export class GameSession {
   closeDetail(): void {
     if (!this.detailOpen) return;
     this.detailOpen = false;
+    this.titlesShown = false;
     this.introShown = null;
     this.conditionShown = null;
     this.progressPage.museum.selected = null;
@@ -2734,7 +2739,8 @@ export class GameSession {
         if (this.progressPage.section === PROGRESS.goals) return feat ? Details.feat(feat, career, this.config) : Details.pass(career, this.config, this.today);
         // Stats: a Museum entry's sheet, else the Elite track opened from its card.
         const selected = this.progressPage.museum.selected;
-        return selected ? Details.museum(selected, career, this.config) : Details.elite(career, this.config, this.sceneTime - this.prestigeArmed <= GameSession.prestigeWindow);
+        if (selected) return Details.museum(selected, career, this.config);
+        return this.titlesShown ? Details.titles(career, this.config) : Details.elite(career, this.config, this.sceneTime - this.prestigeArmed <= GameSession.prestigeWindow);
       }
       default:
         return null;

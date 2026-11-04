@@ -96,6 +96,16 @@ export default (S: Strings): Words<Strings> => ({
     },
     earned: (ids) => (ids.length === 1 ? `TITOLO · ${S.titles.name(ids[0])}` : `${ids.length} NUOVI TITOLI · ${ids.map((t) => S.titles.name(t)).join(', ')}`),
     none: 'Nessun titolo',
+    title: 'Titoli',
+    row: 'Titolo',
+    change: 'Cambia',
+    wear: 'Indossa',
+    pick: 'Tocca un titolo per indossarlo',
+    body: 'I titoli compaiono accanto al tuo nome in ogni classifica. Tocca un titolo guadagnato per indossarlo.',
+    count: (have, total) => `${have} di ${total}`,
+    earnedHeader: (have, total) => `Ottenuti · ${have} di ${total}`,
+    closest: (name, have, need) => `Più vicino: ${name} · ${Fmt.number(have)} / ${Fmt.number(need)}`,
+    groups: { track: 'Élite e Prestigio', play: 'Sfide', collection: 'Collezione e fondo', crew: 'Crew e altro' },
   },
 
   pass: {

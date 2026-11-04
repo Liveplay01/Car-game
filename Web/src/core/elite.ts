@@ -159,6 +159,26 @@ export type TitleRule =
   /** Every other title. */
   | { k: 'completionist' };
 
+export type TitleGroup = 'track' | 'play' | 'collection' | 'crew';
+
+/** Where a title is listed in the Titles sheet. */
+export const titleGroup = (rule: TitleRule): TitleGroup => {
+  switch (rule.k) {
+    case 'elite':
+    case 'prestige':
+      return 'track';
+    case 'item':
+    case 'fund':
+    case 'collector':
+      return 'collection';
+    case 'crew':
+    case 'completionist':
+      return 'crew';
+    default:
+      return 'play';
+  }
+};
+
 export const TITLE_RULES: Record<TitleId, TitleRule> = {
   eliteDriver: { k: 'elite', level: 1 },
   roadVeteran: { k: 'elite', level: 10 },
@@ -448,6 +468,27 @@ export const Elite = {
         return collectableSkins().every((x) => c.collection.includes(x.id));
       case 'completionist':
         return TITLES.every((t) => t === id || Elite.titleEarned(t, c, config));
+    }
+  },
+
+  /** How far a counted title is (a level, a rank, a total); null for the ones that are done or not (a boss, a skin, a mastery). */
+  titleProgress(id: TitleId, c: Career, config: Config = baseConfig): { have: number; need: number } | null {
+    const rule = TITLE_RULES[id];
+    switch (rule.k) {
+      case 'elite':
+        return { have: Math.min(Elite.level(c, config), rule.level), need: rule.level };
+      case 'prestige':
+        return { have: Math.min(c.prestige, rule.rank), need: rule.rank };
+      case 'heat':
+        return { have: Math.min(c.heatCleared, rule.level), need: rule.level };
+      case 'cars':
+        return { have: Math.min(c.unlimitedCars, rule.cars), need: rule.cars };
+      case 'fund':
+        return { have: Math.min(c.fundGiven, rule.amount), need: rule.amount };
+      case 'legendary':
+        return { have: Math.min(c.legendaryDone, rule.shifts), need: rule.shifts };
+      default:
+        return null;
     }
   },
 

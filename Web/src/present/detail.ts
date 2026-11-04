@@ -15,7 +15,7 @@ import { UpgradeArt } from './upgrades';
 import { StreetBuilderPage } from './builder';
 import type { Built, Part, ScreenAction } from './flow';
 import { R, circle, line, text } from './render';
-import { Elite, TITLES, TITLE_RULES } from '../core/elite';
+import { Elite, type TitleId, TITLES, TITLE_RULES, titleGroup } from '../core/elite';
 import { SeasonPass, PASS_TIERS } from '../core/seasonPass';
 import { MenuKit } from './menukit';
 import { MuseumPage } from './museum';
@@ -238,18 +238,16 @@ export const Details = {
       const reached = level >= l;
       return { label: S.elite.caption(l), value: S.elite.reward(Elite.step(l, config)), labelColor: reached ? 'coin' : 'muted', valueColor: reached ? 'accent' : 'muted' };
     });
-    const titles: DetailRow[] = TITLES.map((t) => {
-      const earned = Elite.titleEarned(t, career, config);
-      const worn = career.title === t;
-      return {
-        label: S.titles.name(t),
-        sub: S.titles.rule(TITLE_RULES[t]),
-        value: worn ? S.elite.wearing : earned ? '' : S.elite.notYet,
-        labelColor: earned ? 'primary' : 'muted',
-        valueColor: worn ? 'accent' : 'muted',
-        action: earned ? { k: 'wearTitle', id: t } : undefined,
-      };
-    });
+    const titles: DetailRow[] = [
+      {
+        label: S.titles.title,
+        sub: career.title ? S.titles.name(career.title) : undefined,
+        value: S.titles.count(Elite.titles(career, config).length, TITLES.length),
+        labelColor: 'primary',
+        valueColor: 'accent',
+        action: { k: 'showTitles' },
+      },
+    ];
     const next = open ? Elite.nextMilestone(career, config) : null;
     const prestige: DetailRow[] = [
       { label: S.elite.rank, value: career.prestige > 0 ? S.prestige.caption(career.prestige) : S.progress.none, valueColor: career.prestige > 0 ? 'coin' : 'muted' },
@@ -279,7 +277,7 @@ export const Details = {
       rows: [],
       sections: [
         { header: S.elite.trackHeader, rows: track },
-        { header: S.elite.titlesHeader, rows: titles },
+        { header: S.titles.title, rows: titles },
         { header: S.elite.prestigeHeader, rows: prestige },
         { header: S.hall.header, rows: plaques },
       ],
@@ -296,6 +294,48 @@ export const Details = {
           enabled: ready,
         },
       ],
+    };
+  },
+
+  /** Every title: the earned ones to wear, then the rest by kind with how far each counted one is. */
+  titles(career: Career, config: Config): Detail {
+    const earnedIds = TITLES.filter((t) => Elite.titleEarned(t, career, config)).sort((a, b) => Number(b === career.title) - Number(a === career.title));
+    const row = (t: TitleId): DetailRow => {
+      const earned = earnedIds.includes(t);
+      const progress = earned ? null : Elite.titleProgress(t, career, config);
+      return {
+        label: S.titles.name(t),
+        sub: S.titles.rule(TITLE_RULES[t]),
+        value: career.title === t ? S.elite.wearing : earned ? S.titles.wear : progress ? S.titles.progress(progress.have, progress.need) : S.elite.notYet,
+        labelColor: earned ? 'primary' : 'muted',
+        valueColor: career.title === t ? 'accent' : 'muted',
+        action: earned ? { k: 'wearTitle', id: t } : undefined,
+      };
+    };
+    const sections: NonNullable<Detail['sections']> = [{ header: S.titles.earnedHeader(earnedIds.length, TITLES.length), rows: earnedIds.map(row) }];
+    const open = TITLES.filter((t) => !earnedIds.includes(t));
+    for (const g of ['track', 'play', 'collection', 'crew'] as const) {
+      const rows = open.filter((t) => titleGroup(TITLE_RULES[t]) === g).map(row);
+      if (rows.length) sections.push({ header: S.titles.groups[g], rows });
+    }
+    // The counted title closest to done, as the one to aim for.
+    const closest = open
+      .map((t) => ({ t, p: Elite.titleProgress(t, career, config) }))
+      .filter((x): x is { t: TitleId; p: { have: number; need: number } } => x.p !== null)
+      .sort((a, b) => b.p.have / b.p.need - a.p.have / a.p.need)[0];
+    return {
+      key: 'titles',
+      art: { k: 'elite', level: Elite.level(career, config) },
+      eyebrow: { text: career.title ? S.titles.name(career.title) : S.titles.none, color: career.title ? 'coin' : 'muted' },
+      title: S.titles.title,
+      price: null,
+      steps: null,
+      body: [S.titles.body],
+      rows: [],
+      sections,
+      notes: closest ? [{ text: S.titles.closest(S.titles.name(closest.t), closest.p.have, closest.p.need), color: 'accent' }] : [],
+      stacked: true,
+      actions: [],
     };
   },
 

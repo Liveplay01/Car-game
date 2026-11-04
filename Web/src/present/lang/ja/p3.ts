@@ -96,6 +96,16 @@ export default (S: Strings): Words<Strings> => ({
     },
     earned: (ids) => (ids.length === 1 ? `称号 · ${S.titles.name(ids[0])}` : `新しい称号${ids.length}個 · ${ids.map((t) => S.titles.name(t)).join('、')}`),
     none: '称号なし',
+    title: '称号',
+    row: '称号',
+    change: '変更',
+    wear: '装備',
+    pick: '称号をタップして装備',
+    body: '称号はすべてのランキングで名前の横に表示されます。獲得した称号をタップして装備できます。',
+    count: (have, total) => `${have} / ${total}`,
+    earnedHeader: (have, total) => `獲得済み · ${have} / ${total}`,
+    closest: (name, have, need) => `いちばん近い称号：${name} · ${Fmt.number(have)} / ${Fmt.number(need)}`,
+    groups: { track: 'エリート＆プレステージ', play: 'チャレンジ', collection: 'コレクション＆基金', crew: 'クルーほか' },
   },
 
   pass: {

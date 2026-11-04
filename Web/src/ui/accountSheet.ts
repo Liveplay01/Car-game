@@ -1,6 +1,7 @@
 import { confirmButton, h } from './dom';
 import { swapView, openSheet } from './sheets';
-import { forgetBoards, nameForm, openAccount } from './ranksPanel';
+import { type TitleHost, forgetBoards, nameForm, openAccount, titleEl, titleName } from './ranksPanel';
+import { TITLE_RULES } from '../core/elite';
 import { offerToPasswordManager, secretCodeRow } from './cloudSheet';
 import { copy, flash } from './share';
 import { cloudEnabled, cloudLinked, cloudView, createCloud, onCloudChange } from '../net/cloud';
@@ -25,6 +26,7 @@ export const accountsEnabled = leaderboardEnabled;
 export const accountReady = (): boolean => loadAccount() !== null && (!cloudEnabled || cloudLinked());
 
 export interface AccountActions {
+  titles: TitleHost;
   /** The records as the save has them now: they go to the boards as soon as the name exists. */
   records(): Records;
   /** Settings → Cloud sync over this sheet: typing a code from another device, stopping, deleting. */
@@ -34,7 +36,7 @@ export interface AccountActions {
   closed(): void;
 }
 
-type View = 'ask' | 'decline' | 'done';
+type View = 'ask' | 'decline' | 'done' | 'titles';
 
 const row = (title: string, sub: string, ...extra: HTMLElement[]): HTMLElement =>
   h('div', { class: 'row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), h('div', { class: 'row-sub' }, sub)), ...extra);
@@ -185,9 +187,18 @@ export function accountSheet(layer: HTMLElement, actions: AccountActions, welcom
       body.querySelector('input')?.focus();
     });
     const code = cloudView().code;
+    const worn = actions.titles.worn();
+    const titleRow = actions.titles.earned().length
+      ? h(
+          'div',
+          { class: 'row' },
+          h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, S.titles.row), h('div', { class: 'row-sub' }, titleEl(worn) ?? S.titles.none)),
+          h('button', { class: 'btn', type: 'button', onclick: () => show('titles') }, S.titles.change),
+        )
+      : null;
     return [
       h('p', { class: 'section-note' }, welcome ? S.account.welcome(name) : code ? S.account.done(name) : S.account.doneLocal(name)),
-      h('div', { class: 'list' }, row(S.account.nameLabel, name, change), friendRow(), code ? secretCodeRow(code) : null),
+      h('div', { class: 'list' }, row(S.account.nameLabel, name, change), titleRow, friendRow(), code ? secretCodeRow(code) : null),
       code ? h('p', { class: 'section-note' }, S.account.codeNote) : null,
       h('button', { class: 'btn primary block', type: 'button', onclick: () => close() }, S.account.finish),
       code ? h('button', { class: 'btn block quiet-btn', type: 'button', onclick: () => actions.openCloud() }, S.account.manage) : null,
@@ -206,8 +217,37 @@ export function accountSheet(layer: HTMLElement, actions: AccountActions, welcom
     ];
   }
 
+  /** The earned titles, worn one marked; a tap wears one and goes back. */
+  function titles(): HTMLElement[] {
+    const worn = actions.titles.worn();
+    return [
+      h('button', { class: 'btn quiet-btn', type: 'button', onclick: () => show('done') }, S.ranks.back),
+      h('p', { class: 'section-note' }, S.titles.pick),
+      h(
+        'div',
+        { class: 'list' },
+        ...actions.titles.earned().map((id) =>
+          h(
+            'button',
+            {
+              class: 'row row-link',
+              type: 'button',
+              'aria-pressed': String(id === worn),
+              onclick: () => {
+                actions.titles.wear(id);
+                show('done');
+              },
+            },
+            h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, titleName(id)), h('div', { class: 'row-sub' }, S.titles.rule(TITLE_RULES[id]))),
+            id === worn ? h('span', { class: 'row-value' }, S.elite.wearing) : null,
+          ),
+        ),
+      ),
+    ];
+  }
+
   function render(): void {
-    const parts = view === 'decline' ? decline() : view === 'done' ? done() : ask();
+    const parts = view === 'decline' ? decline() : view === 'done' ? done() : view === 'titles' ? titles() : ask();
     body.replaceChildren(...parts.filter((part): part is HTMLElement => part !== null), problem);
   }
 

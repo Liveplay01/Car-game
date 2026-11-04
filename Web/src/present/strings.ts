@@ -799,6 +799,17 @@ export const S = {
     },
     earned: (ids: TitleId[]): string => (ids.length === 1 ? `TITLE · ${S.titles.name(ids[0])}` : `${ids.length} NEW TITLES · ${ids.map((t) => S.titles.name(t)).join(', ')}`),
     none: 'No title',
+    title: 'Titles',
+    row: 'Title',
+    change: 'Change',
+    wear: 'Wear',
+    pick: 'Tap a title to wear it',
+    body: 'Titles show next to your name on every leaderboard. Tap one you have earned to wear it.',
+    count: (have: number, total: number): string => `${have} of ${total}`,
+    progress: (have: number, need: number): string => `${Fmt.number(have)} / ${Fmt.number(need)}`,
+    earnedHeader: (have: number, total: number): string => `Earned · ${have} of ${total}`,
+    closest: (name: string, have: number, need: number): string => `Closest: ${name} · ${Fmt.number(have)} / ${Fmt.number(need)}`,
+    groups: { track: 'Elite & Prestige', play: 'Challenges', collection: 'Collection & fund', crew: 'Crew & more' },
   },
 
   pass: {

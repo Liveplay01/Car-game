@@ -21,7 +21,7 @@ import { savePlayerName } from '../storage/profile';
 import { Fmt, S } from '../present/strings';
 import { baseConfig, INVITE_LEVEL, prestigeLevelAt } from '../core/config';
 import { dayNumber } from '../core/daily';
-import { TITLE_TIER, TITLES, type TitleId, type TitleTier } from '../core/elite';
+import { TITLE_TIER, TITLE_RULES, TITLES, type TitleId, type TitleTier } from '../core/elite';
 import { tierOf } from '../core/tiers';
 
 /**
@@ -31,7 +31,15 @@ import { tierOf } from '../core/tiers';
  * and your own place. Scores are sent by the game on its own (`syncScores` on every save); this page only shows them.
  */
 
+/** Your titles: the ones earned, the one worn, and the switch (Social → Ranks and the account sheet). */
+export interface TitleHost {
+  earned(): TitleId[];
+  worn(): TitleId | null;
+  wear(id: TitleId): void;
+}
+
 export interface RanksActions {
+  titles: TitleHost;
   /** The records as the save has them now, sent right after joining. */
   records(): Records;
   /** "Your player" (`ui/accountSheet.ts`): the boards are open to read, joining them is the player's own step. */
@@ -185,9 +193,11 @@ function prestigeInfo(back: () => void): HTMLElement {
 }
 
 /** The line under a name: the title, on the Unlimited board the tier the run reached, on the Daily board a second try. */
-function boardSub(board: BoardId, e: { title: string | null; meta: Record<string, number> }): (Node | string)[] {
+function boardSub(board: BoardId, e: { title: string | null; me?: boolean; meta: Record<string, number> }, onTitle: (id: TitleId, mine: boolean) => void): (Node | string)[] {
   const tier = board === 'unlimited' ? tierOf(e.meta.cars ?? 0) : null;
-  return dotted([titleEl(e.title), tier ? S.modes.tier(tier) : null, board === 'daily' && e.meta.tries === 2 ? S.ranks.secondTry : null, board === 'unlimited' && e.meta.revived === 1 ? S.ranks.revived : null]);
+  const id = e.title as TitleId;
+  const title = TITLES.includes(id) ? h('button', { class: 'title-btn', type: 'button', onclick: () => onTitle(id, !!e.me) }, titleEl(id)) : titleEl(e.title);
+  return dotted([title, tier ? S.modes.tier(tier) : null, board === 'daily' && e.meta.tries === 2 ? S.ranks.secondTry : null, board === 'unlimited' && e.meta.revived === 1 ? S.ranks.revived : null]);
 }
 
 /** Joins the parts of a line with a middle dot, skipping the empty ones. */
@@ -195,7 +205,8 @@ export function dotted(parts: (Node | string | null | undefined | false)[]): (No
   return parts.filter((p): p is Node | string => !!p).flatMap((p, i) => (i ? [' · ', p] : [p]));
 }
 
-function entryRow(board: BoardId, e: BoardEntry | (Omit<BoardEntry, 'name'> & { name: string }), onStar: () => void): HTMLElement {
+function entryRow(board: BoardId, e: BoardEntry | (Omit<BoardEntry, 'name'> & { name: string }), onStar: () => void, onTitle: (id: TitleId, mine: boolean) => void): HTMLElement {
+  const sub = boardSub(board, e, onTitle);
   return h(
     'div',
     { class: `row board-row${e.me ? ' me' : ''}${e.rank <= 3 ? ' podium' : ''}`, role: 'listitem' },
@@ -204,7 +215,7 @@ function entryRow(board: BoardId, e: BoardEntry | (Omit<BoardEntry, 'name'> & { 
       'div',
       { class: 'row-main' },
       h('div', { class: 'row-title board-name' }, h('span', { class: 'plate' }, e.name), e.me ? h('span', { class: 'you-tag' }, S.ranks.you) : null),
-      boardSub(board, e).length ? h('div', { class: 'row-sub board-title' }, ...boardSub(board, e)) : null,
+      sub.length ? h('div', { class: 'row-sub board-title' }, ...sub) : null,
     ),
     h('span', { class: `row-value board-value${board === 'casino' && e.score < 0 ? ' loss' : ''}${board === 'shift-level' ? ' level-value' : ''}` }, ...valueOf(board, e, onStar)),
   );
@@ -320,6 +331,7 @@ export interface BoardHost {
   account(): Account | null;
   /** The records as the save has them now: your own line shows your title. */
   records(): Records;
+  titles: TitleHost;
   /** The service no longer knew the token: the host asks for a name again. */
   signedOut?(): void;
   openCrew(): void;
@@ -355,10 +367,10 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
     const account = host.account();
     // The top 50 and nothing more (the friends board has no limit of its own); your place follows when it is further down.
     const top = view.entries.slice(0, BOARD_TOP);
-    const rows = top.map((e) => entryRow(board, e, openInfo));
+    const rows = top.map((e) => entryRow(board, e, openInfo, openTitle));
     if (view.me && account && !top.some((e) => e.me)) {
       rows.push(h('div', { class: 'row board-gap', 'aria-hidden': 'true' }, '···'));
-      rows.push(entryRow(board, { rank: view.me.rank, name: account.name, title: host.records().title, score: view.me.score, meta: view.me.meta, me: true }, openInfo));
+      rows.push(entryRow(board, { rank: view.me.rank, name: account.name, title: host.records().title, score: view.me.score, meta: view.me.meta, me: true }, openInfo, openTitle));
     }
     if (rows.length === 0) {
       const empty = scope === 'crew' ? S.ranks.noCrew : (BOARDS.find((b) => b.id === board)?.empty ?? '');
@@ -435,6 +447,29 @@ export function boardPanel(scope: Scope, host: BoardHost): BoardPanel {
     info.querySelector<HTMLElement>('button')?.focus({ preventScroll: true });
   }
 
+  /** A title's rule replaces the list like the star's; on your own line an earned title can be worn from here. */
+  function openTitle(id: TitleId, mine: boolean): void {
+    const back = (): void => {
+      el.replaceChildren(tabs.el, list);
+      el.querySelector<HTMLElement>('.title-btn')?.focus({ preventScroll: true });
+    };
+    const worn = host.titles.worn() === id;
+    const wear = mine && !worn && host.titles.earned().includes(id)
+      ? h('button', { class: 'btn primary block', type: 'button', onclick: () => { host.titles.wear(id); back(); void load(); } }, S.titles.wear)
+      : null;
+    const info = h(
+      'div',
+      { class: 'board title-info' },
+      h('button', { class: 'btn quiet-btn', type: 'button', onclick: back }, S.ranks.back),
+      h('div', { class: 'title-info-name' }, titleEl(id)),
+      h('p', { class: 'section-note' }, S.titles.rule(TITLE_RULES[id])),
+      mine && worn ? h('p', { class: 'section-note' }, S.elite.wearing) : null,
+      wear,
+    );
+    el.replaceChildren(info);
+    info.querySelector<HTMLElement>('button')?.focus({ preventScroll: true });
+  }
+
   return { el, open: () => choose(board) };
 }
 
@@ -449,6 +484,7 @@ export function ranksPanel(actions: RanksActions): HTMLElement {
   const host: BoardHost = {
     account: () => account,
     records: actions.records,
+    titles: actions.titles,
     openCrew: actions.openCrew,
     play: actions.play,
     signedOut: () => {

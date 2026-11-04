@@ -525,46 +525,27 @@ const TIKTOK_URL = 'https://www.tiktok.com/@timing.love';
 const YOUTUBE_URL = 'https://www.youtube.com/channel/UCDrH7V5QDLR0tooaC-GzGxQ';
 const INSTAGRAM_URL = 'https://instagram.com/roundabouttiming';
 
-/** A row that opens a page elsewhere, with the brand's mark in front. */
-function externalRow(href: string, logo: string, title: string, sub: string): HTMLElement {
-  return h(
-    'a',
-    { class: 'row row-link', href, target: '_blank', rel: 'noopener' },
-    h('span', { class: 'row-logo', html: logo }),
-    h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), h('div', { class: 'row-sub' }, sub)),
-    animatedIcon('external'),
-  );
+/** One icon in the link strip: a page elsewhere, named for screen readers and as a hover tip. */
+function linkTile(href: string, mark: Element, label: string): HTMLAnchorElement {
+  return h('a', { class: 'link-tile', href, target: '_blank', rel: 'noopener', 'aria-label': label, title: label }, mark) as HTMLAnchorElement;
 }
 
-const crazyGamesRow = (): HTMLElement =>
-  externalRow(CRAZYGAMES_PAGE, CRAZYGAMES_LOGO, S.settings.crazyGames.title, S.settings.crazyGames.sub);
+const brandMark = (html: string): HTMLElement => h('span', { class: 'row-logo', html });
 
-const websiteRow = (): HTMLElement =>
-  externalRow(WEBSITE_PAGE, '<img src="/icons/icon-192-v2.png" alt="" width="30" height="30" decoding="async" />', S.settings.website.title, S.settings.website.sub);
-
-/** Help and support (Leo, 24.10.2026): timing.love/support, answers first, then the way to a person. */
-const supportRow = (): HTMLElement => tileExternalRow('help', 'blue', S.settings.support.title, S.settings.support.sub, `${WEBSITE_PAGE}support`);
-
-const wikiRow = (): HTMLElement => externalRow(WIKI_PAGE, FANDOM_LOGO, S.settings.wiki.title, S.settings.wiki.sub);
-
-function socialRow(iconPath: string, tone: string, title: string, sub: string, href: string): HTMLAnchorElement {
-  return h(
-    'a',
-    { class: 'row row-link', href, target: '_blank', rel: 'noopener' },
-    tile(icon(iconPath), tone),
-    h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), h('div', { class: 'row-sub' }, sub)),
-    animatedIcon('external'),
-  ) as HTMLAnchorElement;
+/** Everything that leaves for another site, as one row of icons (Leo, 04.11.2026) instead of seven list rows. */
+function linkStrip(): HTMLElement {
+  const s = S.settings;
+  const tiles = [
+    inPortal ? null : linkTile(WEBSITE_PAGE, brandMark('<img src="/icons/icon-192-v2.png" alt="" width="30" height="30" decoding="async" />'), s.website.title),
+    inPortal ? null : linkTile(`${WEBSITE_PAGE}support`, animatedIcon('help'), s.support.title),
+    linkTile(WIKI_PAGE, brandMark(FANDOM_LOGO), s.wiki.title),
+    inPortal || inItch || inPlayStore ? null : linkTile(CRAZYGAMES_PAGE, brandMark(CRAZYGAMES_LOGO), s.crazyGames.title),
+    linkTile(TIKTOK_URL, icon(ICONS.tiktok), s.social.tiktok.title),
+    linkTile(YOUTUBE_URL, icon(ICONS.youtube), s.social.youtube.title),
+    linkTile(INSTAGRAM_URL, icon(ICONS.instagram), s.social.instagram.title),
+  ];
+  return h('nav', { class: 'link-strip', 'aria-label': s.followUs }, ...tiles.filter((t): t is HTMLAnchorElement => t !== null));
 }
-
-const tiktokRow = (): HTMLElement =>
-  socialRow(ICONS.tiktok, 'pink', S.settings.social.tiktok.title, S.settings.social.tiktok.sub, TIKTOK_URL);
-
-const youtubeRow = (): HTMLElement =>
-  socialRow(ICONS.youtube, 'red', S.settings.social.youtube.title, S.settings.social.youtube.sub, YOUTUBE_URL);
-
-const instagramRow = (): HTMLElement =>
-  socialRow(ICONS.instagram, 'amber', S.settings.social.instagram.title, S.settings.social.instagram.sub, INSTAGRAM_URL);
 
 export interface SettingsActions {
   changed(settings: Settings): void;
@@ -796,15 +777,9 @@ function languageRow(layer: HTMLElement): HTMLElement {
 /** A coloured icon tile in front of a row, as in iOS Settings. */
 const tile = (glyph: SVGSVGElement, tone: string): HTMLElement => h('span', { class: `row-tile tile-${tone}`, 'aria-hidden': 'true' }, glyph);
 
-/** A row that leaves for the website, with an icon tile in front. */
-function tileExternalRow(glyph: AnimatedIconId, tone: string, title: string, sub: string, href: string): HTMLAnchorElement {
-  return h(
-    'a',
-    { class: 'row row-link', href, target: '_blank', rel: 'noopener' },
-    tile(animatedIcon(glyph), tone),
-    h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), h('div', { class: 'row-sub' }, sub)),
-    animatedIcon('external'),
-  ) as HTMLAnchorElement;
+/** A button-sized link to one of the website's forms, icon above its short name. */
+function feedbackTile(glyph: AnimatedIconId, tone: string, label: string, href: string): HTMLAnchorElement {
+  return h('a', { class: 'feedback-tile', href, target: '_blank', rel: 'noopener' }, tile(animatedIcon(glyph), tone), h('span', {}, label)) as HTMLAnchorElement;
 }
 
 /** `linkRow` with an optional tile in front and something before the chevron (a pill). */
@@ -894,12 +869,12 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
   // which keeps players on its own site (like the website link).
   let buildGroup: HTMLElement | null = null;
   if (!inPortal) {
-    const bugRow = tileExternalRow('bug', 'red', S.settings.reportBug, S.settings.reportBugSub, buildLink('bug', null));
-    buildGroup = group(S.settings.buildWithUs, bugRow, tileExternalRow('bulb', 'amber', S.settings.suggest, S.settings.suggestSub, buildLink('idea', null)));
+    const bugTile = feedbackTile('bug', 'red', S.settings.reportBug, buildLink('bug', null));
+    buildGroup = group(S.settings.buildWithUs, h('div', { class: 'feedback-pair' }, bugTile, feedbackTile('bulb', 'amber', S.settings.suggest, buildLink('idea', null))));
     actions
       .friendCode?.()
       .then((code) => {
-        if (code) bugRow.href = buildLink('bug', code);
+        if (code) bugTile.href = buildLink('bug', code);
       })
       .catch(() => undefined);
   }
@@ -987,22 +962,15 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
         S.settings.theGame,
         linkRow(S.settings.guides, S.settings.guidesSub, () => actions.openGuides()),
         richLinkRow(S.settings.whatsNew, S.settings.whatsNewSub, () => actions.openNotes(), null, actions.notesUnread ? h('span', { class: 'new-pill' }, S.settings.newBadge) : null),
-        inPortal ? null : websiteRow(),
-        inPortal ? null : supportRow(),
-        wikiRow(),
-        inPortal || inItch || inPlayStore ? null : crazyGamesRow(),
       ),
-      group(
-        S.settings.followUs,
-        tiktokRow(),
-        youtubeRow(),
-        instagramRow(),
-      ),
+      linkStrip(),
       buildGroup,
-      group(
-        S.settings.legal,
-        ...LEGAL_DOCS.map((doc) => linkRow(doc.title, doc.sub, () => actions.openLegal(doc.id))),
-        linkRow(S.settings.licenses, S.settings.licensesSub, () => actions.openLegal('licenses')),
+      h(
+        'nav',
+        { class: 'legal-line', 'aria-label': S.settings.legal },
+        ...[...LEGAL_DOCS.map((doc): [string, () => void] => [doc.title, () => actions.openLegal(doc.id)]), [S.settings.licenses, () => actions.openLegal('licenses')] as [string, () => void]].map(([label, open]) =>
+          h('button', { type: 'button', onclick: open }, label),
+        ),
       ),
     ],
   };

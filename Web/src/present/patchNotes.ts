@@ -56,9 +56,12 @@ export const PATCH_NOTES: PatchNote[] = [
     title: 'Records on the record',
     impact: 'minor',
     summary: [
+      'Titles have their own grouped list with progress. Tap a title on a board to see its rule.',
       'Unlimited and Daily records now carry a replay, so the leaderboard can check how a run was played.',
     ],
     items: [
+      'Titles are easier to find: the Elite card shows from your first title, and its Titles row opens all of them, grouped by kind, with the progress to the closest one.',
+      'Tap a title on any leaderboard to see how to earn it. On your own line you can wear an earned one right there, or change it in Your player.',
       'Unlimited and Daily records are sent with the taps of the run. The leaderboard plays the run again and a moderator looks at any record that does not add up.',
       'Unlimited and the Daily Shift now always start on an empty ring, so every record can be replayed exactly.',
     ],

@@ -96,6 +96,16 @@ export default (S: Strings): Words<Strings> => ({
     },
     earned: (ids) => (ids.length === 1 ? `称号 · ${S.titles.name(ids[0])}` : `${ids.length} 个新称号 · ${ids.map((t) => S.titles.name(t)).join('、')}`),
     none: '无称号',
+    title: '称号',
+    row: '称号',
+    change: '更换',
+    wear: '佩戴',
+    pick: '点按称号即可佩戴',
+    body: '称号会显示在所有排行榜中你的名字旁。点按已获得的称号即可佩戴。',
+    count: (have, total) => `${have} / ${total}`,
+    earnedHeader: (have, total) => `已获得 · ${have} / ${total}`,
+    closest: (name, have, need) => `最接近：${name} · ${Fmt.number(have)} / ${Fmt.number(need)}`,
+    groups: { track: '精英与声望', play: '挑战', collection: '收藏与基金', crew: '车队等' },
   },
 
   pass: {

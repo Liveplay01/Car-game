@@ -96,6 +96,16 @@ export default (S: Strings): Words<Strings> => ({
     },
     earned: (ids) => (ids.length === 1 ? `칭호 · ${S.titles.name(ids[0])}` : `새 칭호 ${ids.length}개 · ${ids.map((t) => S.titles.name(t)).join(', ')}`),
     none: '칭호 없음',
+    title: '칭호',
+    row: '칭호',
+    change: '변경',
+    wear: '착용',
+    pick: '칭호를 눌러 착용하세요',
+    body: '칭호는 모든 순위표에서 이름 옆에 표시됩니다. 획득한 칭호를 눌러 착용하세요.',
+    count: (have, total) => `${have} / ${total}`,
+    earnedHeader: (have, total) => `획득 · ${have} / ${total}`,
+    closest: (name, have, need) => `가장 가까운 칭호: ${name} · ${Fmt.number(have)} / ${Fmt.number(need)}`,
+    groups: { track: '엘리트 & 프레스티지', play: '도전', collection: '컬렉션 & 기금', crew: '크루 외' },
   },
 
   pass: {

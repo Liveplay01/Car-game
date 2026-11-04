@@ -115,6 +115,7 @@ export type ScreenAction =
   | { k: 'startTrial'; id: string }
   | { k: 'wearTitle'; id: TitleId }
   | { k: 'showElite' }
+  | { k: 'showTitles' }
   | { k: 'prestige' }
   | { k: 'showPass' }
   | { k: 'buyPass' };

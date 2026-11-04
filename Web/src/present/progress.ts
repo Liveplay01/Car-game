@@ -531,7 +531,7 @@ export const ProgressPage = {
    * The Elite card sits above the records from Level 40 on, and for good once Level 50 was
    * reached. It is the door to the late game: its sheet holds the track, the titles and Prestige.
    */
-  showsElite: (c: Career): boolean => Elite.isOpen(c) || c.level >= baseConfig.prestigeLevel - 10,
+  showsElite: (c: Career): boolean => Elite.isOpen(c) || c.level >= baseConfig.prestigeLevel - 10 || Elite.titles(c).length > 0,
 
   entering(r: Rect, age: number, index: number, reduceMotion: boolean): [Rect, number] {
     if (reduceMotion) return [r, 1];

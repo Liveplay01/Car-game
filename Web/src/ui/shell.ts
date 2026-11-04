@@ -47,6 +47,8 @@ import { BackdropLayer, backdropSheet } from './backdrop';
 import { loadBackdrop, saveBackdrop } from '../storage/backdrop';
 import { BIG_SCREEN } from '../core/loot';
 import { Careers } from '../core/career';
+import { Elite } from '../core/elite';
+import type { TitleHost } from './ranksPanel';
 import { baseConfig, displayConfig } from '../core/config';
 import { INTROS, INTRO_PLACE, Intros } from '../present/intros';
 
@@ -337,7 +339,7 @@ export class Shell {
         playTogether: () => this.openLobby(),
         challenge: s.shareable !== null ? () => this.share() : null,
       }),
-      ranks: () => ({ records: () => s.leaderboardRecords, createPlayer: () => this.openAccountSheet(), openCrew: () => s.perform({ k: 'showSocial', section: SOCIAL.crew }),
+      ranks: () => ({ titles: this.titleHost, records: () => s.leaderboardRecords, createPlayer: () => this.openAccountSheet(), openCrew: () => s.perform({ k: 'showSocial', section: SOCIAL.crew }),
         play: (mode) => {
           s.perform({ k: 'showTab', tab: 'game' });
           s.perform({ k: 'setGameMode', mode });
@@ -1304,6 +1306,15 @@ export class Shell {
 
   private accountOpen = false;
 
+  private get titleHost(): TitleHost {
+    const s = this.session;
+    return {
+      earned: () => Elite.titles(s.save.career, s.config),
+      worn: () => s.save.career.title,
+      wear: (id) => s.perform({ k: 'wearTitle', id }),
+    };
+  }
+
   /** "Your player" (`ui/accountSheet.ts`); `welcome`: the cloud copy was just made for a name from before, with its code to keep. */
   private openAccountSheet(welcome = false): void {
     if (this.accountOpen || !accountsEnabled) return;
@@ -1313,6 +1324,7 @@ export class Shell {
     accountSheet(
       this.layers,
       {
+        titles: this.titleHost,
         records: () => s.leaderboardRecords,
         openCloud: () => this.openCloudPage(),
         declined: () => s.markHint('account'),
