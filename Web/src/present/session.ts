@@ -3736,7 +3736,8 @@ export class GameSession {
       // A perfect run is only a run once it is still clean and has not been revived.
       isPerfectRun: world.isPerfectSoFar && world.revives === 0 && !world.config.mayhem,
     };
-    return challengesOf(this.today, Careers.reach(career))
+    // Only the goal closest to done: the strip says one thing while the street stays in view.
+    const open = challengesOf(this.today, Careers.reach(career))
       .filter((ch) => !Careers.isChallengeDone(career, ch, this.today))
       .map((ch) => ({ label: S.daily.challengeShort(ch), ...challengeProgress(ch, stats) }));
   }
@@ -3754,6 +3755,8 @@ export class GameSession {
       this.boot = null;
     }
     const cam = this.boot ? this.boot.camera(street) : this.cameraRig.camera(perspectiveOf(this.screen), world.layout, viewport, this.lastInset, delta, rm);
+    const ratio = (g: LiveChallenge): number => g.have / g.need;
+    return open.slice(0, 1).map((first) => open.reduce((best, g) => (ratio(g) > ratio(best) ? g : best), first));
     const calm = this.steadyCam;
     const shake = calm ? v(0, 0) : add(add(this.effects.shakeOffset, this.explosions.shakeOffset), this.cameraFx.breathOffset(rm));
     // The words in the island sit on this camera: no shake, punch or pull-back moves them, and their wrapping never changes.

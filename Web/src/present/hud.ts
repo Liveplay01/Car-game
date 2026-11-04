@@ -444,9 +444,10 @@ export const HUD = {
         list.s(line(v(x, top + 7), v(x, top + HUD.challengeHeight - 7), 0.5), 'separator', 0.55 * opacity);
       }
       const cx = left + cell * (i + 0.5);
-      drawFitted(list, g.label, v(cx, top + 13), 9, cell - 12, g.met ? 'accent' : 'muted', { align: 'center', opacity, weight: 'bold' });
+      const solo = goals.length === 1;
+      drawFitted(list, g.label, v(cx, top + 13), solo ? 11 : 9, cell - 12, g.met ? 'accent' : 'muted', { align: 'center', opacity, weight: 'bold' });
       const count = `${g.have}/${g.need}`;
-      drawText(list, g.met ? `✓ ${count}` : count, v(cx, top + 27), 10, g.met ? 'accent' : 'primary', { align: 'center', opacity, weight: 'bold' });
+      drawText(list, g.met ? `✓ ${count}` : count, v(cx, top + 27), solo ? 12 : 10, g.met ? 'accent' : 'primary', { align: 'center', opacity, weight: 'bold' });
     });
   },
 

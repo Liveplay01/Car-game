@@ -493,7 +493,7 @@ export const ProgressPage = {
       case 'title':
         return drawText(list, b.label, v(r.minX + 4, R.center(r).y + 2), 20, 'primary', { opacity: o, weight: 'bold' });
       case 'note':
-        return drawFitted(list, b.text, v(r.minX + 4, R.center(r).y), 11, R.width(r) - 8, 'muted', { opacity: o });
+        return drawFitted(list, b.text, v(r.minX + 4, R.center(r).y), 12, R.width(r) - 8, 'muted', { opacity: o });
       case 'daily':
         return ProgressPage.addDaily(list, r, career, today, o);
       case 'weekly':
@@ -562,10 +562,10 @@ export const ProgressPage = {
     const linkWidth = row.link ? textWidth(row.link, 11) + 12 : 0;
     const topWidth = row.reward !== undefined ? textWidth(Fmt.number(row.reward), 13) + 30 : row.status ? textWidth(row.status, 13) + 12 : 0;
     drawFitted(list, row.title, v(x, c.y - 9), 14, right - x - topWidth, row.dim ? 'muted' : 'primary', { opacity: o, weight: 'bold' });
-    drawFitted(list, row.line, v(x, c.y + 11), 11, right - x - linkWidth, 'muted', { opacity: o });
+    drawFitted(list, row.line, v(x, c.y + 11), 12, right - x - linkWidth, 'muted', { opacity: o });
     if (row.reward !== undefined) moneyTag(list, Fmt.number(row.reward), v(right, c.y - 9), 13, 'trailing', 'primary', 'accent', o);
     else if (row.status) drawText(list, row.status, v(right, c.y - 9), 13, row.dim ? 'muted' : row.done ? 'coin' : 'accent', { opacity: o, weight: 'bold', align: 'trailing' });
-    if (row.link) drawText(list, row.link, v(right, c.y + 11), 11, row.dim ? 'muted' : 'accent', { opacity: o, weight: 'bold', align: 'trailing' });
+    if (row.link) drawText(list, row.link, v(right, c.y + 11), 12, row.dim ? 'muted' : 'accent', { opacity: o, weight: 'bold', align: 'trailing' });
   },
 
   addHeading(list: RenderList, r: Rect, b: Extract<Block, { k: 'heading' }>, o: number): void {
@@ -587,7 +587,7 @@ export const ProgressPage = {
     const c = R.center(r);
     const empty = stat.value === S.progress.none;
     drawText(list, stat.value, v(r.minX + 16, c.y - 8), ShopPage.fitted(stat.value, 22, R.width(r) - 32), empty ? 'muted' : 'primary', { opacity: o, weight: 'bold' });
-    drawFitted(list, stat.label, v(r.minX + 16, c.y + 16), 11, R.width(r) - 32, 'muted', { opacity: o });
+    drawFitted(list, stat.label, v(r.minX + 16, c.y + 16), 12, R.width(r) - 32, 'muted', { opacity: o });
   },
 
   odometerKm: (c: Career): number => (c.stats.cars ?? 0) * ProgressPage.tripKm,
@@ -602,7 +602,7 @@ export const ProgressPage = {
     const moon = km >= ProgressPage.moonKm;
     const x0 = r.minX + 16;
     drawText(list, S.progress.odometer, v(x0, r.minY + 20), 13, 'muted', { opacity: o, weight: 'bold' });
-    drawFitted(list, moon ? S.progress.odometerMoon : S.progress.odometerLine, v(x0, r.maxY - 16), 11, R.width(r) - 32, moon ? 'primary' : 'muted', { opacity: o * (moon ? 0.85 : 1) });
+    drawFitted(list, moon ? S.progress.odometerMoon : S.progress.odometerLine, v(x0, r.maxY - 16), 12, R.width(r) - 32, moon ? 'primary' : 'muted', { opacity: o * (moon ? 0.85 : 1) });
     const roll = Ease.outCubic(Ease.clamp01((age - 0.15) / 1.2));
     const shown = km - (1 - roll) * Math.min(km, ProgressPage.odometerRoll);
     const digits = Math.max(7, String(km).length);
@@ -686,7 +686,7 @@ export const ProgressPage = {
     drawText(list, '›', v(r.maxX - 14, r.minY + 14), 18, 'muted', { opacity: o, align: 'center' });
     const x = r.minX + R.width(r) * 0.8;
     const hot: ColorToken = tier >= 4 ? 'fireCore' : tier >= 1 ? 'fireOuter' : 'muted';
-    drawText(list, P.flameTier(tier), v(x, r.minY + 24), 11, hot, { opacity: o, weight: 'bold', align: 'center' });
+    drawText(list, P.flameTier(tier), v(x, r.minY + 24), 12, hot, { opacity: o, weight: 'bold', align: 'center' });
     const pop = reduceMotion ? 1 : 1 + 0.04 * Math.max(0, Math.sin(clock * 3.1)) * Math.min(1, tier / 3);
     drawText(list, String(days), v(x, r.minY + 66), ShopPage.fitted(String(days), 52, R.width(r) * 0.28) * pop, days > 0 ? 'primary' : 'muted', { opacity: o, weight: 'bold', align: 'center' });
     drawText(list, days === 1 ? P.streakDay : P.streakDays, v(x, r.minY + 98), 12, 'muted', { opacity: o, align: 'center' });
@@ -734,7 +734,7 @@ export const ProgressPage = {
     const perfectText = perfect.paid ? S.daily.perfectWeekDone : S.daily.perfectWeekProgress(perfect.days, baseConfig.perfectWeekDays);
     const nextText = next ? `${S.daily.prize(next.prize)} ${S.daily.stripRewardIn(next.left)}` : null;
     const extra = [perfectText, nextText, career.streakFreezes > 0 ? S.daily.freezes(career.streakFreezes) : null, maxHeat > 0 ? S.heat.button(maxHeat) : null].filter((x): x is string => x !== null).join(' · ');
-    drawFitted(list, extra, v(r.minX + 16, r.maxY - 22), 11, wide, 'muted', { opacity: o });
+    drawFitted(list, extra, v(r.minX + 16, r.maxY - 22), 12, wide, 'muted', { opacity: o });
   },
 
   addDaily(list: RenderList, r: Rect, career: Career, today: number, o: number): void {
@@ -956,7 +956,7 @@ export const ProgressPage = {
     const left = S.tours.left(run.daysLeft);
     drawText(list, left, v(right, r.minY + 24), 12, run.daysLeft <= 2 ? 'hazard' : 'muted', { opacity: o, weight: 'bold', align: 'trailing' });
     drawFitted(list, name, v(x, r.minY + 24), 15, right - x - textWidth(left, 12) - 8, done === total ? 'coin' : 'primary', { opacity: o, weight: 'bold' });
-    drawFitted(list, S.tours.tagline(run.tour.id), v(x, r.minY + 44), 11, right - x, 'muted', { opacity: o });
+    drawFitted(list, S.tours.tagline(run.tour.id), v(x, r.minY + 44), 12, right - x, 'muted', { opacity: o });
     // The stops as dots; the next one has a ring, and the last one is bigger (it holds the boss).
     const next = ProgressPage.nextStop(career, today);
     const gap = Math.min(30, (right - x - 18) / Math.max(1, total - 1));
@@ -972,7 +972,7 @@ export const ProgressPage = {
       }
     }
     const status = done === total ? `${S.daily.done} ✓` : S.tours.progress(done, total);
-    drawText(list, status, v(x, r.maxY - 18), 11, done === total ? 'coin' : 'muted', { opacity: o });
+    drawText(list, status, v(x, r.maxY - 18), 12, done === total ? 'coin' : 'muted', { opacity: o });
     drawText(list, S.tours.play, v(right, r.maxY - 18), 12, 'accent', { opacity: o, weight: 'bold', align: 'trailing' });
   },
 
@@ -995,8 +995,8 @@ export const ProgressPage = {
     const goal = S.ach.goal(f.id, need);
     const count = complete ? '' : `${Fmt.number(Math.min(have, need))}/${Fmt.number(need)}`;
     const lineY = c.y + R.height(r) * 0.04;
-    drawText(list, count, v(r.maxX - 16, lineY), 11, 'muted', { opacity: o, align: 'trailing' });
-    drawFitted(list, goal, v(x, lineY), 11, r.maxX - 16 - x - textWidth(count, 11) - 10, 'muted', { opacity: o });
+    drawText(list, count, v(r.maxX - 16, lineY), 12, 'muted', { opacity: o, align: 'trailing' });
+    drawFitted(list, goal, v(x, lineY), 12, r.maxX - 16 - x - textWidth(count, 12) - 10, 'muted', { opacity: o });
     const from = reached === 0 ? 0 : f.tiers[reached - 1];
     const fraction = complete ? 1 : Ease.clamp01((have - from) / Math.max(1, need - from));
     const barY = c.y + R.height(r) * 0.3;
@@ -1030,16 +1030,16 @@ export const ProgressPage = {
     const bottom = card.minY + 60;
     if (!open) {
       const hint = S.elite.locked(baseConfig.prestigeLevel);
-      drawFitted(list, hint, v(card.minX + 16, bottom), 11, barWidth, 'muted', { opacity: o });
+      drawFitted(list, hint, v(card.minX + 16, bottom), 12, barWidth, 'muted', { opacity: o });
       return;
     }
     const xp = S.elite.xp(into, need);
-    drawText(list, xp, v(card.minX + 16, bottom), 11, 'muted', { opacity: o });
+    drawText(list, xp, v(card.minX + 16, bottom), 12, 'muted', { opacity: o });
     const next = Elite.nextMilestone(c);
     const lineText = next ? S.elite.next(next) : null;
     if (lineText) {
       const room = barWidth - textWidth(xp, 11) - 16;
-      drawFitted(list, lineText, v(card.maxX - 16, bottom), 11, room, 'muted', { opacity: o, align: 'trailing' });
+      drawFitted(list, lineText, v(card.maxX - 16, bottom), 12, room, 'muted', { opacity: o, align: 'trailing' });
     }
   },
 
@@ -1076,7 +1076,7 @@ export const ProgressPage = {
     drawFitted(list, name, v(x, top), 14, r.maxX - 16 - rightWidth - x - 8, complete ? 'coin' : 'primary', { opacity: o, weight: 'bold' });
     drawText(list, right, v(r.maxX - 16, top), 12, complete ? 'coin' : 'muted', { opacity: o, weight: 'bold', align: 'trailing' });
     const goal = feat.title ? `${S.feats.goal(feat.goal)} · ${S.feats.withTitle(S.titles.name(feat.title))}` : S.feats.goal(feat.goal);
-    drawFitted(list, goal, v(x, c.y + R.height(r) * 0.02), 11, r.maxX - 16 - x, 'muted', { opacity: o });
+    drawFitted(list, goal, v(x, c.y + R.height(r) * 0.02), 12, r.maxX - 16 - x, 'muted', { opacity: o });
     const barY = c.y + R.height(r) * 0.27;
     Meter.add(list, `feat:${feat.id}`, R.make(x, barY - Meter.height / 2, r.maxX - 16, barY + Meter.height / 2), have / need, 0, o, reduceMotion);
   },
@@ -1099,7 +1099,7 @@ export const ProgressPage = {
     const room = r.maxX - 16 - pipsWidth - 6 - x - 8;
     const nameWidth = Math.min(textWidth(name, 13), Math.max(room * 0.55, room - textWidth(detail, 11, false)));
     drawFitted(list, name, v(x, top), 13, nameWidth, 'primary', { opacity: o, weight: 'bold' });
-    drawFitted(list, detail, v(r.maxX - 16 - pipsWidth - 6, top), 11, room - nameWidth, complete ? 'coin' : 'muted', { opacity: o, align: 'trailing' });
+    drawFitted(list, detail, v(r.maxX - 16 - pipsWidth - 6, top), 12, room - nameWidth, complete ? 'coin' : 'muted', { opacity: o, align: 'trailing' });
     for (let tier = 0; tier < tiers; tier++) list.s(circle(v(r.maxX - 16 - pipsWidth + tier * 14 + 7, top), 5), tier < reached ? 'coin' : 'controlFill', o);
     const from = reached === 0 ? 0 : thresholds[reached - 1];
     const fraction = complete ? 1 : Ease.clamp01((masteryValue(goal, career.mastery) - from) / Math.max(1, thresholds[reached] - from));

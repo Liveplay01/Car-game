@@ -562,7 +562,7 @@ export const ShopPage = {
       list.s(rect(pc, v(R.width(pill), R.height(pill)), R.height(pill) / 2), 'controlFill', enter);
       moneyTag(list, Fmt.number(price), pc, 13, 'center', action.short > 0 ? 'muted' : 'primary', action.short > 0 ? 'muted' : 'coin', enter);
       // Short of money: the price says so in words too, not only in grey.
-      if (action.short > 0) drawText(list, S.shop.short(Fmt.number(action.short)), v(action.r.maxX, action.r.maxY + 15), 11, 'muted', { align: 'trailing', opacity: enter });
+      if (action.short > 0) drawText(list, S.shop.short(Fmt.number(action.short)), v(action.r.maxX, action.r.maxY + 15), 12, 'muted', { align: 'trailing', opacity: enter });
     });
   },
 

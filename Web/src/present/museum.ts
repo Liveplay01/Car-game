@@ -163,13 +163,13 @@ export const MuseumPage = {
     drawFitted(list, title, v(x, c.y - 16), 14, r.maxX - right - x, beaten ? 'coin' : shown ? 'primary' : 'muted', { opacity: o, weight: 'bold' });
     const at = firstPlace(entry, baseConfig);
     const lineText = shown ? S.museum.line(entry) : S.museum.firstAt(at.level, at.rank);
-    drawFitted(list, lineText, v(x, c.y + 3), 11, r.maxX - 16 - x, 'muted', { opacity: o });
+    drawFitted(list, lineText, v(x, c.y + 3), 12, r.maxX - 16 - x, 'muted', { opacity: o });
     const status = beaten ? S.boss.beaten : shown ? S.museum.met : S.museum.notSeen;
-    drawText(list, status, v(x, c.y + 21), 11, beaten ? 'accent' : 'muted', { opacity: o, weight: 'bold' });
+    drawText(list, status, v(x, c.y + 21), 12, beaten ? 'accent' : 'muted', { opacity: o, weight: 'bold' });
     if (!beaten) return;
     if (won) drawText(list, S.trials.passed, v(r.maxX - 16, c.y - 16), 12, 'accent', { opacity: o, weight: 'bold', align: 'trailing' });
     else moneyTag(list, Fmt.number(match.reward), v(r.maxX - 16, c.y - 16), 13, 'trailing', 'primary', 'accent', o);
-    drawText(list, `${S.museum.rematch} ›`, v(r.maxX - 16, c.y + 21), 11, won ? 'muted' : 'coin', { opacity: o, weight: 'bold', align: 'trailing' });
+    drawText(list, `${S.museum.rematch} ›`, v(r.maxX - 16, c.y + 21), 12, won ? 'muted' : 'coin', { opacity: o, weight: 'bold', align: 'trailing' });
   },
 
   /** A card: the picture on top, the name and one line below. */
