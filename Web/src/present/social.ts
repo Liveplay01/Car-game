@@ -2,10 +2,9 @@ import { type Career } from '../core/career';
 import { Auction } from '../core/auction';
 import { DAY_MS, Mafia } from '../core/mafia';
 import { inPortal } from '../storage/device';
-import { type Vec2, v, clamp } from '../core/vec2';
+import { type Vec2, clamp } from '../core/vec2';
 import { type RenderList, type Rect, R, Ease, Metrics } from './render';
 import { MenuKit } from './menukit';
-import { textWidth } from './icons';
 import { S, Fmt } from './strings';
 import { ShopPage } from './shop';
 import { SOCIAL, type SocialSection } from './flow';
@@ -87,7 +86,7 @@ export const SocialPage = {
     const mafia = cells.find(([section]) => section === SOCIAL.mafia);
     if (mafia && SocialPage.mafiaWaits(career, Date.now())) {
       const r = mafia[1];
-      ShopPage.badgeDot(list, v(R.center(r).x + textWidth(S.social.section(SOCIAL.mafia), 13) / 2 + 8, R.center(r).y - 6), 1);
+      ShopPage.segmentDot(list, r);
     }
   },
 };

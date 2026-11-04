@@ -675,8 +675,8 @@ export const BUILD_PAGE = `${WEBSITE_PAGE}build`;
 
 const buildLink = (form: 'bug' | 'idea', code: string | null): string => `${BUILD_PAGE}${code && form === 'bug' ? `?code=${encodeURIComponent(code)}` : ''}#${form}`;
 
-function switchRow(title: string, sub: string | null, on: boolean, onChange: (on: boolean) => void): HTMLElement {
-  const sw = h('button', { class: 'switch', role: 'switch', 'aria-checked': String(on), 'aria-label': title });
+function switchRow(title: string, sub: string | null, on: boolean, onChange: (on: boolean) => void, disabled = false): HTMLElement {
+  const sw = h('button', { class: 'switch', role: 'switch', 'aria-checked': String(on), 'aria-label': title, disabled });
   sw.addEventListener('click', () => {
     const next = sw.getAttribute('aria-checked') !== 'true';
     sw.setAttribute('aria-checked', String(next));
@@ -685,7 +685,7 @@ function switchRow(title: string, sub: string | null, on: boolean, onChange: (on
   const row = h('div', { class: 'row switch-row' }, h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, title), sub ? h('div', { class: 'row-sub' }, sub) : null), sw);
   // As on iOS the whole row flips the switch, not only the 51 × 31 switch itself.
   row.addEventListener('click', (e) => {
-    if (e.target !== sw) sw.click();
+    if (e.target !== sw && !disabled) sw.click();
   });
   return row;
 }
@@ -897,9 +897,19 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
   // Three tabs (Leo, 10.10.2026): how it plays, what belongs to the player, and everything about the game. Built once, so a switch keeps its state.
   const panes: Record<SettingsTab, (HTMLElement | null)[]> = {
     play: [
+      group(S.settings.language, languageRow(layer)),
       group(
-        S.settings.gameFeel,
-        languageRow(layer),
+        S.settings.controls,
+        switchRow(S.settings.leftHanded, S.settings.leftHandedSub, s.leftHanded, toggle('leftHanded')),
+        actions.dispatch
+          ? sliderRow(S.settings.dispatchSize, S.settings.dispatchSizeSub, s.dispatchSize, (size) => {
+              s.dispatchSize = size;
+              actions.changed(s);
+            })
+          : null,
+      ),
+      group(
+        S.settings.accessibility,
         switchRow(S.settings.largerText, S.settings.largerTextSub, s.largeText, toggle('largeText')),
         h(
           'div',
@@ -908,13 +918,6 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
           motionSeg,
         ),
         switchRow(S.settings.steadyCamera, S.settings.steadyCameraSub, s.steadyCamera, toggle('steadyCamera')),
-        switchRow(S.settings.leftHanded, S.settings.leftHandedSub, s.leftHanded, toggle('leftHanded')),
-        actions.dispatch
-          ? sliderRow(S.settings.dispatchSize, S.settings.dispatchSizeSub, s.dispatchSize, (size) => {
-              s.dispatchSize = size;
-              actions.changed(s);
-            })
-          : null,
         switchRow(S.settings.vehicleLabels, S.settings.vehicleLabelsSub, s.vehicleLabels, toggle('vehicleLabels')),
       ),
       group(
@@ -927,7 +930,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
         switchRow(S.settings.music, null, s.music, toggle('music')),
         switchRow(S.settings.mapSounds, S.settings.mapSoundsSub, s.mapSounds, toggle('mapSounds')),
         switchRow(S.settings.trafficSounds, S.settings.trafficSoundsSub, s.engineSounds, toggle('engineSounds')),
-        switchRow(S.settings.haptics, hasVibration ? null : S.settings.hapticsNone, s.haptics, toggle('haptics')),
+        switchRow(S.settings.haptics, hasVibration ? null : S.settings.hapticsNone, s.haptics && hasVibration, toggle('haptics'), !hasVibration),
       ),
       foldGroup(
         S.settings.performance,

@@ -139,7 +139,8 @@ export const S = {
     title: 'Settings',
     tabs: { play: 'Play', account: 'Account', about: 'About' },
     language: 'Language',
-    gameFeel: 'Display & controls',
+    controls: 'Controls',
+    accessibility: 'Accessibility',
     largerText: 'Larger text',
     largerTextSub: 'All text a step larger, in menus and over the game.',
     reduceMotion: 'Reduce motion',
@@ -1174,7 +1175,7 @@ export const S = {
     owned: (o: number, t: number): string => `${o}/${t}`,
     collectionShare: (o: number, t: number): string => `Collection · ${Math.floor((o / t) * 100)} %`,
     questsHint: 'Quests pay once each and change at midnight.',
-    timingLabel: (n: number): string => `Your timing · last ${n} merges`,
+    timingLabel: (n: number): string => `Timing · last ${n} merges`,
     /** How far from the middle of the gap the taps land on average; null: not enough merges yet. */
     timing: (ms: number | null, onBeat: number): string =>
       ms === null ? '–' : Math.abs(ms) <= onBeat ? 'On the beat' : ms < 0 ? `${-ms} ms early` : `${ms} ms late`,
@@ -2023,6 +2024,11 @@ export const S = {
     inTraffic: 'In traffic',
     vehicleAuto: 'Nothing to wear: a vehicle joins the traffic by itself, already now.',
     locked: '?',
+    /** What a locked collection cell says instead of "?": where the item comes from. Secret sources stay "?". */
+    sourceShort(item: Cosmetic): string {
+      const short: Partial<Record<Cosmetic['source']['kind'], string>> = { chest: 'Chest', season: 'Event chest', streak: 'Streak', legendary: 'Legendary shift', prestige: 'Prestige', elite: 'Elite', pass: 'Season Pass', unlimited: 'Unlimited', tour: 'Tour', auction: 'Auction', casino: 'Arcade', failures: 'Museum' };
+      return short[item.source.kind] ?? S.shop.locked;
+    },
     lockedTitle: (kind: string): string => (kind === 'mapSkin' ? 'Mystery map' : kind === 'vehicleType' ? 'Mystery vehicle' : 'Mystery skin'),
     source(k: ChestKind): string {
       switch (k) {
@@ -2086,13 +2092,12 @@ export const S = {
     adPlaceholder: 'Ad',
     adCountdown: (reward: 'chest' | 'upgrade' | 'boost', s: number): string => `${{ chest: 'Your chest', upgrade: 'Your free step', boost: 'Your boost' }[reward]} in ${s} s`,
     watchAd: (left: number): string => `Watch ad · ${left} left`,
-    skinsOn: (n: number, max: number): string => `${n} of ${max} car skins on · they mix on the road`,
+    skinsOn: (n: number, max: number): string => `${n}/${max} skins on`,
     skinsFull: (max: number): string => `${max} car skins are on. Take one off first.`,
     section: (i: number): string => ['Chests', 'Collection', 'Arcade'][i],
     saleHeading: 'For sale',
     earnedHeading: 'Earned, not sold',
     pityTitle: 'Legendary guarantee',
-    pityLeft: (n: number): string => (n === 1 ? '1 chest to go' : `${n} chests to go`),
     short: (amount: string): string => `${amount} short`,
     noneYet: 'None yet',
     caught: 'CAUGHT',

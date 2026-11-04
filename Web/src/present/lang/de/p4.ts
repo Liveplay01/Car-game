@@ -204,7 +204,7 @@ export default (S: Strings): Words<Strings> => ({
     days: (d) => (d === 1 ? '1 Tag' : `${d} Tage`),
     collectionShare: (o, t) => `Sammlung · ${Math.floor((o / t) * 100)} %`,
     questsHint: 'Aufträge zahlen je einmal und wechseln um Mitternacht.',
-    timingLabel: (n) => `Dein Timing · letzte ${n} Einfädler`,
+    timingLabel: (n) => `Timing · letzte ${n} Einfädler`,
     timing: (ms, onBeat) => (ms === null ? '–' : Math.abs(ms) <= onBeat ? 'Auf den Punkt' : ms < 0 ? `${-ms} ms zu früh` : `${ms} ms zu spät`),
   },
 

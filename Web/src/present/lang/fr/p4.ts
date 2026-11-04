@@ -204,7 +204,7 @@ export default (S: Strings): Words<Strings> => ({
     days: (d) => (d === 1 ? '1 jour' : `${d} jours`),
     collectionShare: (o, t) => `Collection · ${Math.floor((o / t) * 100)} %`,
     questsHint: 'Les missions paient une fois et changent à minuit.',
-    timingLabel: (n) => `Votre synchronisation · ${n} dernières entrées`,
+    timingLabel: (n) => `Timing · ${n} dernières entrées`,
     timing: (ms, onBeat) => (ms === null ? '–' : Math.abs(ms) <= onBeat ? 'Parfait' : ms < 0 ? `${-ms} ms trop tôt` : `${ms} ms trop tard`),
   },
 

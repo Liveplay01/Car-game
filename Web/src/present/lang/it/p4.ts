@@ -204,7 +204,7 @@ export default (S: Strings): Words<Strings> => ({
     days: (d) => (d === 1 ? '1 giorno' : `${d} giorni`),
     collectionShare: (o, t) => `Collezione · ${Math.floor((o / t) * 100)} %`,
     questsHint: 'Gli incarichi pagano una sola volta e si rinnovano a mezzanotte.',
-    timingLabel: (n) => `La tua precisione · ultimi ${n} inserimenti`,
+    timingLabel: (n) => `Precisione · ultimi ${n}`,
     timing: (ms, onBeat) => (ms === null ? '–' : Math.abs(ms) <= onBeat ? 'Perfetto' : ms < 0 ? `${-ms} ms prima` : `${ms} ms dopo`),
   },
 

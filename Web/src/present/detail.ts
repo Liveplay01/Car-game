@@ -183,7 +183,8 @@ export const Details = {
       art: { k: 'item', id, owned },
       eyebrow: { text: S.shop.kind(item), color: ShopPage.rarityColor(item.rarity) },
       title: owned ? S.shop.item(id) : S.shop.lockedTitle(item.kind),
-      price: Careers.isWorn(career, id) ? { text: S.shop.worn, color: 'accent' } : owned && item.kind === 'vehicleType' ? { text: S.shop.inTraffic, color: 'accent' } : null,
+      // A wearable's status line is always there, empty when not worn, so wearing never shifts the sheet.
+      price: Careers.isWorn(career, id) ? { text: S.shop.worn, color: 'accent' } : owned && item.kind === 'vehicleType' ? { text: S.shop.inTraffic, color: 'accent' } : owned ? { text: ' ', color: 'muted' } : null,
       steps: null,
       body: [owned ? S.shop.ownedHint(item) : S.shop.lockedHint(item)],
       rows: [],

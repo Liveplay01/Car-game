@@ -17,6 +17,7 @@ import {
   strongTaps,
   BIG_SCREEN,
   PITY_LEGENDARY_CHESTS,
+  PITY_CHESTS,
 } from '../core/loot';
 import type { VehicleType } from '../core/vehicle';
 import { type Vec2, v, add, sub, mul, fromAngle, TAU, clamp } from '../core/vec2';
@@ -210,7 +211,7 @@ export const ShopPage = {
   detailHeight: 0,
   segmentHeight: 32,
   /** The chest list: the guarantee card, the room for a group's heading, a row (it gives way down to `rowMin` on a short screen). */
-  pityHeight: 64,
+  pityHeight: 88,
   listHeading: 40,
   rowHeight: 76,
   rowMin: 60,
@@ -247,6 +248,14 @@ export const ShopPage = {
   },
   /** The prize stays at least this long before a tap can close it. */
   closeAfter: 0.5,
+  /** The reveal card's buttons, in card points from its middle (`addRevealCard`, `targets`). */
+  revealWearY: 150,
+  revealWearSize: v(188, 44),
+  revealCloseSize: v(140, 36),
+  revealGrow: (wearable: boolean): number => (wearable ? 80 : 28),
+  revealCloseY: (wearable: boolean): number => (wearable ? 204 : 150),
+  /** A skin or map that can be put on and is not on yet. */
+  canWear: (career: Career, item: Cosmetic): boolean => item.kind !== 'vehicleType' && !Careers.isWorn(career, item.id),
   confettiCount: 32,
 
   pressedRect(r: Rect, target: ShopTarget, state: ShopState): Rect {
@@ -389,7 +398,14 @@ export const ShopPage = {
   },
 
   targets(viewport: Vec2, bottomInset: number, career: Career, state: ShopState): [ShopTarget, Rect][] {
-    if (state.busy) return [[{ k: 'dismiss' }, R.make(0, 0, viewport.x, viewport.y)]];
+    if (state.busy) {
+      const o = state.opening;
+      const all: [ShopTarget, Rect][] = [[{ k: 'dismiss' }, R.make(0, 0, viewport.x, viewport.y)]];
+      if (!o || o.age - ShopPage.stages(o.reel).reveal < ShopPage.closeAfter || !ShopPage.canWear(career, o.opening.item)) return all;
+      const at = add(sub(mul(viewport, 0.5), v(0, 20)), v(0, ShopPage.revealWearY));
+      const half = mul(ShopPage.revealWearSize, 0.5);
+      return [[{ k: 'wear', id: o.opening.item.id }, R.make(at.x - half.x - 6, at.y - half.y - 6, at.x + half.x + 6, at.y + half.y + 6)], ...all];
+    }
     const l = ShopPage.layout(viewport, bottomInset, ShopPage.sections(career));
     const out: [ShopTarget, Rect][] = l.segments.map(([section, r]) => [{ k: 'section', section }, r]);
     if (state.section === 0) {
@@ -445,7 +461,7 @@ export const ShopPage = {
         list.items.splice(start, 0, ...old.items.map((i) => moved(i, away, 1 - gone)));
       }
     }
-    if (state.opening) ShopPage.addReveal(list, state.opening.opening, state.opening.reel, state.opening.age, config.chestTaps, reduceMotion, PITY_LEGENDARY_CHESTS - career.chestsSinceLegendary);
+    if (state.opening) ShopPage.addReveal(list, state.opening.opening, state.opening.reel, state.opening.age, config.chestTaps, reduceMotion, career.chestsSinceLegendary, ShopPage.canWear(career, state.opening.opening.item));
     else if (state.charging) ShopPage.addCharge(list, state.charging, config.chestTaps, config.chestTapWindow, reduceMotion);
   },
 
@@ -482,8 +498,13 @@ export const ShopPage = {
     MenuKit.segmented(list, labels, chosen, thumb, all, l.segments.map(([s]) => s === 2 && !Unlocks.isOpen(career, 'casino')));
     if (state.wallet.unseen(career.unseen).length > 0) {
       const r = l.segments[1][1];
-      ShopPage.badgeDot(list, v(R.center(r).x + textWidth(S.shop.section(1), 13) / 2 + 8, R.center(r).y), 1);
+      ShopPage.segmentDot(list, r);
     }
+  },
+
+  /** The dot of a segment: fixed in the cell's top-right corner, so the label (caps when chosen) never runs into it. */
+  segmentDot(list: RenderList, cell: Rect): void {
+    ShopPage.badgeDot(list, v(cell.maxX - 10, cell.minY + 9), 1);
   },
 
   badgeDot(list: RenderList, center: Vec2, opacity: number): void {
@@ -508,12 +529,19 @@ export const ShopPage = {
     const top = P.cardRect(pity, age, 0, reduceMotion);
     const t = top.rect;
     P.panel(list, t, 'card', top.enter);
-    drawText(list, S.shop.pityTitle, v(t.minX + 16, t.minY + 24), 14, 'primary', { weight: 'bold', opacity: top.enter });
-    drawText(list, S.shop.pityLeft(PITY_LEGENDARY_CHESTS - career.chestsSinceLegendary), v(t.maxX - 16, t.minY + 24), 13, 'coin', { weight: 'bold', align: 'trailing', opacity: top.enter });
-    const bar = v(R.width(t) - 32, 4);
-    const fill = bar.x * Math.min(1, career.chestsSinceLegendary / PITY_LEGENDARY_CHESTS);
-    list.s(rect(v(R.center(t).x, t.maxY - 18), bar, 2), 'muted', 0.25 * top.enter);
-    if (fill > 0) list.s(rect(v(t.minX + 16 + fill / 2, t.maxY - 18), v(fill, bar.y), 2), 'coin', top.enter);
+    const goals: [string, number, number, ColorToken, ColorToken][] = [
+      [S.shop.pityTitle, career.chestsSinceLegendary, PITY_LEGENDARY_CHESTS, 'coin', 'primary'],
+      [S.shop.rarity('epic'), career.chestsSinceEpic, PITY_CHESTS, 'rarityEpic', 'muted'],
+    ];
+    goals.forEach(([label, done, of, color, ink], i) => {
+      const y = t.minY + 24 + i * 34;
+      drawText(list, label, v(t.minX + 16, y), i === 0 ? 14 : 12, ink, { weight: 'bold', opacity: top.enter });
+      drawText(list, `${done} / ${of}`, v(t.maxX - 16, y), i === 0 ? 13 : 12, color, { weight: 'bold', align: 'trailing', opacity: top.enter });
+      const bar = v(R.width(t) - 32, i === 0 ? 4 : 3);
+      const fill = bar.x * Math.min(1, done / of);
+      list.s(rect(v(R.center(t).x, y + 12), bar, 2), 'muted', 0.25 * top.enter);
+      if (fill > 0) list.s(rect(v(t.minX + 16 + fill / 2, y + 12), v(fill, bar.y), 2), color, top.enter);
+    });
 
     const placed = groups.map((g, i) => {
       const card = P.cardRect(g.r, age, i + 1, reduceMotion);
@@ -537,7 +565,8 @@ export const ShopPage = {
 
       const action = P.chestAction(kind, r, career);
       const name = S.shop.chest(kind);
-      const note = count > 0 ? (isForSale(kind) ? `${S.shop.waiting(count)} · ${S.shop.how(kind)}` : S.shop.waiting(count)) : S.shop.how(kind);
+      // One fact per line: what waits, or how to get one. The sheet behind the row says the rest.
+      const note = count > 0 ? S.shop.waiting(count) : S.shop.how(kind);
       // "None yet" only where the line still fits beside it; the chevron alone says the same.
       const label = !action && textWidth(note, 12, false) <= r.maxX - 44 - textWidth(S.shop.noneYet, 13, false) - (r.minX + 80);
       const room = (action ? action.r.minX : r.maxX - 36 - (label ? textWidth(S.shop.noneYet, 13, false) + 8 : 0)) - (r.minX + 80) - 8;
@@ -847,8 +876,8 @@ export const ShopPage = {
       list.s(rect(c, v(R.width(r) + 3, R.height(r) + 3), ShopPage.corner + 1.5), selected ? 'accent' : ShopPage.rarityColor(item.rarity), (selected ? 0.9 : 0.55) * opacity);
       ShopPage.panel(list, r, 'card', enter);
       ShopPage.addPreview(list, item, v(c.x, r.minY + R.height(r) * 0.4), Math.min(1, R.height(r) / 110), opacity);
-      const name = owned ? S.shop.item(item.id) : S.shop.locked;
-      drawFitted(list, name, v(c.x, r.maxY - 14), 11, R.width(r) - 12, owned ? 'primary' : 'muted', { weight: 'bold', align: 'center', opacity: enter });
+      const name = owned ? S.shop.item(item.id) : S.shop.sourceShort(item);
+      drawFitted(list, name, v(c.x, r.maxY - 14), 12, R.width(r) - 12, owned ? 'primary' : 'muted', { weight: 'bold', align: 'center', opacity: enter });
       if (Careers.isWorn(career, item.id)) drawText(list, S.shop.worn, v(r.maxX - 10, r.minY + 12), 10, 'accent', { weight: 'bold', align: 'trailing', opacity: enter });
       if (career.unseen.includes(item.id)) {
         const at = v(r.minX + 22, r.minY + 12);
@@ -946,18 +975,20 @@ export const ShopPage = {
    * ducks before it bursts; then flash, lid off, shockwaves, fruit splashes, juice drops,
    * confetti, rays and a jelly card. A pure function of the age, so it never stutters.
    */
-  addReveal(list: RenderList, opening: ChestOpening, reel: Reel, age: number, taps: number, reduceMotion: boolean, pityLeft: number): void {
+  addReveal(list: RenderList, opening: ChestOpening, reel: Reel, age: number, taps: number, reduceMotion: boolean, pityDone: number, wearable: boolean): void {
     const vp = list.camera.viewport;
     const rarity = opening.item.rarity;
+    // A Common is short and quiet (no rays, splashes, confetti or white flash); from Rare up it gets everything.
+    const calm = rarity === 'common';
     const color = ShopPage.rarityColor(rarity);
-    const power = { common: 0.6, rare: 0.8, epic: 1.1, legendary: 1.5 }[rarity];
+    const power = { common: 0.3, rare: 0.8, epic: 1.1, legendary: 1.5 }[rarity];
     // The burst shakes the whole picture, harder the rarer the prize (Leo, 16.10.2026: over the top).
     const since = age - ShopPage.stages(reel).reveal;
     const kick = reduceMotion || since < 0 || since > 0.7 ? v(0, 0) : mul(v(Math.sin(since * 80), Math.cos(since * 63) * 0.6), 11 * power * Math.exp(-since * 6));
     const center = add(sub(mul(vp, 0.5), v(0, 20)), kick);
     list.s(rect(mul(vp, 0.5), vp), 'background', Math.min(1, age / 0.25));
     if (reduceMotion) {
-      ShopPage.addRevealCard(list, opening, center, 10, color, true, pityLeft);
+      ShopPage.addRevealCard(list, opening, center, 10, color, true, pityDone, wearable);
       const fade = 1 - Math.min(1, age / 0.3);
       if (fade > 0) list.s(rect(mul(vp, 0.5), vp), 'background', fade);
       return;
@@ -986,9 +1017,10 @@ export const ShopPage = {
       return;
     }
     const tt = age - stage.reveal;
-    ShopPage.addRays(list, center, tt, power, color, rarityRank(rarity) >= 2, rarity === 'legendary');
+    if (calm) MenuKit.glow(list, center, 190 * Ease.outCubic(Math.min(1, tt / 0.5)), color, 0.25 * Math.min(1, tt / 0.3));
+    else ShopPage.addRays(list, center, tt, power, color, rarityRank(rarity) >= 2, rarity === 'legendary');
 
-    if (tt < 0.9) {
+    if (!calm && tt < 0.9) {
       const count = Math.floor(8 + 6 * power);
       const grow = Ease.spring(tt / 0.3);
       const shrink = 1 - Ease.outCubic(Math.max(0, (tt - 0.3) / 0.6));
@@ -1007,7 +1039,7 @@ export const ShopPage = {
 
     // Screen space is y-down; the drop paths are written in the same space.
     const dropLife = 1.4;
-    if (tt < dropLife) {
+    if (!calm && tt < dropLife) {
       for (let i = 0; i < Math.floor(36 * power); i++) {
         const a = -Math.PI / 2 + (unit(i, 14) - 0.5) * 3.4;
         const speed = 240 + 360 * unit(i, 15);
@@ -1017,15 +1049,15 @@ export const ShopPage = {
       }
     }
 
-    ShopPage.addConfetti(list, center, tt, power, color, rarity === 'legendary');
+    if (!calm) ShopPage.addConfetti(list, center, tt, power, color, rarity === 'legendary');
     ShopPage.addExtras(list, center, tt, rarity, color, opening.isDuplicate);
 
-    ShopPage.addRevealCard(list, opening, center, tt, color, false, pityLeft);
+    ShopPage.addRevealCard(list, opening, center, tt, color, false, pityDone, wearable);
 
     if (tt < 0.3) {
-      const white = Math.max(0, 1 - tt / 0.12);
+      const white = calm ? 0 : Math.max(0, 1 - tt / 0.12);
       if (white > 0) list.s(rect(mul(vp, 0.5), vp), 'primary', 0.85 * white);
-      list.s(rect(mul(vp, 0.5), vp), color, 0.25 * (1 - tt / 0.3));
+      list.s(rect(mul(vp, 0.5), vp), color, (calm ? 0.1 : 0.25) * (1 - tt / 0.3));
     }
   },
 
@@ -1247,32 +1279,35 @@ export const ShopPage = {
     }
   },
 
-  addRevealCard(list: RenderList, opening: ChestOpening, center: Vec2, tt: number, color: ColorToken, reduceMotion: boolean, pityLeft: number): void {
+  addRevealCard(list: RenderList, opening: ChestOpening, center: Vec2, tt: number, color: ColorToken, reduceMotion: boolean, pityDone: number, wearable: boolean): void {
     const base = v(256, 300);
     const sx = reduceMotion ? 1 : 0.35 + 0.65 * Ease.spring(tt / 0.42);
     const sy = reduceMotion ? 1 : 0.35 + 0.65 * Ease.spring((tt - 0.05) / 0.42);
-    const size = v(base.x * sx, base.y * sy);
+    // The card grows downward for the Wear button and the close button (the contents keep their places).
+    const grow = ShopPage.revealGrow(wearable);
+    const size = v(base.x * sx, (base.y + grow) * sy);
+    const middle = add(center, v(0, (grow / 2) * sy));
     const fade = reduceMotion ? 1 : Math.min(1, tt / 0.1);
     const breathe = reduceMotion ? 0 : Math.sin(tt * 3) * 4;
-    for (const [grow, opacity] of [
+    for (const [glow, opacity] of [
       [46, 0.06],
       [28, 0.1],
       [14, 0.16],
     ]) {
-      list.s(rect(center, add(size, v(grow + breathe, grow + breathe)), 26 + grow / 2), color, opacity * fade);
+      list.s(rect(middle, add(size, v(glow + breathe, glow + breathe)), 26 + glow / 2), color, opacity * fade);
     }
-    list.s(rect(center, add(size, v(5, 5)), 26), color, fade);
-    list.s(rect(center, size, 24), 'card', fade);
-    list.s(rect(center, size, 24), color, 0.14 * fade);
+    list.s(rect(middle, add(size, v(5, 5)), 26), color, fade);
+    list.s(rect(middle, size, 24), 'card', fade);
+    list.s(rect(middle, size, 24), color, 0.14 * fade);
     if (!(sx > 0.6 || reduceMotion)) return;
     if (!reduceMotion && tt > 0.3) {
       // A sheen sweeps over the card as it settles, and again every few seconds, like foil caught in the light.
       const x = ((tt - 0.3) % 2.6) / 0.55;
       if (x < 1) {
-        const inside = (px: number): number => Math.min(center.x + size.x / 2 - 10, Math.max(center.x - size.x / 2 + 10, px));
-        const top = center.y - size.y / 2 + 10;
-        const bottom = center.y + size.y / 2 - 10;
-        const cx = center.x - size.x / 2 - 70 + (size.x + 140) * Ease.inOutSine(x);
+        const inside = (px: number): number => Math.min(middle.x + size.x / 2 - 10, Math.max(middle.x - size.x / 2 + 10, px));
+        const top = middle.y - size.y / 2 + 10;
+        const bottom = middle.y + size.y / 2 - 10;
+        const cx = middle.x - size.x / 2 - 70 + (size.x + 140) * Ease.inOutSine(x);
         list.s(polygon([v(inside(cx + 50), top), v(inside(cx + 86), top), v(inside(cx - 14), bottom), v(inside(cx - 50), bottom)]), 'primary', 0.2 * Math.sin(Math.PI * x) ** 2);
       }
     }
@@ -1297,9 +1332,17 @@ export const ShopPage = {
       const counted = reduceMotion ? opening.money : Math.round(opening.money * Ease.outCubic((tt - 0.3) / 0.9));
       drawText(list, S.shop.duplicate(Fmt.number(counted)), add(place(v(0, 102)), v(0, 10 * (1 - m))), 13, 'accent', { weight: 'bold', align: 'center', opacity: m });
     }
-    if (opening.item.rarity !== 'legendary') drawText(list, S.shop.pityLegendary(pityLeft), place(v(0, opening.isDuplicate ? 117 : 102)), 11, 'muted', { align: 'center', opacity: appear(0.36) });
+    if (opening.item.rarity !== 'legendary') drawText(list, `${S.shop.pityTitle} · ${pityDone} / ${PITY_LEGENDARY_CHESTS}`, place(v(0, opening.isDuplicate ? 117 : 102)), 12, 'muted', { align: 'center', opacity: appear(0.36) });
     // The hint comes when a tap can close the card, not before.
-    drawText(list, S.shop.tapToClose, place(v(0, 132)), 11, 'muted', { align: 'center', opacity: 0.8 * appear(ShopPage.closeAfter) });
+    const buttons = appear(ShopPage.closeAfter);
+    if (wearable) {
+      const wear = place(v(0, ShopPage.revealWearY));
+      list.s(rect(wear, v(ShopPage.revealWearSize.x * sx, ShopPage.revealWearSize.y * sy), ShopPage.revealWearSize.y / 2), 'accent', buttons);
+      drawText(list, S.shop.wear, wear, 15, 'accentInk', { weight: 'bold', align: 'center', opacity: buttons });
+    }
+    const close = place(v(0, ShopPage.revealCloseY(wearable)));
+    list.s(rect(close, v(ShopPage.revealCloseSize.x * sx, ShopPage.revealCloseSize.y * sy), ShopPage.revealCloseSize.y / 2), 'controlFill', buttons);
+    drawText(list, S.shop.tapToClose, close, 14, 'muted', { align: 'center', opacity: buttons });
 
     if (reduceMotion || tt <= 0.3) return;
     // Motes of the prize's colour rise beside the card for as long as it shows: it never goes still.

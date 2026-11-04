@@ -1097,6 +1097,11 @@ a.row-link {
   transition: transform 250ms var(--ease-out);
 }
 
+.switch:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .switch[aria-checked='true'] {
   background: var(--positive);
 }

@@ -78,7 +78,6 @@ import { Feedback, Music, Sky, type MusicMix, type WeatherSound, type SoundID, t
 import { Details, type Detail } from './detail';
 import { Intros, type Intro } from './intros';
 import { News, NEWS_DWELL, type NewsItem } from './news';
-import { textWidth } from './icons';
 import { TyreMarks, BrakeMarks } from './marks';
 import { Ducks } from './ducks';
 import { type Holiday, Holidays } from './holidays';
@@ -215,6 +214,9 @@ export class GameSession {
   private pendingSummary: ShiftSummary | null = null;
   private resultCountdown = 0;
   private resultAge = 0;
+  /** Lost shifts in a row, and a tap made during the breather: it starts the next shift when the breather ends. */
+  private failStreak = 0;
+  private startBuffered = false;
   private moneyLanded = false;
   private sinceTakedown = Infinity;
   /** A hit-stop: the world holds for a blink on a Critical Merge and on reaching the top multiplier, a shorter one on a Tight Fit. */
@@ -975,6 +977,11 @@ export class GameSession {
         const item = cosmetic(action.id);
         if (!Careers.wear(career, action.id) && item?.kind === 'carSkin' && Careers.owns(career, action.id)) this.showNotice(S.shop.skinsFull(Careers.skinSlots(career)));
         this.persist();
+        // Worn: a tick, and the sheet closes on the new look.
+        if (Careers.isWorn(career, action.id)) {
+          this.play([], ['tap']);
+          this.closeDetail();
+        }
         // Big Screen put on with nothing to show yet: straight to choosing it.
         if (action.id === BIG_SCREEN && career.mapSkin === BIG_SCREEN && !this.backdrop) this.onBackdrop?.();
         break;
@@ -1666,6 +1673,10 @@ export class GameSession {
     }
     if (this.screen.k === 'result') {
       this.resultAge += realDelta;
+      if (this.startBuffered && this.resultAge >= this.resultLock) {
+        this.startBuffered = false;
+        if (!this.versusSelected && !this.pan.travel && Math.abs(this.pan.pan) < ModePan.swipeThreshold) this.startOrCatchUp(undefined, simDelta);
+      }
       if (!this.moneyLanded && this.screen.summary.result.money > 0 && this.resultAge >= ResultBanner.countDelay + ResultBanner.countDuration) {
         this.moneyLanded = true;
         this.play(['purchase'], ['paid']);
@@ -1699,7 +1710,7 @@ export class GameSession {
     else if (this.screen.k === 'result') {
       const s = this.screen.summary;
       // A lost shift's breather: the camera stays out while it holds and leans back in the moment a tap starts the next shift.
-      lossShown = s.result.outcome !== 'completed' && (ResultBanner.breathes(s) ? this.resultAge < ResultBanner.breath : ResultBanner.settled(this.resultAge) < 0.5);
+      lossShown = s.result.outcome !== 'completed' && (ResultBanner.breathes(s) ? this.resultAge < ResultBanner.breathOf(s) : ResultBanner.settled(this.resultAge) < 0.5);
     }
     const pullTarget = lossShown && !this.reduceMotion ? 1 : 0;
     // A critically damped spring (smooth damp): drifts out slowly, and eases into the lean-in instead of snapping.
@@ -1896,7 +1907,7 @@ export class GameSession {
     const opacity = 1 - Ease.clamp01(ResultBanner.settled(this.resultAge) * 2);
     const frame = { rim: RingSignals.rim(world), start: world.layout.player.angle, outer: world.layout.ringRadius + world.layout.laneWidth / 2 };
     // The dusk sits on the island's edge, at the kerb, so the Elite bar on the rim never mixes with it.
-    if (ResultBanner.breathes(screen.summary)) RingSignals.dusk(list, world.layout.islandRadius, this.resultAge, reduceMotion, opacity);
+    if (ResultBanner.breathes(screen.summary)) RingSignals.dusk(list, world.layout.islandRadius, this.resultAge, reduceMotion, opacity, ResultBanner.breathOf(screen.summary));
     if (!screen.summary.elite) return;
     RingSignals.elite(list, frame, screen.summary.elite, this.resultAge - RingSignals.hold, reduceMotion, opacity);
   }
@@ -1962,9 +1973,8 @@ export class GameSession {
               }
               this.startOrCatchUp(a.ago, simDelta);
             } else if (this.resultAge >= ResultBanner.inputLock && this.resultAge < this.resultLock) {
-              // The breather swallows the tap: say so.
-              this.play([], ['denied']);
-              this.sinceDenied = 0;
+              // The breather holds the tap: the next shift starts when it ends.
+              this.startBuffered = true;
             }
             break;
           case 'page':
@@ -2122,6 +2132,7 @@ export class GameSession {
         break;
       }
       case 'selectTab':
+        if (this.shopPage.busy) return;
         if (a.tab === 'upgrades') {
           if (BUILD_PAGES.includes(screenTab(this.screen))) return;
           this.perform({ k: 'showTab', tab: this.buildPage });
@@ -2132,7 +2143,6 @@ export class GameSession {
         const index = Math.max(0, pages.indexOf(screenTab(this.screen)));
         this.perform({ k: 'showTab', tab: pages[(index + 1) % pages.length] });
         break;
-        if (this.shopPage.busy) return;
       }
       case 'dispatch':
         if (this.screen.k === 'playing') {
@@ -2592,30 +2602,30 @@ export class GameSession {
     const pending = this.introsPending;
     const news = this.isPage('shop') ? News.sections(this.save, 'shop') : this.isPage('social') ? News.sections(this.save, 'social') : [];
     if (pending.length === 0 && news.length === 0) return;
-    const dot = (cell: Rect, label: string): void => ShopPage.badgeDot(list, v(R.center(cell).x + textWidth(label, 13) / 2 + 8, R.center(cell).y - 6), 1);
+    const dot = (cell: Rect): void => ShopPage.segmentDot(list, cell);
     const career = this.save.career;
     for (const section of news) {
       if (this.isPage('shop')) {
         const cell = ShopPage.layout(viewport, inset, ShopPage.sections(career)).segments.find(([s]) => s === section);
-        if (cell) dot(cell[1], S.shop.section(cell[0]));
+        if (cell) dot(cell[1]);
       } else {
         const cell = SocialPage.segments(viewport, SocialPage.sections(career)).find(([s]) => s === section);
-        if (cell) dot(cell[1], S.social.section(cell[0]));
+        if (cell) dot(cell[1]);
       }
     }
     if (this.isPage('shop') && pending.includes('casino')) {
       const cell = ShopPage.layout(viewport, inset, ShopPage.sections(career)).segments.find(([section]) => section === 2);
-      if (cell) dot(cell[1], S.shop.section(2));
+      if (cell) dot(cell[1]);
     } else if (this.isPage('social')) {
       const cells = SocialPage.segments(viewport, SocialPage.sections(career));
       for (const [intro, section] of [['club', SOCIAL.club], ['mafia', SOCIAL.mafia]] as const) {
         const cell = cells.find(([s]) => s === section);
-        if (cell && (pending.includes(intro) || (intro === 'club' && pending.includes('gamefund')))) dot(cell[1], S.social.section(section));
+        if (cell && (pending.includes(intro) || (intro === 'club' && pending.includes('gamefund')))) dot(cell[1]);
       }
     } else if ((this.isPage('upgrades') || this.isPage('streetBuilder')) && pending.includes('builder')) {
       const r = BuildLayout.segmentsRect(viewport);
       const half = R.width(r) / BUILD_PAGES.length;
-      dot(R.make(r.minX + half, r.minY, r.maxX, r.maxY), S.builder.title);
+      dot(R.make(r.minX + half, r.minY, r.maxX, r.maxY));
     }
   }
 
@@ -2813,7 +2823,7 @@ export class GameSession {
     if (message) return message;
     const tip = this.tips.view;
     if (tip) return { brief: GameSession.tipBrief(tip.tip), previous: null, amount: tip.amount, swap: 1, pulse: 1, time: this.sceneTime, left: false, right: false };
-    return this.modeHint > 0 ? { brief: TopBar.swipeBrief(), previous: null, amount: this.modeHint, swap: 1, pulse: 1, time: this.sceneTime, ...this.swipeSides } : null;
+    return this.modeHint > 0 && this.readyIntro.length === 0 ? { brief: TopBar.swipeBrief(), previous: null, amount: this.modeHint, swap: 1, pulse: 1, time: this.sceneTime, ...this.swipeSides } : null;
   }
 
   /** A short kick of the camera as the mode changes: a small lean in, and a damped shake the way the swipe went. */
@@ -3418,7 +3428,9 @@ export class GameSession {
     this.resultBank = booked.bank;
     const careerWin = result.outcome === 'completed' && this.playingMode === 'shift' && !this.playingDaily && !this.special && !this.versusSelected && !this.tutorial;
     this.resultShiftPay = careerWin && save.firstDay !== this.today ? this.world.config.shiftPay : 0;
-    this.notices.announce(...GameSession.budget([...booked.news, ...(museumNew.length > 0 ? [S.museum.newFinds(museumNew.length)] : [])]));
+    // A challenge the burst celebrates is not told a second time in the news.
+    const told = this.resultBurst === challengeBurst && challengeBurst ? booked.challenges.map((ch) => S.daily.challengeDone(ch, Fmt.number(challengeReward(ch, Careers.reach(career))))) : [];
+    this.notices.announce(...GameSession.budget([...booked.news.filter((n) => !told.includes(n)), ...(museumNew.length > 0 ? [S.museum.newFinds(museumNew.length)] : [])]));
     this.tips.add(...booked.tips);
     for (const hint of booked.due) this.onHint?.(hint);
     if (save.shiftsPlayed >= GameSession.tightFitTipShifts) this.teachTightFit();
@@ -3563,6 +3575,9 @@ export class GameSession {
       if (this.resultCountdown <= 0) {
         this.resultAge = 0;
         this.moneyLanded = false;
+        this.startBuffered = false;
+        this.failStreak = summary.result.outcome === 'completed' ? 0 : this.failStreak + 1;
+        if (ResultBanner.breathes(summary) && this.failStreak >= ResultBanner.streakForShort) summary.breath = ResultBanner.shortBreath;
         if (this.resultBurst) this.celebrate(this.resultBurst);
         this.resultBurst = null;
         // A Boss Rush shows the next boss behind its result (or the first, after a loss or a clear).
@@ -3740,6 +3755,8 @@ export class GameSession {
     const open = challengesOf(this.today, Careers.reach(career))
       .filter((ch) => !Careers.isChallengeDone(career, ch, this.today))
       .map((ch) => ({ label: S.daily.challengeShort(ch), ...challengeProgress(ch, stats) }));
+    const ratio = (g: LiveChallenge): number => g.have / g.need;
+    return open.slice(0, 1).map((first) => open.reduce((best, g) => (ratio(g) > ratio(best) ? g : best), first));
   }
 
   private renderList(viewport: Vec2, delta: number): RenderList {
@@ -3755,8 +3772,6 @@ export class GameSession {
       this.boot = null;
     }
     const cam = this.boot ? this.boot.camera(street) : this.cameraRig.camera(perspectiveOf(this.screen), world.layout, viewport, this.lastInset, delta, rm);
-    const ratio = (g: LiveChallenge): number => g.have / g.need;
-    return open.slice(0, 1).map((first) => open.reduce((best, g) => (ratio(g) > ratio(best) ? g : best), first));
     const calm = this.steadyCam;
     const shake = calm ? v(0, 0) : add(add(this.effects.shakeOffset, this.explosions.shakeOffset), this.cameraFx.breathOffset(rm));
     // The words in the island sit on this camera: no shake, punch or pull-back moves them, and their wrapping never changes.
@@ -4018,7 +4033,7 @@ export class GameSession {
       drawsCard,
       opacity,
       goal: this.giftLine,
-      intro: this.versusSelected || (this.tutorial && !this.tutorial.isOver) ? null : this.readyIntro,
+      intro: this.versusSelected || (this.tutorial && !this.tutorial.isOver) || this.modeMessage.view(this.sceneTime) || this.tips.view ? null : this.readyIntro,
       textScale: this.textScale,
       message: this.topMessage,
       modes: this.showsModeDots && !opening ? { count: SWIPE_MODES.length, at: this.modeDotAt, color: ModeBanner.tint(this.swipeMode) } : null,

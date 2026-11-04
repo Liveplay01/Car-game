@@ -204,7 +204,7 @@ export default (S: Strings): Words<Strings> => ({
     days: (d) => `${d}일`,
     collectionShare: (o, t) => `컬렉션 · ${Math.floor((o / t) * 100)}%`,
     questsHint: '퀘스트 보상은 한 번씩이고, 자정에 바뀌어요.',
-    timingLabel: (n) => `내 타이밍 · 최근 합류 ${n}번`,
+    timingLabel: (n) => `타이밍 · 최근 ${n}번`,
     timing: (ms, onBeat) => (ms === null ? '–' : Math.abs(ms) <= onBeat ? '딱 맞음' : ms < 0 ? `${-ms}ms 빠름` : `${ms}ms 늦음`),
   },
 

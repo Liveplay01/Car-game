@@ -437,7 +437,7 @@ export const ProgressPage = {
     for (const section of dots) {
       if (!shown.includes(section)) continue;
       const r = l.segments[shown.indexOf(section)][1];
-      ShopPage.badgeDot(list, v(R.center(r).x + textWidth(S.progress.section(section), 13) / 2 + 7, R.center(r).y - 6), 1);
+      ShopPage.segmentDot(list, r);
     }
 
     const start = list.items.length;

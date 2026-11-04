@@ -204,7 +204,7 @@ export default (S: Strings): Words<Strings> => ({
     days: (d) => `${d} 天`,
     collectionShare: (o, t) => `收藏 · ${Math.floor((o / t) * 100)}%`,
     questsHint: '每个任务的奖励只发一次，午夜刷新。',
-    timingLabel: (n) => `你的时机 · 最近 ${n} 次并入`,
+    timingLabel: (n) => `时机 · 最近 ${n} 次`,
     timing: (ms, onBeat) => (ms === null ? '–' : Math.abs(ms) <= onBeat ? '恰到好处' : ms < 0 ? `早了 ${-ms} 毫秒` : `晚了 ${ms} 毫秒`),
   },
 

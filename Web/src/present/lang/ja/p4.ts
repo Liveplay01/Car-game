@@ -204,7 +204,7 @@ export default (S: Strings): Words<Strings> => ({
     days: (d) => `${d}日`,
     collectionShare: (o, t) => `コレクション · ${Math.floor((o / t) * 100)}%`,
     questsHint: 'クエストの報酬は1回ずつ。真夜中に入れ替わります。',
-    timingLabel: (n) => `あなたのタイミング · 直近${n}回の合流`,
+    timingLabel: (n) => `タイミング · 直近${n}回`,
     timing: (ms, onBeat) => (ms === null ? '–' : Math.abs(ms) <= onBeat ? 'ジャスト' : ms < 0 ? `${-ms}ms 早い` : `${ms}ms 遅い`),
   },
 
