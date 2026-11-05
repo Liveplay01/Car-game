@@ -157,6 +157,18 @@ export const Feedback = {
   /** The merge sound climbs the minor pentatonic with the combo: two octaves, so a long combo still climbs (to 11). */
   comboLadder: [0, 3, 5, 7, 10, 12, 15, 17, 19, 22, 24],
 
+  /** Semitones of a combo on the ladder; above the top the last three steps take turns instead of standing still. */
+  ladderStep(combo: number): number {
+    const i = combo <= 11 ? Math.max(0, combo - 1) : 8 + (combo - 9) % 3;
+    return Feedback.comboLadder[i];
+  },
+
+  /** One vibration replaces the one running, so a frame plays only the strongest of its haptics: this list, strongest first. */
+  hapticRank: [
+    'explosion', 'crash', 'bossTakedown', 'takedown', 'seized', 'chest', 'rushHour', 'wanted', 'secured', 'shiftComplete',
+    'paid', 'critical', 'flow', 'comboUp', 'perfect', 'tightFit', 'nearMiss', 'merge', 'edge',
+  ] as HapticID[],
+
   sound(e: GameEvent): SoundID | null {
     switch (e.type) {
       case 'merged':
@@ -231,6 +243,7 @@ export const Feedback = {
   pitch(sound: SoundID, combo: number, serial: number): number {
     switch (sound) {
       case 'merge':
+        return 2 ** (Feedback.ladderStep(combo) / 12);
       case 'note':
         // The melody takes the combo itself, not a ratio.
         return combo;
@@ -295,6 +308,9 @@ export const Feedback = {
         return 'paid';
       case 'armourHit':
         return 'takedown';
+      case 'launched':
+      case 'tapRejected':
+        return 'edge';
       default:
         return null;
     }
@@ -338,7 +354,7 @@ export const Feedback = {
 
   cues(events: GameEvent[]): { sounds: SoundID[]; haptics: HapticID[]; origins: Map<SoundID, Vec2> } {
     let sounds: SoundID[] = [];
-    let haptics: HapticID[] = [];
+    const haptics: HapticID[] = [];
     const origins = new Map<SoundID, Vec2>();
     for (const e of events) {
       const s = Feedback.sound(e);
@@ -355,7 +371,11 @@ export const Feedback = {
         origins.set('note', e.position);
       }
     }
-    if (haptics.length > 1) haptics = haptics.filter((h) => h !== 'merge');
+    const strength = (h: HapticID): number => {
+      const i = Feedback.hapticRank.indexOf(h);
+      return i < 0 ? Feedback.hapticRank.length : i;
+    };
+    const felt = haptics.length > 1 ? [haptics.reduce((a, b) => (strength(b) < strength(a) ? b : a))] : haptics;
     if (sounds.includes('shiftComplete')) sounds.push('departure');
     const weights: SoundID[] = ['crashLight', 'crash', 'crashHeavy'];
     const heaviest = sounds.filter((s) => weights.includes(s)).sort((a, b) => weights.indexOf(b) - weights.indexOf(a))[0];
@@ -365,7 +385,7 @@ export const Feedback = {
       const at = origins.get('crashHeavy');
       if (at) origins.set('thump', at);
     }
-    return { sounds, haptics, origins };
+    return { sounds, haptics: felt, origins };
   },
 
   /** Stereo position -1…1 of a screen x: never hard left or right, the ring stays one place. */

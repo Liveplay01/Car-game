@@ -1,6 +1,6 @@
 import type { World } from '../core/world';
 import type { Arm } from '../core/roundabout';
-import type { ShiftResult } from '../core/events';
+import type { MergeRating, ShiftResult } from '../core/events';
 import type { GameMode, StreakMilestone } from '../core/career';
 import type { EliteBar } from '../core/elite';
 import type { SwipeMode } from './flow';
@@ -275,6 +275,8 @@ export interface Popup {
   kind: PopupKind;
   position: Vec2;
   age: number;
+  /** A vehicle the popup rides along with (its precision ring); the session keeps `position` on it. */
+  follow?: number;
 }
 
 export const POPUP_LIFETIME = 0.9;
@@ -316,6 +318,34 @@ const ODOMETER_ROLL = 0.42;
 const ODOMETER_CARRY = 0.06;
 /** A number that was not on screen for this long is just set, not rolled (the next shift opens on the money it ended with). */
 const ODOMETER_AWAY = 0.25;
+
+/** How far each rating swells the combo's words and, a little less, the car that merged (`Ease.kick` times this). */
+export const MERGE_PULSE = {
+  combo: { clean: 0.04, nearMiss: 0.08, tightFit: 0.1, perfect: 0.14 } as Partial<Record<MergeRating, number>>,
+  car: { nearMiss: 0.04, tightFit: 0.06, perfect: 0.08 } as Partial<Record<MergeRating, number>>,
+};
+
+/** A bar that glides to a new value: `Ease.settle` over `GLIDE` seconds. A fall (a combo that broke, a new tier) is just set. */
+interface Glide {
+  from: number;
+  to: number;
+  since: number;
+  seen: number;
+}
+const comboBar: Glide = { from: 0, to: 0, since: -Infinity, seen: -Infinity };
+const GLIDE = 0.25;
+
+function glide(bar: Glide, goal: number, reduceMotion: boolean): number {
+  const now = performance.now() / 1000;
+  const shown = bar.from + (bar.to - bar.from) * Ease.settle((now - bar.since) / GLIDE);
+  if (reduceMotion || goal < bar.to || now - bar.seen > ODOMETER_AWAY) {
+    [bar.from, bar.to, bar.since] = [goal, goal, now];
+  } else if (goal !== bar.to) {
+    [bar.from, bar.to, bar.since] = [shown, goal, now];
+  }
+  bar.seen = now;
+  return bar.from + (bar.to - bar.from) * Ease.settle((now - bar.since) / GLIDE);
+}
 
 /** The score's weight under tension (Leo, 18.10.2026): calm digits are a touch lighter, so the heaviest weight is kept for the moments that earn it. Steps of 20 keep the font count small. */
 export const heft = (tension: number): number => Math.round((740 + 160 * Ease.clamp01(tension)) / 20) * 20;
@@ -367,7 +397,10 @@ export interface HudInput {
   score: number;
   money: number;
   best: string | null;
-  comboPop: number;
+  /** Seconds since the multiplier tier went up (Infinity: not lately). */
+  comboAge: number;
+  /** The last merge's pulse on the combo (`MERGE_PULSE` × `Ease.kick`), 0 when settled. */
+  mergePulse: number;
   /** How much of the island's multiplier and combo shows (0…1): the ducks walk over it (`present/ducks.ts`). */
   island?: number;
   race: { delta: number; pop: number } | null;
@@ -564,7 +597,7 @@ export const HUD = {
     if (challengeReach > 0) HUD.addChallengeProgress(list, challenges, frame, TopBar.foot(list));
     list.tag = undefined;
     const island = list.items.length;
-    HUD.addIsland(list, world, h.comboPop);
+    HUD.addIsland(list, world, h.comboAge, h.mergePulse, h.reduceMotion ?? false);
     const shown = h.island ?? 1;
     if (shown < 1) for (let i = island; i < list.items.length; i++) list.items[i] = moved(list.items[i], v(0, 0), shown);
   },
@@ -580,16 +613,19 @@ export const HUD = {
     list.s(text(String(count), center, size, 'center', 'bold'), 'primary');
   },
 
-  addIsland(list: RenderList, world: World, pop: number): void {
+  addIsland(list: RenderList, world: World, tierAge: number, mergePulse: number, reduceMotion: boolean): void {
     const c = world.config;
     const center = toScreen(list.camera, v(0, 0));
     const tier = Scoring.tier(world.score.combo, c);
     const top = tier > 0 && tier === Math.min(c.comboThresholds.length, c.comboMultipliers.length);
     const color: ColorToken = tier === 0 ? 'muted' : top ? 'accent' : 'primary';
-    const size = Metrics.multiplierSize * (1 + 0.16 * Math.sin(Math.PI * Ease.outCubic(pop)));
+    // A tier change and a merge do not add up: the bigger swing wins.
+    const tierPulse = 0.16 * Ease.kick(tierAge * 0.6);
+    const pulse = Math.abs(tierPulse) > Math.abs(mergePulse) ? tierPulse : mergePulse;
+    const size = Metrics.multiplierSize * (1 + pulse);
     list.s(text(comboMultiplier(Scoring.multiplierOfTier(tier, c)), center, size, 'center', 'bold'), color);
-    if (world.score.combo > 0) list.s(text(S.hud.combo(world.score.combo), add(center, v(0, 34)), Metrics.comboLabelSize, 'center', 'bold'), 'muted');
-    HUD.addComboProgress(list, world, add(center, v(0, 50)));
+    if (world.score.combo > 0) list.s(text(S.hud.combo(world.score.combo), add(center, v(0, 34)), Metrics.comboLabelSize * (1 + mergePulse), 'center', 'bold'), 'muted');
+    HUD.addComboProgress(list, world, add(center, v(0, 50)), reduceMotion);
     if (world.shift.isRushHour) list.s(text(S.hud.rushFactor(c.rushHourScoreFactor), add(center, v(0, -38)), Metrics.comboLabelSize, 'center', 'bold'), 'rushHour');
     if (world.criminal.kind === 'active') {
       const left = world.criminal.deadline - world.time;
@@ -602,7 +638,7 @@ export const HUD = {
    * How far the combo is towards the next multiplier: a short bar under the combo, so the next
    * step is always in sight. Gone at the top multiplier.
    */
-  addComboProgress(list: RenderList, world: World, at: Vec2): void {
+  addComboProgress(list: RenderList, world: World, at: Vec2, reduceMotion: boolean): void {
     const c = world.config;
     const combo = world.score.combo;
     const count = Math.min(c.comboThresholds.length, c.comboMultipliers.length);
@@ -610,7 +646,8 @@ export const HUD = {
     if (combo <= 0 || tier >= count) return;
     const from = tier === 0 ? 0 : c.comboThresholds[tier - 1];
     const to = c.comboThresholds[tier];
-    const share = Ease.clamp01((combo - from) / Math.max(1, to - from));
+    const goal = Ease.clamp01((combo - from) / Math.max(1, to - from));
+    const share = glide(comboBar, goal, reduceMotion);
     const width = 56;
     const height = 3;
     list.s(rect(at, v(width, height), height / 2), 'marking', 0.5);
@@ -824,11 +861,12 @@ export const HUD = {
 
   addPrecisionRing(list: RenderList, p: Popup, reduceMotion: boolean): void {
     const isPerfect = p.kind.k === 'perfect';
-    const duration = isPerfect ? 0.45 : 0.3;
-    if (p.age >= duration) return;
-    const x = p.age / duration;
-    const radius = reduceMotion ? 16 : 9 + (isPerfect ? 16 : 9) * Ease.outCubic(x);
-    list.w(arc(p.position, radius, isPerfect ? 2.5 : 1.5, 0, TAU), isPerfect ? 'accent' : 'muted', (isPerfect ? 0.9 : 0.4) * (1 - x));
+    if (p.age >= 0.3) return;
+    const x = p.age / 0.3;
+    const out = Ease.outCubic(x);
+    const radius = reduceMotion ? (isPerfect ? 23 : 16) : isPerfect ? 14 + 18 * out : 9 + 9 * out;
+    const thickness = isPerfect ? 4 - 3 * out : 1.5;
+    list.w(arc(p.position, radius, thickness, 0, TAU), isPerfect ? 'accent' : 'muted', (isPerfect ? 0.9 : 0.4) * (1 - x));
   },
 
   /** A Critical Merge: a gold ring and sparks flying out, quick and rare enough to be loud. */
@@ -2010,8 +2048,10 @@ export const ResultBanner = {
     list.tag = undefined;
   },
 
-  add(list: RenderList, summary: ShiftSummary, nextLevel: number, bank: { before: number; after: number }, age: number, reduceMotion: boolean, gift: string | null, islandRadius: number, sinceDenied = Infinity): { chip: Vec2 | null; grow: number } {
+  add(list: RenderList, summary: ShiftSummary, nextLevel: number, bank: { before: number; after: number }, age: number, reduceMotion: boolean, gift: string | null, islandRadius: number, sinceDenied = Infinity, sinceLanded = Infinity): { chip: Vec2 | null; grow: number } {
     const r = summary.result;
+    // The wage lands: the money (and a new best beside it) swells once, `sinceLanded` real seconds after the count ended.
+    const landed = 1 + 0.1 * Ease.kick(sinceLanded);
     const frame = TopBar.frame(list.camera.viewport.x);
     const cols = TopBar.columns(frame);
     TopBar.addScrim(list);
@@ -2026,7 +2066,7 @@ export const ResultBanner = {
     if (shown > 0.001) {
       const x = reduceMotion ? 1 : Ease.clamp01((age - ResultBanner.countDelay) / ResultBanner.countDuration);
       const counted = bank.before + Math.round((bank.after - bank.before) * Ease.outCubic(x));
-      TopBar.addMoneyColumn(list, cols.left, 'leading', Fmt.number(counted), { valueSize: 20, opacity: shown, fitAmount: Fmt.number(bank.after) });
+      TopBar.addMoneyColumn(list, cols.left, 'leading', Fmt.number(counted), { valueSize: 20 * landed, opacity: shown, fitAmount: Fmt.number(bank.after) });
       // A lost shift's words stand still: no spring on the numbers, and FAIL makes way for the score before it comes in.
       const pop = reduceMotion || ResultBanner.breathes(summary) ? 1 : land(age / 0.4, 0.12);
       if (summary.mode === 'mayhem' && !run) {
@@ -2046,7 +2086,7 @@ export const ResultBanner = {
         const [caption, value] = run.right;
         TopBar.addColumn(list, cols.right, 'trailing', caption, value, { valueSize: 16, opacity: shown });
       } else if (summary.isNewHighscore) {
-        TopBar.addColumn(list, cols.right, 'trailing', S.result.newBest, Fmt.number(summary.mode === 'mayhem' ? r.flames : r.score), { captionColor: 'accent', valueColor: 'accent', opacity: shown });
+        TopBar.addColumn(list, cols.right, 'trailing', S.result.newBest, Fmt.number(summary.mode === 'mayhem' ? r.flames : r.score), { captionColor: 'accent', valueColor: 'accent', valueSize: 20 * landed, opacity: shown });
       } else {
         TopBar.addBest(list, cols.right, summary.previousHighscore > 0 ? Fmt.number(summary.previousHighscore) : '–', {
           valueColor: summary.previousHighscore > 0 ? 'primary' : 'muted',

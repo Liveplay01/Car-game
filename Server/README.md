@@ -63,7 +63,7 @@ only erasable syntax is allowed (no `enum`, no constructor parameter properties)
 | `POST /v1/ideas` `{text}` | (token) Suggest an idea, 10 to 500 characters, one a day (`429 once_a_day`). It waits as `pending`. **One system (Leo, 24.10.2026):** every feature idea, from the game and from `POST /v1/feedback` (`kind: idea`, source `feedback`), is a row of `ideas`; `feedback` holds bug reports only |
 | `POST /v1/ideas/:id/gifts` `{amount}` | (token) Give to an open idea, same limits as the City Fund (`DAILY_LIMIT` counts both); `409 idea_funded` once it has its goal |
 | `GET/PATCH/DELETE /v1/admin/ideas` | Moderation: reword (`title` up to 60, `text` up to 600) and set `status` `pending` / `open` (published) / `built` / `rejected`. In `/admin` the violet **Game Fund ideas** button |
-| `GET /admin` | (with `ADMIN_TOKEN`) The moderator page, four tabs: **Bugs** (filter, mark seen / done / won't fix, delete), **Ideas** (Game Fund), **Errors**, **Players** (rewards by friend code, messages) |
+| `GET /admin` | (with `ADMIN_TOKEN`) The moderator page, four tabs: **Bugs** (filter, mark seen / done / won't fix, delete), **Ideas** (Game Fund), **Errors** (one row per kind and build with the last browser, state and actions), **Players** (rewards by friend code, messages) |
 
 The token travels as `Authorization: Bearer <token>`. Errors are `{error: {code, message}}`.
 

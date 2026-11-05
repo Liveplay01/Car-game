@@ -36,8 +36,8 @@ export const CameraFxTuning = {
   finalReach: 1.9,
   finalSlow: 0.5,
   finalMax: 0.9,
-  /** A Perfect Input: the world nods once towards the stop line (a share of the scale), in `nodRise` seconds and back over `nodFall`. */
-  nodZoom: 0.004,
+  /** A Perfect Input: the world nods once towards the stop line (a share of the scale), in `nodRise` seconds and back over `nodFall`. Off since the Perfect lands with a punch (`landMerge`); the Reduce Motion vignette pulse stays. */
+  nodZoom: 0,
   nodRise: 0.05,
   nodFall: 0.18,
   /** Under Reduce Motion the nod becomes this much extra vignette instead. */

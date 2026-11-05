@@ -6,7 +6,7 @@ import { addCrewXp, crewTag } from '../net/crews';
 import { SeasonPass } from '../core/seasonPass';
 import { Unlocks } from '../core/unlocks';
 import { Mafia } from '../core/mafia';
-import type { GameEvent, ShiftOutcome, ShiftResult } from '../core/events';
+import type { GameEvent, MergeRating, ShiftOutcome, ShiftResult } from '../core/events';
 import type { Upgrade } from '../core/levels';
 import { ALBUM_REWARD, BIG_SCREEN, PLAY_SKIN, CHEST_KINDS, chestPrice, chestBundle, cosmetic, rarityRank, tapPower, strongTaps, type ChestKind } from '../core/loot';
 import { dailySeed, dailyEvent, dayNumber, challengesOf, challengeProgress, challengeReward } from '../core/daily';
@@ -28,14 +28,14 @@ import type { ColorToken } from './theme';
 import { S, Fmt, money as moneyText } from './strings';
 import { CrashEffects } from './effects';
 import { ExplosionEffects, MapScars, SmokeCurtain } from './explosionsFx';
-import { SceneBuilder, VehicleLamps, towYard } from './scene';
+import { SceneBuilder, VehicleLamps, interpolatedPose, towYard } from './scene';
 import { CityLayer, CityPulse, type CityRise } from './city';
 import { MapTheme } from './mapThemes';
 import { Skins } from './skins';
 import { WeatherFade, WeatherLayer } from './weather';
 import { NightLayer } from './night';
 import { CityLights, LampWave } from './cityLights';
-import { HUD, TopBar, RingSignals, ModeMessage, ModeBanner, ReadyBanner, type TopMessage, ResultBanner, type Popup, type PopupKind, type ShiftSummary, type ConditionIntro, type LiveChallenge, popupLife, settledPops } from './hud';
+import { HUD, TopBar, RingSignals, ModeMessage, ModeBanner, ReadyBanner, type TopMessage, ResultBanner, type Popup, type PopupKind, type ShiftSummary, type ConditionIntro, type LiveChallenge, popupLife, settledPops, MERGE_PULSE } from './hud';
 import { inPortal, inPlayStore, isInstalled } from '../storage/device';
 import { Tutorial } from './tutorial';
 import { POLICE, PROOF_RULES, ProofLog, REVIVE, TAP, setupOf, type Proof } from '../core/proof';
@@ -158,7 +158,7 @@ export class GameSession {
   /** A lost shift shows its result sooner: the crash reads at once, and the breather follows. */
   static readonly lossDelay = 0.8;
   static readonly scoreCatchUp = 0.28;
-  static readonly comboPop = 0.35;
+  static readonly moneyTickRate = 11;
   /** A growing bar sounds higher the fuller it is: semitones of a pentatonic scale over two octaves, so no two bars clash. */
   private static readonly barSteps = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21];
   static readonly countInSeconds = 2;
@@ -222,6 +222,9 @@ export class GameSession {
   private failStreak = 0;
   private startBuffered = false;
   private moneyLanded = false;
+  private moneyTicks = 0;
+  /** Real seconds since the result's money count ended (Infinity: not yet, or a lost shift). */
+  private sinceLanded = Infinity;
   private sinceTakedown = Infinity;
   /** A hit-stop: the world holds for a blink on a Critical Merge and on reaching the top multiplier, a shorter one on a Tight Fit. */
   private sinceHitStop = Infinity;
@@ -284,6 +287,9 @@ export class GameSession {
   private adPillAge = 0;
   private readonly adTold = new Set<GameAd>();
   private sinceComboTier = Infinity;
+  /** The last merge, for the combo's pulse (real seconds, its rating). */
+  private sinceMerge = Infinity;
+  private mergeRating: MergeRating = 'clean';
   private sinceCarSent = Infinity;
   private sinceMark = Infinity;
   private markCars = 0;
@@ -1163,6 +1169,7 @@ export class GameSession {
     this.proof = provable ? this.newProof(s, this.booting) : null;
     this.pendingSummary = null;
     this.sinceComboTier = Infinity;
+    this.sinceMerge = Infinity;
     this.sinceMark = Infinity;
     this.topMark = 0;
     this.museum.owe(this.briefings.clear());
@@ -1680,6 +1687,7 @@ export class GameSession {
     }
     if (this.screen.k === 'result') {
       this.resultAge += realDelta;
+      this.tickMoney();
       if (!this.moneyLanded && this.screen.summary.result.money > 0 && this.resultAge >= ResultBanner.countDelay + ResultBanner.countDuration) this.landMoney();
       if (this.startBuffered && this.resultAge >= this.resultLock) {
         this.startBuffered = false;
@@ -1689,6 +1697,9 @@ export class GameSession {
     this.sinceTakedown += realDelta;
     this.sinceHitStop += realDelta;
     this.sincePunch += realDelta;
+    this.sinceMerge += realDelta;
+    this.sinceLanded += realDelta;
+    this.lamps.advance(realDelta);
     this.sinceDenied += realDelta;
     this.adPillAge += realDelta;
     // Whether anyone finds the Today page, and whether the Daily still waits when they do (Leo, 16.10.2026).
@@ -2180,7 +2191,25 @@ export class GameSession {
   /** The pay sound of a result's money count; leaving early still plays it, so the wage always lands. */
   private landMoney(): void {
     this.moneyLanded = true;
-    this.play(['purchase'], ['paid']);
+    const summary = this.screen.k === 'result' ? this.screen.summary : null;
+    // A lost shift keeps its calm pay sound (the fail pause); a won one ends the count with a clink, and a new best earns the stronger tick.
+    if (!summary || summary.result.outcome !== 'completed') {
+      this.play(['purchase'], ['paid']);
+      return;
+    }
+    this.sinceLanded = 0;
+    this.play(['coinClink'], [summary.isNewHighscore ? 'earned' : 'confirm']);
+  }
+
+  /** The money counts up with at most `moneyTickRate` ticks a second, climbing a major third; a won shift only, and not where the count is instant. */
+  private tickMoney(): void {
+    const s = this.screen;
+    if (s.k !== 'result' || this.reduceMotion || s.summary.result.outcome !== 'completed' || s.summary.result.money <= 0) return;
+    const x = Ease.clamp01((this.resultAge - ResultBanner.countDelay) / ResultBanner.countDuration);
+    const due = x >= 1 ? this.moneyTicks : Math.floor(x * ResultBanner.countDuration * GameSession.moneyTickRate);
+    if (due <= this.moneyTicks) return;
+    this.moneyTicks = due;
+    this.playReel('meterTick', 1 + 0.25 * x, []);
   }
 
   private startOrCatchUp(ago: number | undefined, simDelta: number): void {
@@ -2941,13 +2970,16 @@ export class GameSession {
           // Braked in behind slow traffic: nothing was timed, so it counts for nothing and shows nothing.
           if (e.crept) break;
           if (e.vehicle === this.regular && e.rating !== 'cutOff') this.lamps.thank(e.vehicle);
+          this.sinceMerge = 0;
+          this.mergeRating = e.rating;
+          this.lamps.land(e.vehicle, MERGE_PULSE.car[e.rating] ?? 0);
           if (e.critical) {
             this.addPopup({ k: 'critical', n: e.points }, e.position);
             this.rim.signal('wave', 'coin');
             this.landMerge(0.06, 0.025, e.position);
-          } else if (e.rating !== 'clean') this.addPopup({ k: e.rating } as PopupKind, e.position);
+          } else if (e.rating !== 'clean') this.addPopup({ k: e.rating } as PopupKind, e.position, e.rating === 'perfect' || e.rating === 'nearMiss' ? e.vehicle : undefined);
           if (!e.critical && e.rating === 'perfect') this.cameraFx.nod();
-          if (!e.critical && e.rating === 'tightFit') this.landMerge(0.03, 0.008, e.position);
+          if (!e.critical && (e.rating === 'perfect' || e.rating === 'tightFit')) this.landMerge(0.03, 0.008, e.position);
           if (e.shave > 0) this.addPopup({ k: 'shave', n: e.shave }, add(e.position, v(0, 22)));
           if (e.tip) this.addPopup({ k: 'earned', n: e.tip }, add(e.position, v(0, 22)));
           if (e.chainSaved) {
@@ -3080,11 +3112,17 @@ export class GameSession {
           this.lamps.thank(e.vehicle);
           break;
         case 'tapRejected': {
-          // Heard, but not now: the front car's brake lights twitch. No text, no sound.
+          // Heard, but not now: the front car's brake lights twitch and it shakes its head, a dull knock (`notYet`) and a tick. No text.
           const front = world.queue.vehicles[0];
-          if (front !== undefined) this.lamps.refuse(front);
+          if (front !== undefined) {
+            this.lamps.refuse(front);
+            this.lamps.shake(front);
+          }
           break;
         }
+        case 'launched':
+          this.lamps.launch(e.vehicle);
+          break;
         case 'ambulanceLost':
           this.rim.signal('miss', 'lightBlue');
           break;
@@ -3544,9 +3582,9 @@ export class GameSession {
     }
   }
 
-  private addPopup(kind: PopupKind, position: Vec2): void {
+  private addPopup(kind: PopupKind, position: Vec2, follow?: number): void {
     this.popupSerial++;
-    this.popups.push({ serial: this.popupSerial, kind, position, age: 0 });
+    this.popups.push({ serial: this.popupSerial, kind, position, age: 0, follow });
   }
 
   private age(delta: number): void {
@@ -3568,6 +3606,8 @@ export class GameSession {
       if (this.resultCountdown <= 0) {
         this.resultAge = 0;
         this.moneyLanded = false;
+        this.moneyTicks = 0;
+        this.sinceLanded = Infinity;
         this.startBuffered = false;
         this.failStreak = summary.result.outcome === 'completed' ? 0 : this.failStreak + 1;
         if (ResultBanner.breathes(summary) && this.failStreak >= ResultBanner.streakForShort) summary.breath = ResultBanner.shortBreath;
@@ -3815,7 +3855,8 @@ export class GameSession {
         score: Math.round(world.score.points),
         money: Math.round(this.shownMoney),
         best: this.currentBest,
-        comboPop: rm ? 0 : Ease.clamp01(this.sinceComboTier / GameSession.comboPop),
+        comboAge: rm ? Infinity : this.sinceComboTier,
+        mergePulse: rm ? 0 : (MERGE_PULSE.combo[this.mergeRating] ?? 0) * Ease.kick(this.sinceMerge),
         island: Ducks.island(world),
         mark: this.sinceMark < 2.5 ? S.modes.mark(this.markCars, markReward(this.markCars)) : null,
         race: this.raceDelta === null ? null : { delta: this.raceDelta, pop: rm ? 1 : Ease.clamp01(this.sinceCarSent / 0.35) },
@@ -3843,6 +3884,10 @@ export class GameSession {
       if (progress && this.special?.k === 'trial') {
         HUD.addGoalPill(list, S.trials.progress(this.special.trial, progress.have, progress.need), progress.have >= progress.need, rm ? 1 : Ease.clamp01(this.sinceCarSent / 0.35), this.textScale);
       }
+      for (const p of this.popups) {
+        const ridden = p.follow === undefined ? undefined : world.vehicle(p.follow);
+        if (ridden) p.position = interpolatedPose(ridden, alpha).position;
+      }
       HUD.addPopups(list, this.popups, rm);
       if (this.countIn > 0 || this.isInterrupted) HUD.addCountIn(list, this.isInterrupted ? GameSession.countInSeconds : this.countIn);
       const left = this.reviveLeft;
@@ -3863,7 +3908,7 @@ export class GameSession {
       }
     } else if (s.k === 'result') {
       list.camera = steadyWithModePan;
-      const { chip: chipAt, grow } = ResultBanner.add(list, s.summary, this.playingLevel, this.resultBank, this.resultAge, rm, this.giftLine, world.layout.islandRadius, this.sinceDenied);
+      const { chip: chipAt, grow } = ResultBanner.add(list, s.summary, this.playingLevel, this.resultBank, this.resultAge, rm, this.giftLine, world.layout.islandRadius, this.sinceDenied, rm ? Infinity : this.sinceLanded);
       this.introWant = grow;
       if (chipAt) this.addFailChip(list, s.summary, chipAt);
       const arriving = ResultBanner.arriving(this.resultAge);

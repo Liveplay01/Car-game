@@ -190,6 +190,8 @@ export interface CarDraw {
   regular?: boolean;
   /** The body riding on its springs (`VehicleLamps.pitch`): dives (positive) or squats (negative), a share of its length. Only the cached sprite shows it. */
   pitch?: number;
+  /** Length and width factors of a launch or merge pulse (`VehicleLamps.squish`). Like `pitch`, only the cached sprite shows it. */
+  squish?: [number, number] | null;
   /** A syndicate car: the marks of its boss over the gold line (`CarArt.syndicate`). */
   boss?: BossKind | null;
 }
@@ -869,7 +871,8 @@ export const CarArt = {
       carArts.set(key, art);
     }
     const dive = d.pitch ?? 0;
-    list.w(sprite(art, pose.position, side > 0 ? pose.heading : pose.heading - Math.PI, dive === 0 ? v(1, 1) : v(1 - dive, 1 + dive * 0.5)), 'primary');
+    const [pulseL, pulseW] = d.squish ?? [1, 1];
+    list.w(sprite(art, pose.position, side > 0 ? pose.heading : pose.heading - Math.PI, v((1 - dive) * pulseL, (1 + dive * 0.5) * pulseW)), 'primary');
     const lamps = CarModels.lamps(model, L, W);
     if (brake !== null && brake > 0.02) {
       CarModels.tails(list, pose, lamps.tail, brake, 1);

@@ -50,6 +50,7 @@ import { Careers } from '../core/career';
 import { Elite } from '../core/elite';
 import type { TitleHost } from './ranksPanel';
 import { baseConfig, displayConfig } from '../core/config';
+import { crumb } from './errors';
 import { INTROS, INTRO_PLACE, Intros } from '../present/intros';
 
 interface InstallPromptEvent extends Event {
@@ -83,6 +84,8 @@ const MOD_ICON: Record<Modifier['id'], AnimatedIconId> = { heat: 'heat', tailwin
 
 /** The room the floating dock claims above the safe area (`--tabbar-h`). */
 const TAB_HEIGHT = 64;
+/** The input worth a line in an error report's trail (`ui/errors.ts`): what the player did, not where the pointer moved. */
+const TRAIL_ACTIONS: ReadonlySet<string> = new Set(['tap', 'confirm', 'back', 'restart', 'pointerDown', 'selectTab', 'nextTab']);
 /** The photo's scene in points (drawn at twice the pixels): the square on the print. */
 const PHOTO_SCENE = v(492, 492);
 
@@ -1786,11 +1789,14 @@ export class Shell {
     boot.classList.add('failed');
   }
 
+  private trailScreen = '';
+
   private frame(now: number): void {
     const delta = Math.max(0, (now - this.last) / 1000);
     this.last = now;
     const actions = this.actions;
     this.actions = [];
+    for (const a of actions) if (TRAIL_ACTIONS.has(a.k)) crumb(a.k);
     const s = this.session;
     const match = this.versus.match;
     s.backdrop = this.backdrop.ready;
@@ -1798,6 +1804,8 @@ export class Shell {
     s.sceneThin = resting;
     // A multiplayer match owns the canvas; the career world waits where it was.
     const list = match ? match.frame(delta, this.size, s.reduceMotion) : s.frame(delta, actions, this.size, TAB_HEIGHT);
+    const here = s.screen.k === 'page' ? `page:${s.screen.tab}` : s.screen.k;
+    if (here !== this.trailScreen) crumb(`→ ${(this.trailScreen = here)}`);
     this.drawer.draw(list);
     this.backdrop.visible = list.backdrop !== null;
     if (!match && s.screen.k === 'page') {

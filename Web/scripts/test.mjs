@@ -4180,7 +4180,7 @@ test('small details (Leo, 24.10.2026): holidays by date, a note under every good
   for (const rating of ['perfect', 'tightFit', 'nearMiss']) assert.ok(Feedback.cues([merged(rating)]).sounds.includes('note'), `${rating} rings a note`);
   assert.ok(!Feedback.cues([merged('cutOff')]).sounds.includes('note'), 'a cut-off is not a step of the tune');
   assert.ok(!Feedback.cues([{ ...merged('perfect'), critical: true }]).sounds.includes('note'), 'a critical merge has its own chord');
-  for (const combo of [1, 4, 30]) assert.equal(Feedback.pitch('note', combo, 7), Feedback.pitch('merge', combo, 7), 'the note sits on the merge\'s step');
+  for (const combo of [1, 4, 30]) assert.equal(Feedback.pitch('merge', combo, 7), 2 ** (Feedback.ladderStep(combo) / 12), 'the merge sample sits on the same step as the melody\'s note');
 
   const { VehicleLamps } = await load('/src/present/scene.ts');
   const { STEP } = await load('/src/core/world.ts');
@@ -4211,6 +4211,43 @@ test('small details (Leo, 24.10.2026): holidays by date, a note under every good
   lamps.calm = true;
   lamps.update(world, STEP);
   for (const veh of world.vehicles) assert.equal(lamps.pitch(veh.id), 0, 'Reduce Motion: the bodies stay level');
+});
+
+test('tactile polish: the impulse spring, the merge on the ladder, one vibration a frame', async () => {
+  const { Ease } = await load('/src/present/render.ts');
+  const { Feedback } = await load('/src/present/feedback.ts');
+  assert.equal(Ease.kick(0), 0);
+  assert.equal(Ease.kick(-1), 0);
+  assert.equal(Ease.kick(0.2726), 0, 'exactly 0 from 273 ms');
+  assert.equal(Ease.kick(1), 0);
+  assert.ok(Math.abs(Ease.kick(0.046) - 1) < 0.01, `peaks at 1 near 46 ms (${Ease.kick(0.046)})`);
+  assert.ok(Math.abs(Ease.kick(0.182) + 0.17) < 0.01, `rebounds to -0.17 near 182 ms (${Ease.kick(0.182)})`);
+  for (let t = 0; t < 0.2726; t += 0.002) assert.ok(Ease.kick(t) <= 1.01 && Ease.kick(t) >= -0.2, `bounded at ${t}`);
+
+  assert.equal(Feedback.pitch('merge', 1, 3), 1, 'the first merge plays the sample as it is');
+  assert.equal(Feedback.pitch('merge', 2, 3), 2 ** (3 / 12));
+  for (let combo = 2; combo <= 40; combo++) {
+    const rate = Feedback.pitch('merge', combo, 3);
+    assert.notEqual(rate, combo, 'a playback rate is never the combo itself');
+    assert.ok(rate > 1 && rate <= 4, `rate ${rate} for combo ${combo} stays within two octaves`);
+  }
+  assert.equal(Feedback.pitch('note', 9, 3), 9, 'the melody still takes the combo');
+  assert.deepEqual([11, 12, 13, 14, 15, 16].map((c) => Feedback.ladderStep(c)), [24, 19, 22, 24, 19, 22], 'above the top the last three steps take turns');
+  assert.notEqual(Feedback.ladderStep(12), Feedback.ladderStep(13), 'it does not stand on one pitch');
+  assert.equal(Feedback.ladderStep(0), 0);
+
+  const merged = (rating, extra = {}) => ({ type: 'merged', rating, critical: false, position: { x: 0, y: 0 }, points: 1, combo: 3, ...extra });
+  const crash = { type: 'crash', isStrike: true, isTakedown: false, severity: 1 };
+  assert.deepEqual(Feedback.cues([merged('clean')]).haptics, ['merge']);
+  assert.equal(Feedback.cues([merged('clean'), merged('perfect')]).haptics.length, 1, 'one vibration per frame');
+  assert.deepEqual(Feedback.cues([merged('clean'), merged('perfect')]).haptics, ['perfect'], 'the stronger merge wins');
+  assert.deepEqual(Feedback.cues([merged('perfect'), { type: 'launched', vehicle: 1, time: 0 }]).haptics, ['perfect'], 'a launch tick never covers a merge');
+  assert.deepEqual(Feedback.cues([{ type: 'launched', vehicle: 1, time: 0 }]).haptics, ['edge']);
+  assert.deepEqual(Feedback.cues([{ type: 'tapRejected', time: 0 }]).haptics, ['edge']);
+  assert.deepEqual(Feedback.cues([merged('perfect'), { type: 'criminalWarning', arm: 0, time: 0, boss: false, scout: false, kind: null }]).haptics, ['wanted'], 'a warning is not pushed out by a merge');
+  assert.deepEqual(Feedback.cues([merged('tightFit'), { type: 'explosion', kind: 'bomb', point: { x: 0, y: 0 }, wrecked: [], source: 1, flames: 0, chain: 0 }]).haptics, ['explosion']);
+  assert.ok(crash && Feedback.hapticRank.indexOf('crash') < Feedback.hapticRank.indexOf('merge'), 'a crash ranks above a merge tick');
+  for (const h of ['merge', 'tightFit', 'nearMiss', 'perfect', 'comboUp', 'flow', 'wanted', 'crash', 'explosion']) assert.ok(Feedback.hapticRank.includes(h), `${h} is ranked`);
 });
 
 test('more small details (Leo, 24.10.2026): a knock for a tap that cannot be taken, the last engine of a won shift, hazards after a crash, who signals when', async () => {

@@ -410,6 +410,10 @@ export const Ease = {
     if (x >= 1) return 1;
     return 1 - Math.exp(-8 * x) * Math.cos(x * 7.5) * 0.9;
   },
+  /** Impulse spring: peak 1 at 46 ms, rebound −0.17 at 182 ms, exactly 0 from 273 ms. Takes real seconds since the trigger. */
+  kick(t: number): number {
+    return t <= 0 || t >= 0.2726 ? 0 : 2.085 * Math.exp(-13 * t) * Math.sin(23.05 * t);
+  },
   /** A critically damped spring (Apple's default): glides into place, no overshoot. */
   settle(x: number): number {
     if (x <= 0) return 0;

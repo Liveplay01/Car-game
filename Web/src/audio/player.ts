@@ -1051,11 +1051,10 @@ export class AudioPlayer {
     const bed = this.bed;
     if (!ctx || !bed || !this.melodyOn || ctx.currentTime < this.melodyEnds) return;
     const due = Melody.phrases.filter((p) => p.combo <= combo && p.combo > this.phraseCombo).pop();
-    const ladder = Feedback.comboLadder;
-    const notes = due?.notes ?? [ladder[clamp(combo - 1, 0, ladder.length - 1)]];
+    const notes = due?.notes ?? [Feedback.ladderStep(combo)];
     const eighth = this.loopLength > 0 ? this.loopLength / 32 : 0.25;
     const now = ctx.currentTime;
-    const start = now + this.toGrid(now, eighth / 2);
+    const start = now + this.toGrid(now, AudioPlayer.magnet);
     const out = ctx.createGain();
     out.connect(bed);
     this.makeRoom(start, (notes.length - 1) * eighth + Melody.room.hold);
@@ -1173,7 +1172,7 @@ export class Haptics {
     merge: [4],
     tightFit: [12],
     nearMiss: [8],
-    perfect: [10],
+    perfect: [6, 24, 10],
     flow: [6, 40, 10],
     chest: [20, 40, 30, 40, 60],
     comboUp: [8, 50, 12],

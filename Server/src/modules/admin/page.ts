@@ -150,7 +150,7 @@ export const ADMIN_PAGE = `<!doctype html>
 
   <section id="errors" hidden>
     <div class="head"><h1>Errors</h1></div>
-    <p class="sub">Uncaught errors from the game in the field, one row per kind, counted. No address, no player. Kept 30 days after the last time; dismissed ones come back if they happen again.</p>
+    <p class="sub">Uncaught errors from the game in the field, one row per kind and build, counted, with the last browser, state and actions. No address, no player. Kept 30 days after the last time; dismissed ones come back if they happen again.</p>
     <div id="errList"></div>
   </section>
 
@@ -322,8 +322,12 @@ export const ADMIN_PAGE = `<!doctype html>
       const data = await api('GET', '/errors');
       $('errList').innerHTML = data.items.length ? data.items.map((x) =>
         '<article class="card bug" data-id="' + x.id + '">' +
-        '<div class="meta"><span class="tag bug">' + esc(x.type) + '</span><span class="pill">' + x.count + '×</span><span>' + esc(x.channel) + '</span><span>last ' + when(x.lastAt) + '</span><span>first ' + when(x.firstAt) + '</span></div>' +
-        '<p class="text">' + esc(x.message) + '</p>' + (x.stack ? '<pre class="orig">' + esc(x.stack) + '</pre>' : '') +
+        '<div class="meta"><span class="tag bug">' + esc(x.type) + '</span><span class="pill">' + x.count + '×</span><span>' + esc(x.channel) + '</span>' + (x.build ? '<span>build ' + esc(x.build) + '</span>' : '') + '<span>last ' + when(x.lastAt) + '</span><span>first ' + when(x.firstAt) + '</span></div>' +
+        '<p class="text">' + esc(x.message) + '</p>' +
+        (x.state ? '<p class="orig"><strong>State</strong> ' + esc(x.state) + '</p>' : '') +
+        (x.trail ? '<p class="orig"><strong>Last actions</strong> ' + esc(x.trail) + '</p>' : '') +
+        (x.env ? '<p class="orig"><strong>Browser</strong> ' + esc(x.env) + '</p>' : '') +
+        (x.stack ? '<pre class="orig">' + esc(x.stack) + '</pre>' : '') +
         '<div class="actions"><button type="button" data-dismiss>Dismiss</button></div></article>').join('') : '<p class="empty">No errors. Good.</p>';
     },
     async ranks() {

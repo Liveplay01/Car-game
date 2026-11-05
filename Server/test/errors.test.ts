@@ -18,17 +18,21 @@ test('errors: the same kind counts up, another is its own row, old ones go, only
     const response = await app.request(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
     return { status: response.status, json: (await response.json().catch(() => ({}))) as any };
   };
-  const send = (message: string, channel = 'tab') => call('POST', '/v1/errors', { type: 'TypeError', message, stack: 'TypeError: x\n    at a (/assets/i.js:1:1)', channel });
+  const send = (message: string, channel = 'tab', build = 'b1') =>
+    call('POST', '/v1/errors', { type: 'TypeError', message, stack: 'TypeError: x\n    at a (/assets/i.js:1:1)', channel, build, env: 'Chrome 390x800', state: 'screen result', trail: ['tap', '→ result'] });
 
   assert.equal((await send('a is undefined')).status, 204);
   assert.equal((await send('a is undefined', 'play')).status, 204);
   assert.equal((await send('b is null')).status, 204);
+  assert.equal((await send('b is null', 'tab', 'b2')).status, 204);
   assert.equal((await call('POST', '/v1/errors', { type: '', message: '' })).status, 204);
   assert.equal((await call('GET', '/v1/admin/errors')).status, 401);
 
   const items = (await call('GET', '/v1/admin/errors', undefined, admin)).json.items;
-  assert.equal(items.length, 2);
-  assert.equal(items.find((x: { message: string }) => x.message === 'a is undefined').count, 2);
+  assert.equal(items.length, 3);
+  const counted = items.find((x: { message: string }) => x.message === 'a is undefined');
+  assert.equal(counted.count, 2);
+  assert.deepEqual([counted.build, counted.state, counted.trail, counted.channel], ['b1', 'screen result', 'tap | → result', 'play']);
 
   assert.equal((await call('DELETE', `/v1/admin/errors/${items[0].id}`, undefined, admin)).status, 204);
   assert.equal((await call('DELETE', `/v1/admin/errors/${items[0].id}`, undefined, admin)).status, 404);

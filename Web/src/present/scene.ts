@@ -34,6 +34,8 @@ export interface Lamps {
   pitch(id: number): number;
   /** How far the body leans out of a turn, sideways, in world units (positive: to its left). */
   sway(id: number): number;
+  /** The body's length and width factors while a launch or a landed merge squeezes or swells it; null at rest. Picture only, never the hitbox. */
+  squish?(id: number): [length: number, width: number] | null;
 }
 
 /** A multiplayer car in its player's colour: a painted roof, a glow, a lunge on the tap. */
@@ -67,6 +69,13 @@ interface Body {
   lean: number;
   leanSwing: number;
   yaw: number;
+}
+
+/** A pulse on one body, in real time (`VehicleLamps.advance`). */
+interface Kick {
+  kind: 'launch' | 'land' | 'shake';
+  amount: number;
+  age: number;
 }
 
 interface Signal {
@@ -112,6 +121,10 @@ export class VehicleLamps {
   /** The wave down the queue after a run of Perfects: one flash this long, a car every `waveLag` seconds. */
   static readonly waveLength = 0.24;
   static readonly waveLag = 0.07;
+  /** A launch squeezes the body by this share of its length and swells it by this share of its width (times `Ease.kick`); a refused tap shakes the front car this many world units for this long. */
+  static readonly launchSquish = [0.06, 0.03] as const;
+  static readonly shakeSize = 2;
+  static readonly shakeLength = 0.2;
   /** How far the body pitches (share of its length at full braking), how fast its spring swings (Hz) and how soon it settles (damping ratio), by kind of vehicle. */
   /** Seconds before its exit a car starts to signal: a learner early and careful, a lorry in good time, a sports car late and sure. */
   static signalLead(type: VehicleType): number {
@@ -164,6 +177,7 @@ export class VehicleLamps {
   /** Cars in a crash: their hazards blink until this time on the lamps' clock. */
   private hazards = new Map<number, number>();
   private bodies = new Map<number, Body>();
+  private kicks = new Map<number, Kick>();
 
   brake(id: number): number {
     const lit = this.brakes.get(id) ?? 0;
@@ -217,7 +231,41 @@ export class VehicleLamps {
   }
 
   sway(id: number): number {
-    return this.bodies.get(id)?.lean ?? 0;
+    const k = this.kicks.get(id);
+    const shake = k?.kind === 'shake' ? VehicleLamps.shakeSize * (1 - k.age / VehicleLamps.shakeLength) * Math.sin((k.age / VehicleLamps.shakeLength) * 6 * Math.PI) : 0;
+    return (this.bodies.get(id)?.lean ?? 0) + shake;
+  }
+
+  /** The body's length and width factors under a launch (squeezed along its way) or a landed merge (swelled all round). */
+  squish(id: number): [number, number] | null {
+    const k = this.kicks.get(id);
+    if (!k || k.kind === 'shake') return null;
+    const pulse = Ease.kick(k.age);
+    return k.kind === 'launch' ? [1 - VehicleLamps.launchSquish[0] * pulse, 1 + VehicleLamps.launchSquish[1] * pulse] : [1 + k.amount * pulse, 1 + k.amount * pulse];
+  }
+
+  /** A car just pulled away, a merge just landed (`amount`: how hard), the front car just refused a tap. Real-time springs: `advance` is fed the frame's real seconds. */
+  launch(id: number): void {
+    this.kick(id, 'launch', 1);
+  }
+
+  land(id: number, amount: number): void {
+    this.kick(id, 'land', amount);
+  }
+
+  shake(id: number): void {
+    this.kick(id, 'shake', 1);
+  }
+
+  private kick(id: number, kind: Kick['kind'], amount: number): void {
+    if (!this.calm && amount > 0) this.kicks.set(id, { kind, amount, age: 0 });
+  }
+
+  advance(realDelta: number): void {
+    for (const [id, k] of this.kicks) {
+      k.age += realDelta;
+      if (k.age >= (k.kind === 'shake' ? VehicleLamps.shakeLength : 0.2726)) this.kicks.delete(id);
+    }
   }
 
   /** A run of Perfects tipped the player into the flow: the queue flashes its hazards once, front to back. */
@@ -730,6 +778,7 @@ export const SceneBuilder = {
           headlights: lamps?.headlights?.(veh.id) ?? 0,
           indicators: lamps?.indicators(veh.id) ?? null,
           pitch: lamps?.pitch(veh.id) ?? 0,
+          squish: lamps?.squish?.(veh.id) ?? null,
           regular: veh.id === regular,
           skin: look?.paint ?? null,
           stripe: look?.stripe ?? null,

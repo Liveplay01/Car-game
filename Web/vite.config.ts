@@ -299,12 +299,14 @@ function bootSky(): Plugin {
 }
 
 export default defineConfig({
+  define: { __BUILD__: JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC') },
   // The legal pages first: the service worker precaches everything the bundle holds by then.
   plugins: [bootSky(), legalPages(), changelogApi(), siteDataApi(), serviceWorker()],
   build: {
     target: 'es2022',
     assetsInlineLimit: 0,
-    sourcemap: false,
+    // Hidden: the maps sit beside the files for `npm run unmap`, but nothing points the browser at them.
+    sourcemap: 'hidden',
     // The game is one bundle on purpose (it all runs at once, and gzip keeps it near 180 kB);
     // only PeerJS and the casino load on demand. Warn when it grows well past today's size.
     chunkSizeWarningLimit: 640,

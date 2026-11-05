@@ -1,19 +1,36 @@
 /**
  * Error reports from the field to our own service (`Server/`, `modules/errors`, listed in its `/admin`), for
  * `game.timing.love` only and only where the build has the service (`VITE_API_URL`). A report holds the type,
- * message and stack of an uncaught error in the game's own scripts and the channel: no URL (it can carry codes),
- * no name, no save. Nothing is sent when the browser says Do Not Track. The Privacy Policy (`present/legal.ts`) says so.
+ * message and stack of an uncaught error in the game's own scripts, the channel, the build, the browser and screen
+ * size, where the game stood (screen, mode, level) and the kinds of the last few actions (`crumb`): no URL (it can
+ * carry codes), no name, no save. Nothing is sent when the browser says Do Not Track. The Privacy Policy (`present/legal.ts`) says so.
  */
 import { apiRequest, leaderboardEnabled } from '../net/leaderboard';
 import { inItch, inPlayStore, inPortal, isInstalled } from '../storage/device';
 
 const MAX_REPORTS = 10;
 const MAX_TEXT = 500;
-const MAX_STACK = 2000;
+const MAX_STACK = 3000;
+const MAX_TRAIL = 15;
 
 const on = leaderboardEnabled && !inPortal && !inItch && import.meta.env.PROD && navigator.doNotTrack !== '1';
 
 const seen = new Set<string>();
+const trail: string[] = [];
+let stateOf: () => string = () => '';
+
+declare const __BUILD__: string;
+
+/** The last few things the player did, by kind only, to read beside a stack. */
+export function crumb(what: string): void {
+  trail.push(what.slice(0, 30));
+  if (trail.length > MAX_TRAIL) trail.shift();
+}
+
+/** Where the game stands right now, as one short line (screen, mode, level), asked only when an error is sent. */
+export function reportState(read: () => string): void {
+  stateOf = read;
+}
 
 function report(type: string, message: string, stack?: string): void {
   const key = `${type}:${message}`;
@@ -24,8 +41,20 @@ function report(type: string, message: string, stack?: string): void {
     message: message.slice(0, MAX_TEXT),
     stack: stack?.slice(0, MAX_STACK).replaceAll(location.origin, ''),
     channel: inPlayStore ? 'play' : isInstalled() ? 'app' : 'tab',
+    build: __BUILD__,
+    env: `${navigator.userAgent} · ${innerWidth}×${innerHeight}@${devicePixelRatio} · ${navigator.language}`,
+    state: safeState(),
+    trail: [...trail],
   };
   apiRequest('POST', '/v1/errors', { body, keepalive: true }).catch(() => undefined);
+}
+
+function safeState(): string {
+  try {
+    return stateOf();
+  } catch (e) {
+    return `state failed: ${e instanceof Error ? e.message : 'unknown'}`;
+  }
 }
 
 function foreignHosts(): string {

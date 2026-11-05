@@ -24,7 +24,7 @@ export const HOSTING = {
   location: 'Germany',
 };
 
-export const LEGAL_UPDATED = '4 November 2026';
+export const LEGAL_UPDATED = '5 November 2026';
 
 export const GAME_NAME = 'Roundabout Timing';
 
@@ -100,7 +100,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
       {
         heading: 'Error reports',
         paragraphs: [
-          'On game.timing.love (not on CrazyGames or itch.io) the game sends a report to the same service of ours that runs the leaderboards when its own code fails with an error. A report holds the error message, the place in the code where it happened and how you play (browser tab, installed app or Google Play app). It holds no address of the page, no name, no code and nothing from your progress, and no cookie is set.',
+          'On game.timing.love (not on CrazyGames or itch.io) the game sends a report to the same service of ours that runs the leaderboards when its own code fails with an error. A report holds the error message, the place in the code where it happened, how you play (browser tab, installed app or Google Play app), the version of the game, your browser and screen size, where the game stood (screen, mode, level) and the kinds of your last few taps and screens. It holds no address of the page, no name, no code and nothing else from your progress, and no cookie is set.',
           'We use it to find and fix crashes on devices we cannot test. Legal basis: Art. 6(1)(f) GDPR (our legitimate interest in a stable game). Nothing is sent when your browser says Do Not Track.',
         ],
       },
