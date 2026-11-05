@@ -427,3 +427,18 @@ test('Reduced motion: a shift and the shop open without errors', async ({ page }
   await page.waitForTimeout(600);
   expect(errors).toEqual([]);
 });
+
+test('a tap in the FAIL pause starts the next shift without an error', async ({ page }) => {
+  const { errors } = await start(page, 'level=12');
+  const lost = await page.evaluate(() => (window as unknown as { __probe: Probe }).__probe.play('reckless', 120, 0));
+  expect(lost.shift.outcome).not.toBe('completed');
+  const after = await page.evaluate(() => {
+    const probe = (window as unknown as { __probe: Probe }).__probe;
+    // Wait for the result to show, tap inside its pause, then let the pause end.
+    for (let i = 0; i < 400 && probe.state().screen !== 'result'; i++) probe.wait(0.02);
+    probe.tap();
+    return probe.wait(3);
+  });
+  expect(after.screen).not.toBe('result');
+  expect(errors).toEqual([]);
+});

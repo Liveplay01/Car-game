@@ -212,7 +212,7 @@ export default (S: Strings): Words<Strings> => ({
     section: (i) => ['排行', '车队', '俱乐部', '黑手党'][i],
     clubClosed: '俱乐部 50 级开放：拍卖行，以及为庞大资产准备的游戏基金。',
     mafiaClosed: '家族没空理会新手。击败(或经过)辛迪加的第一个首领(15 级),他们就会联系你。',
-    offline: '车队和排行需要在线服务，而这份游戏副本没有连接。',
+    offline: "当前没有网络连接。联网后即可使用车队和排行。",
     noCrew: '这里不能使用车队，但排行和俱乐部可以。',
   },
 
@@ -220,7 +220,6 @@ export default (S: Strings): Words<Strings> => ({
     shelf: (i) => ['首领', '特种', '环境', '失败'][i],
     lockedFailHint: '还没发生过。如果你以这种方式输掉一个班次，它会连同出了什么问题、怎么避免一起展出在这里。',
     failuresDone: (skin) => `找齐了所有失败的方式：${skin}皮肤归你了`,
-    newFinds: (n) => (n === 1 ? '博物馆新增 1 件展品' : `博物馆新增 ${n} 件展品`),
     shelfDoneTitle: '展架已集齐',
     shelfDoneLine: (shelf) => `${shelf} · 全部展出`,
     museumDoneTitle: '博物馆已集齐',

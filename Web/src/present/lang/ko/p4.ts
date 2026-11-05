@@ -212,7 +212,7 @@ export default (S: Strings): Words<Strings> => ({
     section: (i) => ['랭크', '크루', '클럽', '마피아'][i],
     clubClosed: '클럽은 레벨 50에서 열려요: 경매장과, 큰 자산을 위한 게임 펀드.',
     mafiaClosed: '패밀리는 초보에게 낼 시간이 없어요. 신디케이트의 첫 보스(레벨 15)를 잡거나 지나치면 연락이 올 거예요.',
-    offline: '크루와 랭크에는 온라인 서비스가 필요한데, 이 사본은 연결돼 있지 않아요.',
+    offline: "지금은 연결되어 있지 않아요. 온라인이 되면 크루와 랭크를 다시 쓸 수 있어요.",
     noCrew: '여기서는 크루를 쓸 수 없어요. 랭크와 클럽은 쓸 수 있어요.',
   },
 
@@ -220,7 +220,6 @@ export default (S: Strings): Words<Strings> => ({
     shelf: (i) => ['보스', '특수', '조건', '실패'][i],
     lockedFailHint: '아직 일어나지 않았어요. 이런 식으로 시프트에서 지면 무엇이 잘못됐는지, 어떻게 피하는지와 함께 여기에 전시돼요.',
     failuresDone: (skin) => `모든 패배 방식을 찾았어요: ${skin} 스킨이 내 것이 됐어요`,
-    newFinds: (n) => (n === 1 ? '박물관에 새 전시품 1점' : `박물관에 새 전시품 ${n}점`),
     shelfDoneTitle: '전시 선반 완성',
     shelfDoneLine: (shelf) => `${shelf} · 모두 전시`,
     museumDoneTitle: '박물관 완성',

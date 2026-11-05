@@ -447,6 +447,7 @@ export default (S: Strings): Words<Strings> => ({
   upgrades: {
     group: (g) => ['경찰', '돈', '주행', '차고'][g],
     maxed: '최대',
+    pick: '추천',
     pickOne: '업그레이드를 탭해서 효과를 확인하세요.',
     everyStepBought: '모든 단계를 구매했어요.',
     missing: (m) => `${m} 부족`,
@@ -691,7 +692,6 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   notice: {
-    more: (n) => `+${n}개 더 · 진행에서 확인`,
     notEnoughMoney: (missing) => `${MONEY_MARK} 부족 · ${money(missing)} 더 필요`,
     detourIdle: '건설했지만 여기서는 아무 일도 하지 않아요: 이 자리와 내 갈래 사이에 출구가 없어요',
   },

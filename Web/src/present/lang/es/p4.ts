@@ -212,7 +212,7 @@ export default (S: Strings): Words<Strings> => ({
     section: (i) => ['Clasificación', 'Crew', 'Club', 'Mafia'][i],
     clubClosed: 'El Club se abre en el nivel 50: casa de subastas y fondo del juego para grandes cuentas.',
     mafiaClosed: 'La Familia no tiene tiempo para novatos. Derrota al primer jefe del sindicato (nivel 15) o supéralo, y te contactarán.',
-    offline: 'Crews y Clasificación necesitan el servicio online al que esta copia no está conectada.',
+    offline: "Sin conexión ahora mismo. Crews y Clasificación vuelven en cuanto estés en línea.",
     noCrew: 'Las crews no están disponibles aquí. Clasificación y Club sí.',
   },
 
@@ -220,7 +220,6 @@ export default (S: Strings): Words<Strings> => ({
     shelf: (i) => ['Jefes', 'Especiales', 'Condiciones', 'Fracasos'][i],
     lockedFailHint: 'Aún no te ha pasado. Si pierdes un turno así, aparece aquí con lo que salió mal y cómo evitarlo.',
     failuresDone: (skin) => `Todas las formas de perder encontradas: la skin ${skin} es tuya`,
-    newFinds: (n) => (n === 1 ? '1 nueva pieza en el Museo' : `${n} nuevas piezas en el Museo`),
     shelfDoneTitle: 'Vitrina completa',
     shelfDoneLine: (shelf) => `${shelf} · todo en exposición`,
     museumDoneTitle: 'Museo completo',

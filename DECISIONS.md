@@ -101,3 +101,7 @@ Auslagerung aus [CLAUDE.md](CLAUDE.md). Dort steht je Eintrag eine Kurzfassung; 
   vorgeschlagen hat (Build with us), ist `{ text, from: null }` („From a player“) oder
   `{ text, from: 'Name' }` („Thanks, Name“, nur mit dem Einverständnis des Spielers) statt
   eines Strings. Die Website (timing.love/changelog) übernimmt die Markierung.
+
+## Belohnungs-Leiter (Leo, 05.11.2026)
+
+Drei Stufen, nie mehr: **klein** (eine Zeile, Zähler oder Haken in der Karte oder auf der Seite, z. B. ein geschaffter Auftrag), **mittel** (am Ring: Goldbalken, Wellen), **groß** (Vollbild, `rewardBurst`, nur die drei erlaubten Momente plus Anzeigen-Belohnungen). Ein geschaffter Auftrag hat keinen Vollbild-Burst mehr; er steht als eine Meldung im Ergebnis und wird im Progress-Tab abgehakt (`ProgressState.fresh`). Nach einem Ergebnis kommt höchstens eine Meldungszeile; das Museum zeigt nur den Punkt am Tab. Ein Anlass bekommt einen Farbton plus Weiß (`ShopPage.tint`); der ganze Regenbogen gehört dem seltensten Fund. Ein Tipp während der Fail-Pause wird gemerkt, schüttelt FAIL und summt leicht.

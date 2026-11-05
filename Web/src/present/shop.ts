@@ -1030,7 +1030,7 @@ export const ShopPage = {
         const at = add(center, mul(fromAngle(a), reach));
         const radius = (12 + 12 * unit(i, 13)) * Math.sqrt(power) * grow * shrink;
         if (radius <= 0.5) continue;
-        const tint = JUICE[i % JUICE.length];
+        const tint = ShopPage.tint(i, color, rarity === 'legendary');
         list.s(circle(at, radius), tint, 0.95);
         list.s(circle(add(at, v(-radius * 0.35, -radius * 0.35)), radius * 0.3), 'primary', 0.45 * shrink);
         list.s(circle(add(at, mul(fromAngle(a), radius + 10)), radius * 0.35), tint, 0.9);
@@ -1045,7 +1045,7 @@ export const ShopPage = {
         const speed = 240 + 360 * unit(i, 15);
         const at = v(center.x + Math.cos(a) * speed * tt, center.y + Math.sin(a) * speed * tt + 600 * tt * tt);
         const fade = 1 - Math.max(0, (tt - dropLife * 0.55) / (dropLife * 0.45));
-        list.s(circle(at, 2.5 + 4.5 * unit(i, 16)), JUICE[i % JUICE.length], fade);
+        list.s(circle(at, 2.5 + 4.5 * unit(i, 16)), ShopPage.tint(i, color, rarity === 'legendary'), fade);
       }
     }
 
@@ -1061,6 +1061,11 @@ export const ShopPage = {
     }
   },
 
+  /** One colour plus white for an occasion; the whole rainbow is the rarest find's alone. */
+  tint(i: number, color: ColorToken, rainbow: boolean): ColorToken {
+    return rainbow ? JUICE[i % JUICE.length] : i % 2 === 0 ? color : 'primary';
+  },
+
   /** Light, turning rays and shockwaves from `center`, `tt` seconds after a burst (a chest, a big win). */
   addRays(list: RenderList, center: Vec2, tt: number, power: number, color: ColorToken, epicPlus: boolean, legendary: boolean): void {
     const rayFade = Math.min(1, tt / 0.3);
@@ -1072,7 +1077,7 @@ export const ShopPage = {
     for (let i = 0; i < rayCount; i++) {
       const a = (i / rayCount) * TAU + tt * 0.5;
       const half = 0.08 * power;
-      list.s(polygon([center, add(center, mul(fromAngle(a - half), rayLength)), add(center, mul(fromAngle(a + half), rayLength))]), JUICE[i % JUICE.length], 0.2 * rayFade);
+      list.s(polygon([center, add(center, mul(fromAngle(a - half), rayLength)), add(center, mul(fromAngle(a + half), rayLength))]), ShopPage.tint(i, color, legendary), 0.2 * rayFade);
     }
     for (let i = 0; i < rayCount; i++) {
       const a = ((i + 0.5) / rayCount) * TAU - tt * 0.3;
@@ -1109,7 +1114,7 @@ export const ShopPage = {
         const spin = (unit(i, 3) - 0.5) * 14;
         const size = v(6 + 4 * unit(i, 4), 3 + 2 * unit(i, 5));
         const fade = 1 - Math.max(0, (tt - confettiLife * 0.6) / (confettiLife * 0.4));
-        list.s(rect(at, size, 1, spin * tt), i % 4 === 0 ? color : JUICE[i % JUICE.length], fade);
+        list.s(rect(at, size, 1, spin * tt), i % 4 === 0 ? color : ShopPage.tint(i, color, legendary), fade);
       }
     }
 

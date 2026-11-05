@@ -51,6 +51,29 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-11-05',
+    date: '5 November 2026',
+    title: 'Quicker retries, quieter rewards',
+    impact: 'minor',
+    summary: [
+      'A tap right after a lost shift is no longer lost: it starts the next shift when the pause ends.',
+      'A lost shift shows its result 0.4 s sooner. A finished quest no longer takes over the screen.',
+      'Upgrades points to the one worth buying now. Settings is a round icon.',
+    ],
+    items: [
+      'A tap in the first 0.4 s of a result is remembered too, FAIL shakes and the phone buzzes to show it arrived.',
+      'Fixed an error that fired on every shift started from the FAIL pause.',
+      'A lost shift shows its result after 0.8 s instead of 1.2 s.',
+      'Leaving a result early still plays the pay sound, so the wage always lands.',
+      'A finished quest is told in one news line and ticked off in Progress, instead of a full-screen celebration.',
+      'After a result the game says one thing, not three. The Museum has its dot on the tab and no news line.',
+      'The Upgrades page marks the cheapest upgrade you can afford with "Best buy" and dims the ones you cannot yet.',
+      'Settings on the start screen is a round gear instead of a wide pill. "Daily waiting" no longer repeats when the Daily is already selected.',
+      'A streak celebration burns in flame colours, and a celebration uses one colour plus white. The full rainbow stays with the rarest find.',
+      'Crews and Ranks without a connection say so in plain words.',
+    ],
+  },
+  {
     id: '2026-11-04',
     date: '4 November 2026',
     title: 'Records on the record',

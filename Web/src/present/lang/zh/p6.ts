@@ -447,6 +447,7 @@ export default (S: Strings): Words<Strings> => ({
   upgrades: {
     group: (g) => ['警察', '金钱', '驾驶', '车库'][g],
     maxed: '满级',
+    pick: '推荐',
     pickOne: '点按一个升级，看看它有什么用。',
     everyStepBought: '每一级都买齐了。',
     missing: (m) => `还差 ${m}`,
@@ -691,7 +692,6 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   notice: {
-    more: (n) => `+${n} 项 · 见进度`,
     notEnoughMoney: (missing) => `${MONEY_MARK} 不足 · 还差 ${money(missing)}`,
     detourIdle: '已建好，但在这里不起作用：它和你的岔路之间没有出口',
   },

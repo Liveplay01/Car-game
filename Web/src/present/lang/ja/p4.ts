@@ -212,7 +212,7 @@ export default (S: Strings): Words<Strings> => ({
     section: (i) => ['ランク', 'クルー', 'クラブ', 'マフィア'][i],
     clubClosed: 'クラブはレベル50で解放: オークションハウスと、大きな資産のためのゲームファンド。',
     mafiaClosed: 'ファミリーは新人に用はありません。シンジケートの最初のボス(レベル15)を倒すか追い越せば、連絡が来ます。',
-    offline: 'クルーとランクにはオンラインサービスが必要ですが、このコピーは接続されていません。',
+    offline: "いまは接続できません。オンラインに戻るとクルーとランクが使えます。",
     noCrew: 'ここではクルーは使えません。ランクとクラブは使えます。',
   },
 
@@ -220,7 +220,6 @@ export default (S: Strings): Words<Strings> => ({
     shelf: (i) => ['ボス', '特殊', '条件', '失敗'][i],
     lockedFailHint: 'まだ起きていません。この負けかたでシフトを落とすと、何がまずかったか、どう避けるかとともにここに展示されます。',
     failuresDone: (skin) => `すべての負けかたを発見: スキン${skin}があなたのものに`,
-    newFinds: (n) => (n === 1 ? '博物館に新しい展示が1点' : `博物館に新しい展示が${n}点`),
     shelfDoneTitle: '展示棚が完成',
     shelfDoneLine: (shelf) => `${shelf} · すべて展示`,
     museumDoneTitle: '博物館コンプリート',

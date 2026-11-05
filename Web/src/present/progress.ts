@@ -12,7 +12,7 @@ import { Elite } from '../core/elite';
 import { SeasonPass, PASS_TIERS } from '../core/seasonPass';
 import { type MuseumEntry, MUSEUM_SHELVES, shelfEntries, museumId } from '../core/museum';
 import { averageOffset } from '../core/timing';
-import { type Vec2, v, add } from '../core/vec2';
+import { type Vec2, v, add, mul } from '../core/vec2';
 import { type RenderList, type Rect, RenderList as List, R, rect, circle, line, Ease, Metrics, moved, drawText } from './render';
 import { MenuKit } from './menukit';
 import type { ColorToken } from './theme';
@@ -48,6 +48,8 @@ export class ProgressState extends Scroller {
   streak = false;
   /** Records: the long list of every stat, folded away until asked for. */
   statsOpen = false;
+  /** Quests finished since the page was last seen, and how long each has been ticking on screen (shared with the session, which outlives this page). */
+  fresh = new Map<Challenge, number>();
 
   select(next: ProgressSection): void {
     if (next === this.section) return;
@@ -60,6 +62,10 @@ export class ProgressState extends Scroller {
   advance(delta: number): void {
     this.age += delta;
     this.time += delta;
+    for (const [quest, age] of this.fresh) {
+      if (age + delta >= ProgressPage.tickDuration) this.fresh.delete(quest);
+      else this.fresh.set(quest, age + delta);
+    }
     if (this.sectionSlide) {
       this.sectionSlide.age += delta;
       if (this.sectionSlide.age >= ShopPage.slideDuration) this.sectionSlide = null;
@@ -172,6 +178,8 @@ class Stack {
 
 /** The Progress tab: records, today's shifts and quests, the long goals, the Museum. */
 export const ProgressPage = {
+  /** How long a finished quest ticks on the page. */
+  tickDuration: 0.7,
   gap: 12,
   /** The streak card at the top of Records: the tailpipe scene, the days and the road of milestones. */
   streakHeight: 282,
@@ -501,7 +509,7 @@ export const ProgressPage = {
       case 'pass':
         return ProgressPage.addPass(list, r, career, today, state.time, reduceMotion, o);
       case 'quest':
-        return ProgressPage.addQuest(list, r, career, b.challenge, today, o);
+        return ProgressPage.addQuest(list, r, career, b.challenge, today, o, reduceMotion ? undefined : state.fresh.get(b.challenge));
       case 'trial':
         return ProgressPage.addTrial(list, r, career, b.trial, o);
       case 'rush':
@@ -544,11 +552,17 @@ export const ProgressPage = {
   },
 
   /** A ticked circle (done) or an empty one, at the left of a row. */
-  check(list: RenderList, at: Vec2, done: boolean, o: number): void {
-    list.s(circle(at, 9), done ? 'coin' : 'controlFill', o);
-    if (!done) return;
-    list.s(line(add(at, v(-4, 0)), add(at, v(-1, 3.5)), 2), 'accentInk', o);
-    list.s(line(add(at, v(-1, 3.5)), add(at, v(4.5, -3.5)), 2), 'accentInk', o);
+  check(list: RenderList, at: Vec2, done: boolean, o: number, drawn = 1): void {
+    const filled = done && drawn > 0;
+    list.s(circle(at, 9), filled ? 'coin' : 'controlFill', o);
+    if (!filled) return;
+    const knee = add(at, v(-1, 3.5));
+    const down = Ease.clamp01(drawn * 2);
+    const up = Ease.clamp01(drawn * 2 - 1);
+    const start = add(at, v(-4, 0));
+    const tip = add(at, v(4.5, -3.5));
+    list.s(line(start, add(start, mul(add(knee, mul(start, -1)), down)), 2), 'accentInk', o);
+    if (up > 0) list.s(line(knee, add(knee, mul(add(tip, mul(knee, -1)), up)), 2), 'accentInk', o);
   },
 
   /**
@@ -833,11 +847,13 @@ export const ProgressPage = {
     list.s(circle(add(at, v(9, 3.6)), 1.5), 'accent', o);
   },
 
-  addQuest(list: RenderList, r: Rect, career: Career, challenge: Challenge, today: number, o: number): void {
+  addQuest(list: RenderList, r: Rect, career: Career, challenge: Challenge, today: number, o: number, tick?: number): void {
     const c = R.center(r);
     const done = Careers.isChallengeDone(career, challenge, today);
     ProgressPage.panel(list, r, o);
-    ProgressPage.check(list, v(r.minX + 24, c.y), done, o);
+    // A quest finished since the page was last seen is ticked off here, in front of the eye: the circle fills, then the tick is drawn.
+    const drawn = tick === undefined ? 1 : Ease.outCubic((tick - 0.15) / 0.25);
+    ProgressPage.check(list, v(r.minX + 24, c.y), done, o, drawn);
     const label = S.daily.quest(challenge, career.prestige);
     const status = done ? `${S.daily.done} ✓` : Fmt.number(challengeReward(challenge, Careers.reach(career), career.prestige));
     const tag = textWidth(status, 13) + (done ? 0 : 18);

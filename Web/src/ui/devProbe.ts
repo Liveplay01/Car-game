@@ -99,6 +99,11 @@ export function installProbe(shell: Shell): void {
       step();
       return state();
     },
+    /** One tap of the player, as the screen takes it (a result, the FAIL pause). */
+    tap: () => {
+      step([{ k: 'tap' }]);
+      return state();
+    },
     /** The duck family (`core/ducks.ts`) sets off now, whatever the seed says. */
     ducks: () => {
       game.world.ducks = startDucks(game.world);
@@ -176,6 +181,7 @@ export interface Probe {
   state(): Snapshot;
   play(bot?: Bot, seconds?: number, settle?: number): Snapshot & { played: boolean };
   wait(seconds: number): Snapshot;
+  tap(): Snapshot;
   perform(action: Parameters<Shell['game']['perform']>[0]): Snapshot;
   say(text: string): Snapshot;
   ducks(): Snapshot;

@@ -447,6 +447,7 @@ export default (S: Strings): Words<Strings> => ({
   upgrades: {
     group: (g) => ['POLIZIA', 'DENARO', 'GUIDA', 'GARAGE'][g],
     maxed: 'Max',
+    pick: 'Consigliato',
     pickOne: 'Tocca un potenziamento per esaminarne gli effetti.',
     everyStepBought: 'Tutti i livelli acquistati.',
     missing: (m) => `Mancano ${m}`,
@@ -691,7 +692,6 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   notice: {
-    more: (n) => `+${n} altri · vedi Progressi`,
     notEnoughMoney: (missing) => `Fondi insufficienti in ${MONEY_MARK} · mancano ${money(missing)}`,
     detourIdle: 'Installato, ma inerte qui: nessuna uscita presente tra il segnale e la tua corsia',
   },

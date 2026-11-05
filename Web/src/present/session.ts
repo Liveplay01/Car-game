@@ -84,6 +84,7 @@ import { SkyMoments } from './skyMoments';
 import { type Holiday, Holidays } from './holidays';
 import { DriftFx } from './driftFx';
 import { type DriftSound, type TrafficSound, type TrafficEngine, engineOf } from './feedback';
+import type { Challenge } from '../core/daily';
 import { type ChallengeSpec, challengeOf, challengeConfig, encodeChallenge } from '../core/challenge';
 import { forSeason } from '../core/seasons';
 import { Achievements } from '../core/achievements';
@@ -154,6 +155,8 @@ const duckDemo = import.meta.env.DEV && typeof location !== 'undefined' && new U
 export class GameSession {
   static readonly maxFrameDelta = 0.25;
   static readonly resultDelay = 1.2;
+  /** A lost shift shows its result sooner: the crash reads at once, and the breather follows. */
+  static readonly lossDelay = 0.8;
   static readonly scoreCatchUp = 0.28;
   static readonly comboPop = 0.35;
   /** A growing bar sounds higher the fuller it is: semitones of a pentatonic scale over two octaves, so no two bars clash. */
@@ -314,7 +317,9 @@ export class GameSession {
   private readonly shopFlow = new ShopFlow(this.pageHost(), () => this.casinoFlow);
   /** Every rewarded ad: the free chest, a free upgrade step, the Skin Upgrade's boost (`adFlow.ts`). */
   private readonly adFlow = new AdFlow(this.pageHost());
-  progressPage = new ProgressState();
+  /** Quests finished by the last shifts; the Progress page ticks them off the next time it opens (`ProgressState.fresh`). */
+  private readonly questsFresh = new Map<Challenge, number>();
+  progressPage = Object.assign(new ProgressState(), { fresh: this.questsFresh });
   /** The Social tab's segment; its content is the shell's DOM (`ui/socialPage.ts`), which reads it every frame. */
   socialPage = new SocialState();
   builderPage = new BuilderState();
@@ -1307,6 +1312,7 @@ export class GameSession {
     // A trial is a shift: its Perfects and the rest count for today's quests and the lifelong goals.
     if (run.k === 'trial') {
       const quests = Careers.recordChallenges(career, result, this.today);
+      for (const quest of quests) this.questsFresh.set(quest, 0);
       const goals = Careers.recordMastery(career, result);
       settled.news.push(...quests.map((ch) => S.daily.challengeDone(ch, Fmt.number(challengeReward(ch, Careers.reach(career), career.prestige)), career.prestige)));
       if (goals.length > 0) settled.news.push(S.mastery.toast(goals));
@@ -1674,13 +1680,10 @@ export class GameSession {
     }
     if (this.screen.k === 'result') {
       this.resultAge += realDelta;
+      if (!this.moneyLanded && this.screen.summary.result.money > 0 && this.resultAge >= ResultBanner.countDelay + ResultBanner.countDuration) this.landMoney();
       if (this.startBuffered && this.resultAge >= this.resultLock) {
         this.startBuffered = false;
         if (!this.versusSelected && !this.pan.travel && Math.abs(this.pan.pan) < ModePan.swipeThreshold) this.startOrCatchUp(undefined, simDelta);
-      }
-      if (!this.moneyLanded && this.screen.summary.result.money > 0 && this.resultAge >= ResultBanner.countDelay + ResultBanner.countDuration) {
-        this.moneyLanded = true;
-        this.play(['purchase'], ['paid']);
       }
     }
     this.sinceTakedown += realDelta;
@@ -1841,6 +1844,7 @@ export class GameSession {
     } else if (this.progressPage.age !== 0 || this.progressPage.section !== PROGRESS.today) {
       this.leaveMuseum();
       this.progressPage = new ProgressState();
+      this.progressPage.fresh = this.questsFresh;
     }
     if (this.isPage('social')) this.socialPage.advance(realDelta);
     if (this.buildSlide) {
@@ -1973,9 +1977,11 @@ export class GameSession {
                 return;
               }
               this.startOrCatchUp(a.ago, simDelta);
-            } else if (this.resultAge >= ResultBanner.inputLock && this.resultAge < this.resultLock) {
+            } else if (this.resultAge < this.resultLock) {
               // The breather holds the tap: the next shift starts when it ends.
               this.startBuffered = true;
+              this.sinceDenied = 0;
+              this.play([], ['tap']);
             }
             break;
           case 'page':
@@ -2171,7 +2177,14 @@ export class GameSession {
    * either: the shift starts (its HUD, its sound) and the next tap, once the cars are there, sends the first one, as
    * after a lost shift.
    */
+  /** The pay sound of a result's money count; leaving early still plays it, so the wage always lands. */
+  private landMoney(): void {
+    this.moneyLanded = true;
+    this.play(['purchase'], ['paid']);
+  }
+
   private startOrCatchUp(ago: number | undefined, simDelta: number): void {
+    if (this.screen.k === 'result' && !this.moneyLanded && this.screen.summary.result.money > 0) this.landMoney();
     const arriving = this.world.isArriving();
     this.startPlaying();
     if (!arriving) this.tapWorld(ago, simDelta);
@@ -3203,8 +3216,8 @@ export class GameSession {
     if (news?.perfectWeek) toasts.push(S.daily.perfectWeekToast(news.perfectWeekPay, news.perfectWeekCards));
     if (news?.item) {
       toasts.push(...this.completeAlbums());
-      this.resultBurst = { kind: 'streak', title: S.moments.streak(career.dailyStreak), line: S.daily.gotItem(news.item), color: 'hazard', power: 1.5 };
-    } else if (news?.chest) this.resultBurst = { kind: 'streak', title: S.moments.streak(career.dailyStreak), line: S.daily.gotChest(news.chest), color: 'hazard', power: 1.5 };
+      this.resultBurst = { kind: 'streak', title: S.moments.streak(career.dailyStreak), line: S.daily.gotItem(news.item), color: 'fireOuter', power: 1.5 };
+    } else if (news?.chest) this.resultBurst = { kind: 'streak', title: S.moments.streak(career.dailyStreak), line: S.daily.gotChest(news.chest), color: 'fireOuter', power: 1.5 };
     else if (news?.perfectWeek) this.resultBurst = { kind: 'streak', title: S.daily.perfectWeekTitle, line: S.daily.perfectWeekLine(news.perfectWeekPay, news.perfectWeekCards), color: 'coin', power: 1.6 };
     this.persist();
     this.announce(...toasts);
@@ -3397,29 +3410,18 @@ export class GameSession {
       keepProof({ ...this.proof.base, events: this.proof.log.events, score: result.score });
     }
     this.bookFailure(result);
+    for (const quest of booked.challenges) this.questsFresh.set(quest, 0);
     this.persist();
     // The Museum's shift: what went on show for the first time, and a shelf that is now full.
     const museumBefore = this.museumBefore ? [...this.museumBefore] : null;
     this.museumBefore = null;
-    const museumNew = museumBefore ? career.museumSeen.filter((id) => !museumBefore.includes(id)) : [];
     const shelvesDone = museumBefore
       ? completedShelves(career.museumSeen).filter((shelf) => !shelfComplete(museumBefore, shelf))
       : [];
     const museumBurst = this.museumBurst(shelvesDone, career.museumSeen);
     // The crew's week counts the same XP as the Season Pass (`net/crews.ts` keeps it until the service has it).
     if (save.tutorialDone) addCrewXp(Elite.xpOf(result, this.config));
-    // A challenge only celebrates when nothing louder happened: the moments, the streak a Daily began with, or a full shelf.
-    const challengeBurst: Burst | null = booked.challenges.length > 0
-      ? {
-          kind: 'challenge',
-          title: S.daily.challengeTitle(booked.challenges.length),
-          line: '',
-          color: 'coin',
-          power: 1.2,
-          count: booked.challenges.reduce((n, ch) => n + challengeReward(ch, Careers.reach(career), career.prestige), 0),
-        }
-      : null;
-    this.resultBurst = newPlayerMoment(career, this.playingMode, this.playingDaily, result.outcome, levelBefore, this.config) ?? this.resultBurst ?? museumBurst ?? challengeBurst;
+    this.resultBurst = newPlayerMoment(career, this.playingMode, this.playingDaily, result.outcome, levelBefore, this.config) ?? this.resultBurst ?? museumBurst;
     this.dailyShare =
       this.playingDaily && result.outcome === 'completed'
         ? S.run.dailyShare(Fmt.number(result.score), result.perfects, result.tightFits, career.dailyStreak)
@@ -3429,9 +3431,7 @@ export class GameSession {
     this.resultBank = booked.bank;
     const careerWin = result.outcome === 'completed' && this.playingMode === 'shift' && !this.playingDaily && !this.special && !this.versusSelected && !this.tutorial;
     this.resultShiftPay = careerWin && save.firstDay !== this.today ? this.world.config.shiftPay : 0;
-    // A challenge the burst celebrates is not told a second time in the news.
-    const told = this.resultBurst === challengeBurst && challengeBurst ? booked.challenges.map((ch) => S.daily.challengeDone(ch, Fmt.number(challengeReward(ch, Careers.reach(career), career.prestige)), career.prestige)) : [];
-    this.notices.announce(...GameSession.budget([...booked.news.filter((n) => !told.includes(n)), ...(museumNew.length > 0 ? [S.museum.newFinds(museumNew.length)] : [])]));
+    this.notices.announce(...booked.news.slice(0, 1));
     this.tips.add(...booked.tips);
     for (const hint of booked.due) this.onHint?.(hint);
     if (save.shiftsPlayed >= GameSession.tightFitTipShifts) this.teachTightFit();
@@ -3504,17 +3504,9 @@ export class GameSession {
     return goal ? { text: S.goals.money(Fmt.number(goal.short), goal.upgrade), color: 'accent' } : null;
   }
 
-  /** Lines a result tells at most; the rest are counted in one more (they are all in Progress, or on the chest pill). */
-  static readonly resultNews = 3;
-
-  /** A result's news within its budget: the first lines as they are, then how many more there are. */
-  static budget(news: string[]): string[] {
-    const max = GameSession.resultNews;
-    return news.length <= max + 1 ? news : [...news.slice(0, max), S.notice.more(news.length - max)];
-  }
-
   private resultDelayFor(result: ShiftResult): number {
-    return result.detonated ? SmokeCurtain.swapAt : GameSession.resultDelay;
+    if (result.detonated) return SmokeCurtain.swapAt;
+    return result.outcome === 'completed' ? GameSession.resultDelay : GameSession.lossDelay;
   }
 
   /** The page the mode swipe is travelling to, one swipe at a time (`goToMode`). */
@@ -4158,6 +4150,7 @@ export class GameSession {
       case 'upgrade':
         return S.goals.money(Fmt.number(teaser.short), teaser.upgrade);
       case 'daily':
+        if (this.dailySelected) return null;
         return teaser.streak > 1 ? S.goals.dailyStreakWaiting(teaser.streak) : S.goals.dailyWaiting;
       case 'pity':
         return S.goals.pityWaiting(teaser.chestsLeft);

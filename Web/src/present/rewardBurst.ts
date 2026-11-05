@@ -5,7 +5,7 @@ import { MenuKit } from './menukit';
 import { ShopPage, JUICE } from './shop';
 import { Fmt } from './strings';
 
-export type BurstKind = 'rescue' | 'freeze' | 'double' | 'retry' | 'chest' | 'firstWin' | 'levelFive' | 'streak' | 'challenge' | 'museum';
+export type BurstKind = 'rescue' | 'freeze' | 'double' | 'retry' | 'chest' | 'firstWin' | 'levelFive' | 'streak' | 'museum';
 
 /** One celebration: what it says, in which colour, how strong, and a number that counts up under the title. */
 export interface Burst {
@@ -38,11 +38,11 @@ export const RewardBurst = {
     const into = Ease.clamp01(age / 0.15);
     const a = into * out;
     if (a <= 0.001) return;
-    list.s(rect(mul(vp, 0.5), vp), 'background', 0.5 * a);
+    list.s(rect(mul(vp, 0.5), vp), 'background', 0.66 * a);
     if (!reduceMotion) {
       const rare = b.power >= 1.2;
-      ShopPage.addRays(list, center, age, b.power, b.color, rare, b.kind === 'double');
-      ShopPage.addConfetti(list, center, age, b.power, b.color, b.kind === 'double');
+      ShopPage.addRays(list, center, age, b.power, b.color, rare, false);
+      ShopPage.addConfetti(list, center, age, b.power, b.color, false);
       RewardBurst.rings(list, center, age, b);
       if (b.kind === 'double') ShopPage.addCoinRain(list, vp, age, 46);
     }
@@ -144,18 +144,6 @@ export const RewardBurst = {
       list.s(rect(add(c, v(0, 25 * s)), v(60 * s, 5 * s)), b.color, a);
       list.s(rect(add(c, v(0, 31 * s)), v(68 * s, 4 * s)), b.color, 0.8 * a);
       ShopPage.addStar(list, add(c, v(0, -18 * s)), 6 * s, 'primary', a);
-      return;
-    }
-    if (b.kind === 'challenge') {
-      // A tick drawn stroke by stroke: down from the left, then up to the right.
-      const p = Math.min(1, t / 0.55);
-      const down = Math.min(1, p * 2);
-      const up = Math.max(0, p * 2 - 1);
-      const a0 = add(c, v(-25 * s, 1 * s));
-      const knee = add(c, v(-7 * s, 19 * s));
-      const tip = add(c, v(26 * s, -19 * s));
-      if (down > 0) list.s(line(a0, add(a0, mul(add(knee, mul(a0, -1)), down)), 8 * s), b.color, a);
-      if (up > 0) list.s(line(knee, add(knee, mul(add(tip, mul(knee, -1)), up)), 8 * s), b.color, a);
       return;
     }
     ShopPage.addStar(list, c, 38 * s * (1 + 0.06 * Math.sin(t * 5)), b.color, a);

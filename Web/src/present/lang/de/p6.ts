@@ -279,7 +279,6 @@ export default (S: Strings): Words<Strings> => ({
     perfectWeekToast: (pay, cards) => (cards > 0 ? `PERFEKTE WOCHE · +${money(Fmt.number(pay))} und ein Gratis-Rubbellos` : `PERFEKTE WOCHE · +${money(Fmt.number(pay))}`),
     challengesLabel: 'Aufträge',
     challengesComplete: 'Aufträge erledigt',
-    challengeTitle: (n) => (n === 1 ? 'AUFTRAG GESCHAFFT' : `${n} AUFTRÄGE GESCHAFFT`),
     sheet: {
       title: 'Tagesserie',
       body: (bonusDays, bonusPay, heatDays) => [
@@ -464,6 +463,7 @@ export default (S: Strings): Words<Strings> => ({
   upgrades: {
     group: (g) => ['POLIZEI', 'GELD', 'FAHREN', 'GARAGE'][g],
     maxed: 'Max',
+    pick: 'Tipp',
     pickOne: 'Tippe ein Upgrade an, um zu sehen, was es tut.',
     everyStepBought: 'Jede Stufe gekauft.',
     missing: (m) => `${m} fehlen`,
@@ -708,7 +708,6 @@ export default (S: Strings): Words<Strings> => ({
   },
 
   notice: {
-    more: (n) => `+${n} weitere · siehe Fortschritt`,
     notEnoughMoney: (missing) => `Nicht genug ${MONEY_MARK} · noch ${money(missing)} nötig`,
     detourIdle: 'Gebaut, bewirkt hier aber nichts: keine Ausfahrt zwischen ihm und deinem Arm',
   },

@@ -1192,7 +1192,7 @@ export const S = {
     section: (i: number): string => ['Ranks', 'Crew', 'Club', 'Mafia'][i],
     clubClosed: 'The Club opens at Level 50: an Auction House and the Game fund for big balances.',
     mafiaClosed: "The Family has no time for a rookie. Put the Syndicate's first boss away (Level 15) or get past it, and they will call.",
-    offline: 'Crews and Ranks need the online service, which this copy of the game is not connected to.',
+    offline: 'No connection right now. Crews and Ranks are back when you are online.',
     noCrew: 'Crews are not available here. Ranks and the Club are.',
   },
 
@@ -1217,7 +1217,6 @@ export const S = {
     /** Every way to lose a shift found: the Failures shelf pays its skin (`GameSession.bookFailure`). */
     failuresDone: (skin: string): string => `Every way to lose, found: the ${skin} skin is yours`,
     /** Entries met for the first time on a shift: the result says how many went on show. */
-    newFinds: (n: number): string => (n === 1 ? '1 new exhibit in the Museum' : `${n} new exhibits in the Museum`),
     /** A Museum shelf filled on this shift (`GameSession.museumBurst`). */
     shelfDoneTitle: 'Shelf complete',
     shelfDoneLine: (shelf: string): string => `${shelf} · every entry on show`,
@@ -2425,7 +2424,6 @@ export const S = {
       cards > 0 ? `PERFECT WEEK · +${money(Fmt.number(pay))} and a free Scratch Card` : `PERFECT WEEK · +${money(Fmt.number(pay))}`,
     challengesLabel: 'Goals',
     challengesComplete: 'Goals done',
-    challengeTitle: (n: number): string => (n === 1 ? 'CHALLENGE DONE' : `${n} CHALLENGES DONE`),
     /** The streak's sheet (tap its card under Progress → Today): what the streak brings, and that Heat lives and dies with it. */
     sheet: {
       title: 'Daily streak',
@@ -2625,6 +2623,8 @@ export const S = {
     /** The headings of the Upgrades page (Leo, 10.10.2026): what an upgrade is for. */
     group: (g: 0 | 1 | 2 | 3): string => ['POLICE', 'MONEY', 'DRIVING', 'GARAGE'][g],
     maxed: 'Max',
+    /** The badge on the one upgrade worth buying now. */
+    pick: 'Best buy',
     steps: (s: number, max: number): string => `${s}/${max}`,
     pickOne: 'Tap an upgrade to see what it does.',
     everyStepBought: 'Every step bought.',
@@ -2887,8 +2887,6 @@ export const S = {
   },
 
   notice: {
-    /** The rest of a result's news, counted (`GameSession.budget`). */
-    more: (n: number): string => `+${n} more · see Progress`,
     /** What is missing, not the whole price: the player sees how far off they are. */
     notEnoughMoney: (missing: string): string => `Not enough ${MONEY_MARK} · ${money(missing)} more needed`,
     detourIdle: 'Built, but it does nothing here: no exit between it and your arm',

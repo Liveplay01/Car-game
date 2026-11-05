@@ -145,12 +145,24 @@ export const UpgradePage = {
     list.clip = area;
     const { cards, headings } = UpgradePage.arrange(vp, bottomInset, upgrades, state.scroll);
     for (const heading of headings) list.s(text(heading.label, v(heading.x, heading.y), 12, 'leading', 'bold'), 'muted', Ease.outCubic(state.age / UpgradePage.enterDuration));
+    const pick = UpgradePage.bestBuy(career, config, upgrades);
     cards.forEach((card, i) => {
       if (card.rect.maxY < area.minY - 20 || card.rect.minY > area.maxY + 20) return;
-      UpgradePage.addCard(list, card.upgrade, i, card.rect, career, config, state, reduceMotion, card.upgrade === freeStep);
+      UpgradePage.addCard(list, card.upgrade, i, card.rect, career, config, state, reduceMotion, card.upgrade === freeStep, card.upgrade === pick);
     });
     list.clip = undefined;
     UpgradePage.addScrollIndicator(list, area, state, upgrades, bottomInset);
+  },
+
+  /** The one upgrade worth buying now: the cheapest step the money reaches (null when none is within reach). */
+  bestBuy(career: Career, config: Config, upgrades: readonly Upgrade[]): Upgrade | null {
+    let best: Upgrade | null = null;
+    let cheapest = Infinity;
+    for (const upgrade of upgrades) {
+      const price = Careers.priceOf(career, upgrade, config);
+      if (price !== null && price <= career.money && price < cheapest) [best, cheapest] = [upgrade, price];
+    }
+    return best;
   },
 
   /** A thin bar at the right edge while the list moves, like iOS. */
@@ -159,7 +171,7 @@ export const UpgradePage = {
     state.addIndicator(list, area, l.maxScroll, Math.min(list.camera.viewport.x - 4, l.left + 2 * l.cardWidth + UpgradePage.gap + 5));
   },
 
-  addCard(list: RenderList, upgrade: Upgrade, index: number, r: Rect, career: Career, config: Config, state: UpgradeState, reduceMotion: boolean, freeStep: boolean): void {
+  addCard(list: RenderList, upgrade: Upgrade, index: number, r: Rect, career: Career, config: Config, state: UpgradeState, reduceMotion: boolean, freeStep: boolean, pick: boolean): void {
     const U = UpgradePage;
     const steps = Careers.steps(career, upgrade);
     const maxSteps = upgradeMaxSteps[upgrade];
@@ -182,7 +194,8 @@ export const UpgradePage = {
       }
     }
     const size = v(R.width(r) * scale, R.height(r) * scale);
-    const o = enter;
+    // What the money does not reach yet steps back, so the eye finds what it can buy.
+    const o = enter * (price === null || career.money >= price ? 1 : 0.62);
     list.s(rect(center, size, U.cardCorner), 'card', o);
     if (state.selected === upgrade) {
       list.s(rect(center, add(size, v(4, 4)), U.cardCorner + 2), 'accent', 0.55 * o);
@@ -203,8 +216,8 @@ export const UpgradePage = {
     const clock = reduceMotion ? Infinity : state.played?.upgrade === upgrade ? state.played.age : state.age - index * U.stagger - 0.12;
     UpgradeArt.add(list, upgrade, picture, o, clock);
     // Today's pick: one step for a watched ad (Leo, 05.10.2026). Opens in the sheet like any card.
-    if (freeStep) {
-      const label = S.ads.freeStep;
+    if (freeStep || pick) {
+      const label = freeStep ? S.ads.freeStep : S.upgrades.pick;
       const width = measure(label, 9, true) + 12;
       const badge = v(picture.maxX - 4 - width / 2, picture.minY + 4 + 7);
       list.s(rect(badge, v(width, 14), 7), 'accent', o);
