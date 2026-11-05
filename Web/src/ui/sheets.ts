@@ -985,6 +985,7 @@ export function settingsSheet(layer: HTMLElement, s: Settings, actions: Settings
   });
   tabs.el.classList.add('sheet-tabs');
   tabs.mark('account', actions.unbacked);
+  tabs.mark('about', actions.notesUnread);
   function show(next: SettingsTab, animate: boolean): void {
     lastSettingsTab = next;
     tabs.set(next);

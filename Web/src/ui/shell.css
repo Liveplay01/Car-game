@@ -3174,15 +3174,16 @@ button.mod:active {
   position: relative;
 }
 
-.board-tabs button.has-dot::after {
+.board-tabs button.has-dot::before {
   content: '';
   position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 6px;
-  height: 6px;
+  top: 5px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--accent);
+  box-shadow: 0 0 0 2px var(--surface-1);
 }
 
 /* A filter switch (Ranks: my crew only): pressed fills with the accent. */
@@ -4826,29 +4827,4 @@ button.mod:active {
 
 .board-row.crew-down {
   box-shadow: inset 3px 0 0 var(--state-lost);
-}
-
-/* Settings is a round icon (Leo, 05.11.2026): rarely needed, so it no longer weighs as much as the chest pill. The Synced flash widens it for a moment. */
-.settings-btn {
-  justify-content: center;
-  width: var(--pill-h);
-  padding: 0;
-}
-
-.settings-btn .settings-label,
-.settings-btn .keycap {
-  display: none;
-}
-
-.settings-btn:has(.settings-flash.on) {
-  width: var(--pill-w);
-}
-
-.settings-flash {
-  padding: 0 var(--s3);
-  white-space: nowrap;
-}
-
-.settings-btn.show {
-  transition: width 200ms var(--ease-out), opacity 180ms var(--ease-out), transform 160ms var(--ease-out), visibility 0s;
 }

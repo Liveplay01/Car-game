@@ -58,7 +58,7 @@ export const PATCH_NOTES: PatchNote[] = [
     summary: [
       'A tap right after a lost shift is no longer lost: it starts the next shift when the pause ends.',
       'A lost shift shows its result 0.4 s sooner. A finished quest no longer takes over the screen.',
-      'Upgrades points to the one worth buying now. Settings is a round icon.',
+      'Upgrades points to the one worth buying now.',
       'Taps, merges and the wage count answer with a spring, a tick and a sound in the same frame.',
     ],
     items: [
@@ -75,7 +75,8 @@ export const PATCH_NOTES: PatchNote[] = [
       'A finished quest is told in one news line and ticked off in Progress, instead of a full-screen celebration.',
       'After a result the game says one thing, not three. The Museum has its dot on the tab and no news line.',
       'The Upgrades page marks the cheapest upgrade you can afford with "Best buy" and dims the ones you cannot yet.',
-      'Settings on the start screen is a round gear instead of a wide pill. "Daily waiting" no longer repeats when the Daily is already selected.',
+      '"Daily waiting" no longer repeats when the Daily is already selected.',
+      'Fixed: the yellow dot on a Settings tab (About for new Patch Notes, Account for unsaved progress) is back and sits at the tab\'s right edge.',
       'A streak celebration burns in flame colours, and a celebration uses one colour plus white. The full rainbow stays with the rarest find.',
       'Crews and Ranks without a connection say so in plain words.',
     ],
