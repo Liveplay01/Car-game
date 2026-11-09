@@ -521,7 +521,7 @@ export class VersusLobby {
 
   /** The link that opens the game and joins this room: the share sheet on a phone, else copied. */
   private async invite(code: string): Promise<void> {
-    if ((await share({ text: S.lobby.shareText(code), url: this.inviteUrl(code) })) === 'copied') this.showNotice(S.lobby.linkCopied);
+    if ((await share({ kind: 'lobby', text: S.lobby.shareText(code), url: this.inviteUrl(code) })) === 'copied') this.showNotice(S.lobby.linkCopied);
   }
 
   private showNotice(message: string): void {

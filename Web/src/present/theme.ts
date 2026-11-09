@@ -129,6 +129,8 @@ export const COLORS = {
   groundMeadow: [118, 184, 82, 1],
   groundTropic: [52, 146, 92, 1],
   groundSnow: [226, 234, 243, 1],
+  groundSnowSakura: [232, 229, 242, 1],
+  mapSnowSakura: [248, 205, 222, 1],
   groundCosmos: [7, 6, 15, 1],
   mapMeadow: [242, 212, 92, 1],
   mapTropic: [43, 199, 180, 1],

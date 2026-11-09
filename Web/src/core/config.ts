@@ -333,7 +333,7 @@ export const baseConfig = {
    * career shift only (never the Daily, Unlimited, a challenge or trial), so no board ever compares an eased shift.
    */
   easeAfterLossesNew: 1,
-  easeMaxSteps: 3,
+  easeMaxSteps: 5,
   easeTempoStep: 0.05,
   easeSpawnStep: 0.2,
   /**

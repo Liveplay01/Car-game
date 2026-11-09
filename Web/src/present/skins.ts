@@ -84,6 +84,7 @@ export const Skins = {
       meadow: 'mapMeadow',
       tropic: 'mapTropic',
       snowfall: 'mapSnow',
+      snowSakura: 'mapSnowSakura',
       cosmos: 'mapCosmos',
       harbour: 'mapHarbour',
       vineyard: 'mapVineyard',

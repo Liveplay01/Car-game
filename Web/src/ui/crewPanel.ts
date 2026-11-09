@@ -62,8 +62,8 @@ const row = (title: string | Node, sub: string | null, ...end: (Node | null)[]):
 export const giftName = (item: GiftItem): string => (item.startsWith('money:') ? money(Fmt.number(Number(item.slice(6)))) : S.shop.chest(item.slice(6) as ChestKind));
 
 /** Shares the link (or copies it); a copy shows on the button. */
-async function shareLink(button: HTMLElement, url: string, text: string): Promise<void> {
-  if ((await share({ text, url })) === 'copied') flash(button, S.friends.copied);
+async function shareLink(button: HTMLElement, kind: 'crew' | 'invite', url: string, text: string): Promise<void> {
+  if ((await share({ kind, text, url })) === 'copied') flash(button, S.friends.copied);
 }
 
 /** Time until `at`, roughly: days and hours, or hours and minutes. */
@@ -453,7 +453,7 @@ export function crewPanel(host: CrewHost): HTMLElement {
     const url = crew.link;
     if (url && crew.members.length < crew.max) {
       const button = h('button', { class: 'btn primary block', type: 'button' }, S.crew.invite);
-      button.addEventListener('click', () => void shareLink(button, url, S.crew.shareText(crew.name)));
+      button.addEventListener('click', () => void shareLink(button, 'crew', url, S.crew.shareText(crew.name)));
       rows.push(button, note(S.crew.inviteNote(crew.max)));
     } else rows.push(note(crew.members.length >= crew.max ? S.crew.isFull : S.friends.noInvites));
     if (invite && (invite.invited.length > 0 || invite.invitedBy)) {
@@ -475,7 +475,7 @@ export function crewPanel(host: CrewHost): HTMLElement {
     if (!view?.crew) {
       const now = invite;
       const button = h('button', { class: 'btn block', type: 'button' }, S.friends.shareLink);
-      button.addEventListener('click', () => void shareLink(button, inviteUrl(now), S.invite.shareText(now.level)));
+      button.addEventListener('click', () => void shareLink(button, 'invite', inviteUrl(now), S.invite.shareText(now.level)));
       rows.push(button, note(S.friends.bothNote(now.level, now.milestones.map((m) => S.friends.ordinal(m.invites)))));
     }
     return rows;

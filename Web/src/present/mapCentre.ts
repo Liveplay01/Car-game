@@ -146,6 +146,27 @@ export const Centre = {
       list.w(circle(at, 1.2), 'skinPearl', 0.95);
     });
   },
+  /** Snowy Sakura: the frozen pond with petals caught in the ice and a torii capped with snow. */
+  frozenGarden(list: RenderList, c: Vec2, time: number | null): void {
+    Centre.frozenPond(list, c, time);
+    const r = MapTheme.pondRadius;
+    for (let i = 0; i < 9; i++) {
+      const at = add(c, mul(fromAngle(hash(i, 486) * TAU), r * (0.45 + 0.45 * hash(i, 487))));
+      list.w(rect(at, v(2.2, 1.4), 0.7, hash(i, 488) * Math.PI), i % 3 === 0 ? 'sakuraPale' : 'mapSakura', 0.75);
+    }
+    const toRing = normalize(mul(c, -1));
+    const across = left(toRing);
+    const gate = add(c, mul(toRing, r + 18));
+    const beam = angleOf(across) - Math.PI / 2;
+    list.w(rect(add(gate, v(2.5, -2.5)), v(4, 30), 1.5, beam), 'background', 0.35);
+    for (const post of [-9, 9]) {
+      list.w(circle(add(gate, mul(across, post)), 1.8), 'torii', 1);
+      list.w(circle(add(add(gate, mul(across, post)), v(-0.3, -0.3)), 1), 'mapSnow', 0.95);
+    }
+    list.w(rect(sub(gate, mul(toRing, 1.8)), v(2, 24), 0.8, beam), 'torii', 0.9);
+    list.w(rect(gate, v(3.6, 30), 1.6, beam), 'torii', 1);
+    list.w(rect(sub(gate, mul(toRing, 0.5)), v(1.8, 28), 0.9, beam), 'mapSnow', 0.95);
+  },
   windmill(list: RenderList, c: Vec2, time: number | null): void {
     const r = MapTheme.pondRadius;
     const toRing = normalize(mul(c, -1));

@@ -24,6 +24,7 @@ export type MapTheme =
   | 'meadow'
   | 'tropic'
   | 'snowfall'
+  | 'snowSakura'
   | 'cosmos'
   | 'harbour'
   | 'vineyard'
@@ -54,6 +55,7 @@ export const MAP_THEMES: MapTheme[] = [
   'meadow',
   'tropic',
   'snowfall',
+  'snowSakura',
   'cosmos',
   'harbour',
   'vineyard',
@@ -75,7 +77,7 @@ export const MAP_THEMES: MapTheme[] = [
 ];
 
 /** The maps that play in the sun: a bright ground, roofs in daylight colours. */
-export const DAYLIGHT: readonly MapTheme[] = ['sand', 'forest', 'autumn', 'sakura', 'meadow', 'tropic', 'snowfall', 'vineyard', 'canyon', 'highland', 'beach', 'savanna', 'rainforest', 'alps'];
+export const DAYLIGHT: readonly MapTheme[] = ['sand', 'forest', 'autumn', 'sakura', 'meadow', 'tropic', 'snowfall', 'snowSakura', 'vineyard', 'canyon', 'highland', 'beach', 'savanna', 'rainforest', 'alps'];
 
 function onScreen(center: Vec2, radius: number, cam: Camera): boolean {
   const at = toScreen(cam, center);
@@ -136,6 +138,7 @@ export const MapTheme = {
       meadow: 'groundMeadow',
       tropic: 'groundTropic',
       snowfall: 'groundSnow',
+      snowSakura: 'groundSnowSakura',
       cosmos: 'groundCosmos',
       harbour: 'groundHarbour',
       vineyard: 'groundVineyard',
@@ -161,7 +164,7 @@ export const MapTheme = {
 
   /** Roof colours: muted and dark at night, sunlit tiles and concrete by day, white under snow. */
   roofs(theme: MapTheme | null): ColorToken[] {
-    if (theme === 'snowfall') return ['roofSnow', 'roofSnow', 'roofSlateDay', 'roofTerracotta'];
+    if (theme === 'snowfall' || theme === 'snowSakura') return ['roofSnow', 'roofSnow', 'roofSlateDay', 'roofTerracotta'];
     if (MapTheme.isDay(theme)) return ['roofTerracotta', 'roofSlateDay', 'roofConcreteDay', 'roofTerracotta'];
     return ['roofSlate', 'roofTile', 'roofConcrete', 'roofMoss'];
   },
@@ -338,6 +341,24 @@ export const MapTheme = {
         still();
         for (let i = 0; i < 50; i++) {
           const at = spot(i, 439, 12);
+          if (!onScreen(at, 2, cam)) continue;
+          const twinkle = time !== null ? Math.pow(Math.max(0, Math.sin(time * 2.2 + i * 1.7)), 8) : 0.3;
+          add1(circle(at, 0.6 + 0.8 * twinkle), 'skinSky', 0.2 + 0.7 * twinkle);
+        }
+        break;
+      case 'snowSakura':
+        // Snow under the blossom: blue shade in the drifts, petals pink on white, a glitter in the sun.
+        for (let i = 0; i < 22; i++) soft(spot(i, 1301), 16 + 26 * hash(i, 1303), 'snowShade', 0.2);
+        for (let i = 0; i < 10; i++) soft(spot(i, 1305, 30), 22 + 30 * hash(i, 1307), 'mapSakura', 0.1);
+        for (let i = 0; i < 70; i++) {
+          const at = spot(i, 1309);
+          if (!onScreen(at, 3, cam)) continue;
+          const len = 1.8 + 1.2 * hash(i, 1311);
+          list.w(rect(at, v(len, len * 0.6), len * 0.3, hash(i, 1312) * Math.PI), i % 3 === 0 ? 'sakuraPale' : 'mapSakura', 0.55 + 0.35 * hash(i, 1313));
+        }
+        still();
+        for (let i = 0; i < 40; i++) {
+          const at = spot(i, 1315, 12);
           if (!onScreen(at, 2, cam)) continue;
           const twinkle = time !== null ? Math.pow(Math.max(0, Math.sin(time * 2.2 + i * 1.7)), 8) : 0.3;
           add1(circle(at, 0.6 + 0.8 * twinkle), 'skinSky', 0.2 + 0.7 * twinkle);
@@ -767,6 +788,8 @@ export const MapTheme = {
         return Centre.lagoon(list, at, time);
       case 'snowfall':
         return Centre.frozenPond(list, at, time);
+      case 'snowSakura':
+        return Centre.frozenGarden(list, at, time);
       case 'cosmos':
         return Centre.planet(list, at, time);
       case 'dusk':
@@ -820,9 +843,9 @@ export const MapTheme = {
     }
   },
 
-  /** Sakura rakes the island into a gravel garden. */
+  /** Sakura rakes the island into a gravel garden (under snow, too). */
   addIsland(list: RenderList, theme: MapTheme | null, world: World): void {
-    if (theme !== 'sakura') return;
+    if (theme !== 'sakura' && theme !== 'snowSakura') return;
     const island = world.layout.islandRadius;
     for (let radius = 16; radius < island - 22; radius += 6.5) list.w(arc(v(0, 0), radius, 1.1, 0, TAU), 'sakuraPale', 0.05);
     for (let i = 0; i < 3; i++) {
@@ -891,6 +914,16 @@ export const MapTheme = {
         w(circle(pond, 8), 'water');
         w(circle(add(pond, v(-2, 1.5)), 1.8), 'skinKoi');
         w(circle(add(pond, v(2.5, -1)), 1.5), 'primary', 0.9);
+        return;
+      }
+      case 'snowSakura': {
+        dots(14, 931, 1.1, ['mapSakura', 'sakuraPale'], 0.9);
+        dots(14, 933, 0.8, ['primary'], 0.85);
+        // A frozen pond with its stone rim.
+        const pond = mul(fromAngle(1.4), 45);
+        w(circle(pond, 9.5), 'stone', 0.8);
+        w(circle(pond, 8), 'skinSky', 0.8);
+        w(circle(add(pond, v(-2, 1.5)), 1.4), 'mapSakura');
         return;
       }
       case 'aurora':
@@ -1086,6 +1119,11 @@ export const MapTheme = {
         if (index % 6 === 3) Plants.lantern(list, center, size);
         else Plants.cherry(list, center, size, index);
         break;
+      case 'snowSakura':
+        if (index % 6 === 3) Plants.lantern(list, center, size);
+        else if (index % 6 === 5) Plants.snowFir(list, center, size);
+        else Plants.snowCherry(list, center, size, index);
+        break;
       case 'neon':
         a(circle(center, size * 1.1), 'mapNeon', 0.08);
         a(circle(center, size * 0.5), 'mapNeon', 0.2);
@@ -1242,7 +1280,7 @@ export const MapTheme = {
         [-1, 1].forEach((side, sideIndex) => {
           index++;
           const isAccent = (step + sideIndex) % 3 === 1;
-          const isLight = (isAccent && (theme === 'sakura' || theme === 'snowfall' || theme === 'dusk' || theme === 'harbour' || theme === 'lanterns')) || theme === 'cosmos';
+          const isLight = (isAccent && (theme === 'sakura' || theme === 'snowSakura' || theme === 'snowfall' || theme === 'dusk' || theme === 'harbour' || theme === 'lanterns')) || theme === 'cosmos';
           const size = isLight ? 6 : 8.5 + 3.5 * hash(index, 381);
           const at = add(mul(out, distance + 6 * hash(index, 382)), mul(left(out), side * (layout.laneWidth + (isLight ? 14 : 20) + 4 * hash(index, 383))));
           if (!onScreen(at, size * 2.5, list.camera)) return;
@@ -1250,6 +1288,10 @@ export const MapTheme = {
             case 'sakura':
               if (isAccent) Plants.lantern(list, at, size);
               else Plants.cherry(list, at, size, index);
+              break;
+            case 'snowSakura':
+              if (isAccent) Plants.lantern(list, at, size);
+              else Plants.snowCherry(list, at, size, index);
               break;
             case 'snowfall':
               if (isAccent) Plants.lamp(list, at, size, 'fireCore');
@@ -1356,6 +1398,9 @@ export const MapTheme = {
         return drift(list, 14, time, vp, ['mapAutumn', 'hazard', 'fireOuter'], 7, 34, 26, 22, false, 511);
       case 'snowfall':
         return drift(list, 70, time, vp, ['primary', 'mapSnow'], 4.6, 34, 8, 12, true, 521);
+      case 'snowSakura':
+        drift(list, 45, time, vp, ['primary', 'mapSnow'], 4, 30, 8, 12, true, 541);
+        return drift(list, 26, time, vp, ['mapSakura', 'sakuraPale'], 7, 26, 30, 16, false, 543);
       case 'meadow': {
         // Butterflies flutter over the flowers, wandering and turning where they please.
         const wings: ColorToken[] = ['skinSunburst', 'primary', 'skinSky', 'skinCoral'];

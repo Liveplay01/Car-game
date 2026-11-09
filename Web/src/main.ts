@@ -1,5 +1,6 @@
 import { Shell } from './ui/shell';
 import { inItch, inPortal } from './storage/device';
+import { adoptMoved, leaveOldHost } from './storage/move';
 import { gameLoaded, startCrazyGames } from './ui/crazygames';
 import { startCloud } from './net/cloud';
 import { startTuning } from './net/tuning';
@@ -32,6 +33,10 @@ const BOOT_WAIT_MS = 8000;
 
 // The casino draws on real randomness besides the save's seed, so no result can be worked out beforehand.
 Casino.useEntropy(() => crypto.getRandomValues(new Uint32Array(1))[0]);
+
+// The old address hands its save to the new one; the new one takes it in before anything reads the save (`storage/move.ts`).
+await adoptMoved();
+if (await leaveOldHost()) await new Promise<never>(() => undefined);
 
 document.documentElement.lang = currentLanguage();
 

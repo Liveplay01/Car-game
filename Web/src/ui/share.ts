@@ -1,6 +1,7 @@
 import { h } from './dom';
 import { openSheet } from './sheets';
 import { S } from '../present/strings';
+import { track } from './analytics';
 
 /**
  * Sharing and copying, the same everywhere (crew and invite links, the lobby, a challenge, the codes): the share sheet on
@@ -39,7 +40,13 @@ export async function copy(text: string): Promise<'copied' | 'shown'> {
  * `refused`: the browser allows the share sheet only right after a tap and something was awaited first; with `again` the
  * caller asks for one more tap instead of copying.
  */
-export async function share(data: { text: string; url: string }, copied = data.url, again = false): Promise<Handed> {
+export async function share({ kind, ...data }: { text: string; url: string; kind: 'challenge' | 'invite' | 'crew' | 'lobby' }, copied = data.url, again = false): Promise<Handed> {
+  const handed = await hand(data, copied, again);
+  track('share', { kind, how: handed });
+  return handed;
+}
+
+async function hand(data: { text: string; url: string }, copied: string, again: boolean): Promise<Handed> {
   if (window.matchMedia('(pointer: coarse)').matches && typeof navigator.share === 'function') {
     try {
       await navigator.share({ title: S.gameTitle, ...data });

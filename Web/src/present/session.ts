@@ -144,6 +144,7 @@ export interface Modifier {
 /** Coarse steps for analytics: a count of days, shifts or minutes never goes out exact. */
 const dayBucket = (days: number): string => (days <= 1 ? String(Math.max(0, days)) : days <= 3 ? '2-3' : days <= 7 ? '4-7' : days <= 14 ? '8-14' : days <= 30 ? '15-30' : '31+');
 const countBucket = (n: number): string => (n <= 2 ? String(n) : n <= 5 ? '3-5' : n <= 10 ? '6-10' : n <= 30 ? '11-30' : '31+');
+const secsBucket = (s: number): string => (s < 10 ? '<10' : s < 30 ? '10-30' : s < 60 ? '30-60' : s < 120 ? '60-120' : '120+');
 
 const duckDemo = import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).has('ente');
 
@@ -991,6 +992,7 @@ export class GameSession {
         this.persist();
         // Worn: a tick, and the sheet closes on the new look.
         if (Careers.isWorn(career, action.id)) {
+          if (item) this.onStep?.('equip', { kind: item.kind, rarity: item.rarity });
           this.play([], ['tap']);
           this.closeDetail();
         }
@@ -1072,6 +1074,7 @@ export class GameSession {
     const seed = this.save.shiftsPlayed * 7919 + this.popupSerial;
     const opening = Careers.openChest(career, index, seed, this.today, power, this.config);
     if (!opening) return null;
+    this.onStep?.('chest-open', { chest: opening.chest, rarity: opening.item.rarity });
     const albums = this.completeAlbums();
     this.persist();
     if (albums.length > 0) this.announce(...albums);
@@ -1456,6 +1459,7 @@ export class GameSession {
       persist: () => this.persist(),
       showNotice: (text) => this.showNotice(text),
       denyMoney: (price) => this.denyMoney(price),
+      report: (step, data) => this.onStep?.(step, data),
       announceAlbums: () => this.announceAlbums(),
       watchAdBoost: () => this.perform({ k: 'watchAdBoost' }),
     };
@@ -1813,6 +1817,10 @@ export class GameSession {
     const dotGoal = SWIPE_MODES.indexOf(this.swipeMode);
     this.modeDotAt = this.reduceMotion || !this.showsModeDots ? dotGoal : this.modeDotAt + (dotGoal - this.modeDotAt) * (1 - Math.exp(-realDelta * 14));
     this.tutorial?.advance(realDelta);
+    if (this.tutorial && this.tutorial.step !== this.tutorialTold) {
+      this.tutorialTold = this.tutorial.step;
+      this.onStep?.('tutorial-step', { step: this.tutorialTold });
+    }
     if (this.tutorial?.isDone) this.tutorial = null;
     this.transitions.advance(realDelta);
 
@@ -2495,6 +2503,7 @@ export class GameSession {
 
   noteAsk(ask: string): void {
     this.lastAsk = ask;
+    this.onStep?.('ask', { kind: ask, step: 'shown' });
   }
 
   private noteAd(reward: string, step: string): void {
@@ -2510,6 +2519,7 @@ export class GameSession {
   private run = 0;
   private dwell: Record<string, number> = {};
   private lastAd = 'none';
+  private tutorialTold = '';
 
   /** The game came back to the front: a new stretch of play for `leaving`. */
   cameBack(): void {
@@ -3228,6 +3238,8 @@ export class GameSession {
 
   private startPlaying(): void {
     this.screen = { k: 'playing' };
+    const after = this.sinceLeave > 0 && this.lastShift ? (this.lastShift.outcome === 'completed' ? 'win' : 'loss') : 'none';
+    this.onStep?.('shift-start', { mode: this.special ? 'special' : this.playingMode, level: this.playingLevel, after, streak: Math.max(-5, Math.min(5, this.run)), eased: this.world.config.assisted ? 1 : 0, mood: this.mood });
     if (!this.special && !this.playingDaily) delete this.save.waitingSeeds[this.save.mode];
     this.shiftRan = true;
     // The ready screen has told its news: the next one waits for the next ready screen.
@@ -3433,7 +3445,7 @@ export class GameSession {
     this.run = won ? Math.max(0, this.run) + 1 : Math.min(0, this.run) - 1;
     this.sinceLeave++;
     this.lastShift = { mode: this.playingMode, outcome: result.outcome, eased: this.world.config.assisted === true };
-    this.onStep?.('shift', { mode: this.playingMode, level: this.playingLevel, outcome: result.outcome, daily: this.playingDaily ? 1 : 0, nth: Math.min(save.shiftsPlayed + 1, 10), eased: this.world.config.assisted ? 1 : 0, record: this.recordOf(result.score), mood: this.mood });
+    this.onStep?.('shift', { mode: this.playingMode, level: this.playingLevel, outcome: result.outcome, daily: this.playingDaily ? 1 : 0, nth: Math.min(save.shiftsPlayed + 1, 10), eased: this.world.config.assisted ? 1 : 0, record: this.recordOf(result.score), mood: this.mood, secs: secsBucket(result.time), cars: result.carsSent, streak: Math.max(-5, Math.min(5, this.run)) });
     const levelBefore = career.level;
     const booked = bookShift(save, result, {
       mode: this.playingMode,

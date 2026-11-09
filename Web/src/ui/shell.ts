@@ -21,7 +21,9 @@ import { PATCH_NOTES } from '../present/patchNotes';
 import { PhotoView } from './photo';
 import { celebrate, invitedRoom, offerLogin, onAdAudio, reportGameplay, reportProgress, rewardedAd, rewardedAdsReady } from './crazygames';
 import { applixirReady, applixirRewardedAd } from './applixir';
-import { track } from './analytics';
+import { track, visitSource } from './analytics';
+
+const PERF_FRAMES = 1800;
 import { inItch, inPlayStore, inPortal, isInstalled, isIos, isIpad, keepStorage, renewStorage, testAds, touchFirst } from '../storage/device';
 import type { Hint } from '../core/career';
 import { decodeChallenge, type ChallengeSpec } from '../core/challenge';
@@ -175,6 +177,9 @@ export class Shell {
   /** Adaptive resolution: the device pixel ratio in use, and how the frames have been going. */
   private dprCap = 2;
   private frameAvg = 1 / 60;
+  /** The frame rate is told once per visit, after this many frames (about half a minute): what devices really manage. */
+  private perfFrames = 0;
+  private perfSent = false;
   private frameJitter = 0;
   private slowFor = 0;
   private fastFor = 0;
@@ -201,7 +206,7 @@ export class Shell {
   private installPrompt: InstallPromptEvent | null = null;
   private chromeKey = '';
   /** Reused while the chrome's change key is built every frame (`syncChrome`). */
-  private readonly badgeParts: string[] = [];
+  private readonly badges: ReturnType<GameSession['badge']>[] = [];
   private closeSettings: (() => void) | null = null;
   private readonly detail: DetailSheet;
   private readonly versus: VersusLobby;
@@ -445,7 +450,7 @@ export class Shell {
       app.append(tracks);
     };
     this.session.onStep = (step, data) => {
-      track(step, data);
+      track(step, step === 'visit' ? { ...data, ...visitSource() } : data);
       this.reportProgress();
     };
     this.session.flushVisit();
@@ -498,7 +503,7 @@ export class Shell {
     // The way in comes down from the clouds while the game loads (main.ts lands it); before the first sync, so no chrome shows.
     this.session.descend();
     this.syncChrome(true);
-    requestAnimationFrame((t) => this.loop(t));
+    requestAnimationFrame(this.nextFrame);
     this.scheduleAccountPrompt();
     // Gifts from the team and from invites: at the start, after a name (an invite is handed in then) and after a record reached the service (level 5 pays).
     window.setTimeout(() => this.claimInvite(), 3000);
@@ -629,6 +634,9 @@ export class Shell {
     let goal = { x: 0, y: 0 };
     let frame = 0;
     let last = 0;
+    // A mouse sends more moves than frames: reading the dock's box a few times a second is enough, and it can still move (shown, hidden, resized).
+    let box: DOMRect | null = null;
+    let boxAt = 0;
     const step = (now: number): void => {
       const dt = Math.min(0.032, (now - last) / 1000 || 0.016);
       last = now;
@@ -651,9 +659,16 @@ export class Shell {
     const pull = (x: number, y: number): void => {
       if (this.app.classList.contains('reduce-motion') || this.app.dataset.tabbar === 'hidden') goal = { x: 0, y: 0 };
       else {
-        const r = nav.getBoundingClientRect();
-        const cx = r.left + r.width / 2 - at.x;
-        const cy = r.top + r.height / 2 - at.y;
+        const time = performance.now();
+        if (!box || time - boxAt > 250) {
+          box = nav.getBoundingClientRect();
+          box.x -= at.x;
+          box.y -= at.y;
+          boxAt = time;
+        }
+        const r = box;
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
         // How far outside the dock the pointer is: 0 on it, `reach` and more is out of its field.
         const out = Math.hypot(Math.max(0, Math.abs(x - cx) - r.width / 2), Math.max(0, Math.abs(y - cy) - r.height / 2));
         const t = Math.max(0, 1 - out / reach);
@@ -686,12 +701,13 @@ export class Shell {
     const pill = (): HTMLElement | null => this.tabIndicator;
     // The tabs are not equal columns any more (the selected one is wider): the nearest button's centre wins.
     const buttons = (): HTMLButtonElement[] => TAB_BAR.map((t) => this.tabs.get(t)!.button);
+    // Read once when the scrub begins: nothing resizes the tabs while it lasts.
+    let centres: number[] = [];
     const columnOf = (x: number): { index: number } => {
       let index = 0;
       let best = Infinity;
-      buttons().forEach((b, i) => {
-        const r = b.getBoundingClientRect();
-        const d = Math.abs(x - (r.left + r.width / 2));
+      centres.forEach((c, i) => {
+        const d = Math.abs(x - c);
         if (d < best) {
           best = d;
           index = i;
@@ -717,6 +733,10 @@ export class Shell {
       }
       pill()?.classList.add('scrub');
       pill()?.removeAttribute('hidden');
+      centres = buttons().map((b) => {
+        const r = b.getBoundingClientRect();
+        return r.left + r.width / 2;
+      });
       scrubTo(held.x);
     };
     const end = (open: boolean): void => {
@@ -844,22 +864,18 @@ export class Shell {
     const s = this.session;
     const screen = s.screen;
     const selected = barTab(screenTab(screen));
-    const badges = TAB_BAR.map((tab) => s.badge(tab));
     const match = this.versus.match;
     const lobby = this.versus;
     // Asked every frame: built as one plain string (no JSON, no arrays) so it leaves next to no garbage.
     const versusKey = match
       ? `${match.isOver},${match.isOut},${match.canRevenge},${lobby.canReady},${lobby.isReady},${lobby.enoughForNext},${lobby.nextLabel},${lobby.isHost}`
       : '';
-    const badgeParts = this.badgeParts;
-    badgeParts.length = 0;
-    for (let i = 0; i < badges.length; i++) {
-      const b = badges[i];
-      if (b === null) badgeParts.push('-');
-      else if (b === 'dot') badgeParts.push('.');
-      else badgeParts.push(`${b.count};`);
+    const badges = this.badges;
+    let badgeKey = '';
+    for (let i = 0; i < TAB_BAR.length; i++) {
+      const b = (badges[i] = s.badge(TAB_BAR[i]));
+      badgeKey += b === null ? '-' : b === 'dot' ? '.' : `${b.count};`;
     }
-    const badgeKey = badgeParts.join('');
     const onSocial = screen.k === 'page' && screen.tab === 'social' && s.showsChrome && !match;
     // Build modifier labels without creating intermediate array copies in hot path
     const modList = s.modifiers;
@@ -973,7 +989,7 @@ export class Shell {
     const daily = s.dailyShare;
     const text = daily ?? S.run.shareText(Fmt.number(spec.target));
     // Some browsers allow the share sheet only right after the tap. The link is ready now: one more tap shares it at once.
-    const handed = await share({ text, url }, daily ? `${daily}\n${url}` : url, true);
+    const handed = await share({ kind: 'challenge', text, url }, daily ? `${daily}\n${url}` : url, true);
     if (handed === 'refused') return S.run.linkReady;
     if (handed === 'copied') return daily ? S.run.dailyCopied : S.run.copied;
     return null;
@@ -996,6 +1012,10 @@ export class Shell {
     if (delta <= 0 || delta > 0.25 || document.hidden) return;
     this.frameAvg += (delta - this.frameAvg) * 0.05;
     this.frameJitter += (Math.abs(delta - this.frameAvg) - this.frameJitter) * 0.05;
+    if (!this.perfSent && ++this.perfFrames >= PERF_FRAMES) {
+      this.perfSent = true;
+      track('perf', { fps: Math.round(1 / this.frameAvg / 10) * 10, jitter: Math.round(this.frameJitter * 1000), dpr: this.dprCap, low: this.session.lowDetail ? 1 : 0 });
+    }
     const struggling = this.frameAvg > 1 / 45 && (this.frameJitter > 0.004 || this.frameAvg > 1 / 29);
     if (struggling) {
       this.slowFor += delta;
@@ -1331,7 +1351,10 @@ export class Shell {
         titles: this.titleHost,
         records: () => s.leaderboardRecords,
         openCloud: () => this.openCloudPage(),
-        declined: () => s.markHint('account'),
+        declined: () => {
+          track('ask', { kind: 'account', step: 'declined' });
+          s.markHint('account');
+        },
         closed: () => {
           this.accountOpen = false;
           this.pageClosed();
@@ -1731,7 +1754,7 @@ export class Shell {
     // a 60 or 90 Hz screen loses nothing, a 120 Hz one draws 60, the battery saver 30.
     this.measureRefresh(now);
     if (++this.skipped < this.every * (this.pageStill >= Shell.stillFrames ? 2 : 1)) {
-      requestAnimationFrame((t) => this.loop(t));
+      requestAnimationFrame(this.nextFrame);
       return;
     }
     this.skipped = 0;
@@ -1745,8 +1768,10 @@ export class Shell {
         return;
       }
     }
-    requestAnimationFrame((t) => this.loop(t));
+    requestAnimationFrame(this.nextFrame);
   }
+
+  private readonly nextFrame = (now: number): void => this.loop(now);
 
   /** Refreshes since the last drawn frame, and how many make one: 1 on a screen of up to ~100 Hz. */
   private skipped = 0;
@@ -1790,6 +1815,7 @@ export class Shell {
   }
 
   private trailScreen = '';
+  private cursor = '';
 
   private frame(now: number): void {
     const delta = Math.max(0, (now - this.last) / 1000);
@@ -1825,9 +1851,12 @@ export class Shell {
     this.audio.updateDrift(match ? null : s.driftSound, s.save.settings.sound, Math.min(delta, 0.1));
     this.audio.updateTraffic(match ? [] : s.trafficSound, s.save.settings.engineSounds, Math.min(delta, 0.1));
     this.audio.updateWeather(match ? { rain: 0, strikes: s.weatherSound.strikes } : s.weatherSound, s.save.settings.mapSounds);
-    this.app.classList.toggle('reduce-motion', s.reduceMotion);
-    if (s.reduceMotion !== this.iconsStill) stillIcons((this.iconsStill = s.reduceMotion));
-    this.canvas.style.cursor = !match && (s.overTopBar || list.pointerOver) ? 'pointer' : '';
+    if (s.reduceMotion !== this.iconsStill) {
+      this.app.classList.toggle('reduce-motion', s.reduceMotion);
+      stillIcons((this.iconsStill = s.reduceMotion));
+    }
+    const cursor = !match && (s.overTopBar || list.pointerOver) ? 'pointer' : '';
+    if (cursor !== this.cursor) this.canvas.style.cursor = this.cursor = cursor;
     this.social.toast(s.socialNotice);
     if (this.pendingChallenge) this.openPendingChallenge();
     if (this.pendingJoin) this.openPendingJoin();

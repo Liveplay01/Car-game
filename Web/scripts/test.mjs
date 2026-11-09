@@ -4357,3 +4357,19 @@ test('replay proof: the golden run still scores the same (else bump PROOF_RULES 
   const { proof, score } = JSON.parse(readFileSync(new URL('./proof-golden.json', import.meta.url), 'utf8'));
   assert.equal(replay(proof).score, score);
 });
+
+test('a save moves from the old address to the new one, and only when it has come further', async () => {
+  const { pack, unpack, adopt } = await load('/src/storage/move.ts');
+  const entries = { 'carGame.save.v2': JSON.stringify({ career: { level: 40, prestige: 1 } }), 'carGame.lang': 'de', other: 'x' };
+  const back = await unpack(await pack(entries));
+  assert.deepEqual(back, { 'carGame.save.v2': entries['carGame.save.v2'], 'carGame.lang': 'de' }, 'only the game keys come back');
+  const keep = (data) => ({ data, getItem: (k) => data[k] ?? null, setItem: (k, v) => void (data[k] = v) });
+  const fresh = keep({ 'carGame.save.v2': JSON.stringify({ career: { level: 1, prestige: 0 } }), 'carGame.lang': 'en' });
+  adopt(back, fresh);
+  assert.equal(JSON.parse(fresh.data['carGame.save.v2']).career.level, 40, 'a save further along is taken');
+  assert.equal(fresh.data['carGame.lang'], 'en', 'what is kept here stays');
+  const ahead = keep({ 'carGame.save.v2': JSON.stringify({ career: { level: 90, prestige: 1 } }) });
+  adopt(back, ahead);
+  assert.equal(JSON.parse(ahead.data['carGame.save.v2']).career.level, 90, 'a save further along here is not replaced');
+  assert.equal(ahead.data['carGame.lang'], 'de', 'a missing key is filled in');
+});

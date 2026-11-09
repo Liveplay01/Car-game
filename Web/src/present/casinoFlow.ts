@@ -25,6 +25,8 @@ export interface CasinoHost {
   announceAlbums(): void;
   /** The Skin Upgrade's boost for a watched ad (`adFlow.ts`). */
   watchAdBoost(): void;
+  /** A funnel step for the statistics (`GameSession.onStep`). */
+  report(step: string, data: Record<string, string | number>): void;
 }
 
 /**
@@ -153,6 +155,13 @@ export class CasinoFlow {
 
   /** A new round with the stake chosen: the save is written before anything shows. */
   private start(): void {
+    const s = this.host.casino;
+    const before = s.run;
+    this.begin();
+    if (s.run && s.run !== before) this.host.report('casino-play', { game: s.game });
+  }
+
+  private begin(): void {
     const s = this.host.casino;
     const career = this.host.save.career;
     if (s.busy || s.picker) return;

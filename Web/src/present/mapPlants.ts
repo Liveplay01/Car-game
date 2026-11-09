@@ -171,6 +171,13 @@ export const Plants = {
     for (let l = 0; l < 2; l++) list.w(circle(add(center, mul(fromAngle(1.9 + l * 0.9), size * 0.4)), size * 0.3), 'sakuraPale', 0.85);
     for (let f = 0; f < 2; f++) list.w(circle(add(center, mul(fromAngle(turn + f * 2.1), size * 0.35 * (0.5 + hash(index * 3 + f, 363)))), 0.75), 'primary', 0.9);
   },
+  /** A cherry tree in bloom with snow settled on its upper left. */
+  snowCherry(list: RenderList, center: Vec2, size: number, index: number): void {
+    Plants.cherry(list, center, size, index);
+    const turn = hash(index, 366) * TAU;
+    for (let k = 0; k < 3; k++) list.w(circle(add(center, mul(fromAngle(turn + k * 2.1), size * 0.5)), size * (0.34 - 0.05 * k)), 'mapSnow', 0.88);
+    list.w(circle(add(center, v(-size * 0.15, -size * 0.15)), size * 0.3), 'primary', 0.8);
+  },
   lantern(list: RenderList, center: Vec2, size: number): void {
     list.w(circle(center, size * 2.4), 'fireCore', 0.05);
     list.w(circle(center, size * 1.3), 'fireCore', 0.08);

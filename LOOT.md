@@ -418,7 +418,7 @@ Details mit (`MapTheme`, Entscheidung Leo 25.09.2026). **Jede Map säumt ihre St
 
 **Tag und Nacht (Leo, 29.09.2026: „die Maps wirken traurig“):** Maps, die in der Sonne spielen
 (`DAYLIGHT` in `mapThemes.ts`: Sand, Forest, Autumn, Sakura, Meadow, Tropic, Snowfall, Vineyard,
-Red Canyon, Highlands, Beach, Savanna, Rainforest, Alps), haben einen hellen, satten Boden in der Farbe ihres Ortes –
+Red Canyon, Highlands, Beach, Savanna, Rainforest, Alps, Snowy Sakura), haben einen hellen, satten Boden in der Farbe ihres Ortes –
 hellgrüner Rasen in Sakura, knalliger Sand, Neuschnee – und Dächer in Tagesfarben (Ziegel,
 Schiefer, Beton; unter Schnee weiß). Die Nacht-Maps (Dusk, Neon, Aurora, Ember, Cosmos, Harbour,
 Mushroom Grove, Abyss, Lantern Festival, Crystal Cavern) bleiben dunkel, weil ihr Licht das Thema
@@ -444,6 +444,7 @@ gut lesbar sind. Die Bodentextur ist auf hellen Böden schwächer (sonst wirkt s
   Sonnenschirme an den Straßen, Sandburgen, eine **türkise Bucht** mit Brandung, Bojen, Surfbrett
   und **Rettungsturm**, **Möwen** ziehen mit ihren Schatten drüber.
 - **Natur-Maps (Leo, 06.10.2026):** **Savanna** goldenes Dürregras, Wildpfade, Akazien mit langem Schatten, Termitenhügel, ein **Wasserloch** mit trinkenden Elefanten und weidenden Antilopen, Staub und ziehende Wolkenschatten · **Rainforest** dunkler Urwaldboden mit Farnen und Blüten, Sonnenstrahlen, die wandern, Riesenblätter, ein **Gumpen unter einem Wasserfall** mit Seerosen und Nebel, fallende Blätter und Schmetterlinge · **Alps** Bergwiese mit Geröll, Altschneeflecken, Enzian und Edelweiß, Tannen, kleine Gipfel, ein **Gipfel von oben** (Flächen von links oben beleuchtet) mit ziehender Wolke, Schneegestöber und Wolkenschatten.
+- **Snowy Sakura** (Spielerwunsch, Leo 09.11.2026): Kirschbäume in Blüte mit Schnee auf der Krone, Steinlaternen, Blütenblätter auf Neuschnee, ein **zugefrorener Teich mit Blüten im Eis** und schneebedecktem Torii, Zen-Insel, **Blüten und Schneeflocken** wehen gemeinsam.
 - **Snowfall** verschneite Tannen und warme Laternen, Schneemänner, Schlittenspuren, ein
   **zugefrorener Teich** mit Kufenspuren und zwei Eisläufern, **Schneefall**.
 - **Cosmos** Tiefraum mit Nebeln und funkelnden Sternen, kleine Planeten, Leuchtbaken an den
@@ -500,6 +501,7 @@ einer neuen Schicht nicht neu an.
 | Savanna | `savanna` | Rare | Savannen-Orange |
 | Rainforest | `rainforest` | Epic | Urwaldgrün |
 | Alps | `alps` | Epic | Gletscherblau |
+| Snowy Sakura | `snowSakura` | Epic | Blütenrosa auf Schnee |
 
 ## Police Skins (5, Leo, 22.10.2026)
 

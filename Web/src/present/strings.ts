@@ -2253,6 +2253,7 @@ export const S = {
         savanna: 'Savanna',
         rainforest: 'Rainforest',
         alps: 'Alps',
+        snowSakura: 'Snowy Sakura',
         compact: 'Compact',
         van: 'Van',
         classic: 'Classic',

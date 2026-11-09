@@ -650,11 +650,11 @@ export class AudioPlayer {
     }
     const v = this.tensionVoice;
     const now = ctx.currentTime;
-    for (const osc of v.engine) osc.frequency.setTargetAtTime(55 + 165 * on, now, 0.05);
-    v.filter.frequency.setTargetAtTime(260 + 2200 * on * on, now, 0.05);
-    v.gain.gain.setTargetAtTime(on > 0 ? 0.025 + 0.07 * on : 0, now, on > 0 ? 0.06 : 0.12);
-    v.whine.frequency.setTargetAtTime(700 + 1500 * on, now, 0.05);
-    v.whineGain.gain.setTargetAtTime(on > 0.3 ? 0.012 * (on - 0.3) : 0, now, 0.08);
+    for (const osc of v.engine) this.glide(osc.frequency, 55 + 165 * on, now, 0.05);
+    this.glide(v.filter.frequency, 260 + 2200 * on * on, now, 0.05);
+    this.glide(v.gain.gain, on > 0 ? 0.025 + 0.07 * on : 0, now, on > 0 ? 0.06 : 0.12);
+    this.glide(v.whine.frequency, 700 + 1500 * on, now, 0.05);
+    this.glide(v.whineGain.gain, on > 0.3 ? 0.012 * (on - 0.3) : 0, now, 0.08);
     if (on === 0) {
       this.heartbeat = 0;
       return;
@@ -706,7 +706,7 @@ export class AudioPlayer {
     const v = this.driftVoice ?? (this.driftVoice = this.startDrift(ctx, this.sfx, buffers, car?.lifts ?? 0));
     const now = ctx.currentTime;
     if (!on || !car) {
-      v.out.gain.setTargetAtTime(0, now, 0.25);
+      this.glide(v.out.gain, 0, now, 0.25);
       v.silent += delta;
       if (v.silent > 2) {
         for (const layer of v.layers.values()) layer.src.stop();
@@ -723,8 +723,8 @@ export class AudioPlayer {
     const set = (layer: DriftSample, gain: number, rate: number): void => {
       const l = v.layers.get(layer);
       if (!l) return;
-      l.gain.gain.setTargetAtTime(gain, now, 0.03);
-      l.src.playbackRate.setTargetAtTime(rate, now, 0.03);
+      this.glide(l.gain.gain, gain, now, 0.03);
+      this.glide(l.src.playbackRate, rate, now, 0.03);
     };
     const slide = Math.min(1, car.slide);
     set('engineOn', 0.7 * v.mix, 0.86 + 0.14 * v.rpm);
@@ -732,8 +732,8 @@ export class AudioPlayer {
     set('turbo', 0.2 * v.boost * v.boost, 0.55 + 0.5 * v.boost);
     set('squeal', 0.5 * slide ** 1.5, 0.92 + 0.12 * slide);
     set('spin', 0.6 * car.spin, 0.95 + 0.1 * car.spin);
-    v.pan.pan.setTargetAtTime(car.pan, now, 0.1);
-    v.out.gain.setTargetAtTime(car.leaving ? 0.45 : 0.8, now, 0.3);
+    this.glide(v.pan.pan, car.pan, now, 0.1);
+    this.glide(v.out.gain, car.leaving ? 0.45 : 0.8, now, 0.3);
     if (car.lifts > v.lifts && v.boost > 0.25) {
       const shot = (name: DriftSample, gain: number, rate: number, length: number | null = null): void => {
         const buffer = buffers.get(name);
@@ -815,7 +815,11 @@ export class AudioPlayer {
   private static readonly trafficDull = 3200;
   private static readonly trafficBright = 12000;
   private static readonly toneSettle = 0.6;
+  /** How often (seconds) the loudest engines are chosen anew; the chosen ones follow their cars every frame. */
+  private static readonly trafficPick = 0.1;
   private flow = { evenness: 0, pressure: 1 };
+  private heardCars = new Set<number>();
+  private pickIn = 0;
 
   /**
    * The traffic, quietly under everything (Leo, 22.10.2026), called every frame: each of the nearest vehicles
@@ -838,19 +842,19 @@ export class AudioPlayer {
     const flow = this.flow;
     flow.evenness += (heard.evenness - flow.evenness) * (1 - Math.exp(-delta / AudioPlayer.chordSettle));
     flow.pressure += (heard.pressure - flow.pressure) * (1 - Math.exp(-delta / AudioPlayer.toneSettle));
-    this.trafficTone?.frequency.setTargetAtTime(
-      AudioPlayer.trafficDull * (AudioPlayer.trafficBright / AudioPlayer.trafficDull) ** flow.pressure,
-      now,
-      AudioPlayer.toneSettle,
-    );
+    if (this.trafficTone) this.glide(this.trafficTone.frequency, AudioPlayer.trafficDull * (AudioPlayer.trafficBright / AudioPlayer.trafficDull) ** flow.pressure, now, AudioPlayer.toneSettle);
     const reach = AudioPlayer.trafficReach;
     const near = (c: TrafficSound): number => 1 / (1 + (c.x * c.x + c.y * c.y) / (reach * reach));
-    const weight: Record<TrafficEngine, number> = { car: 1, sport: 1.15, diesel: 1.05, truck: 1.3, bike: 1.2 };
-    const chosen = on ? [...cars].sort((a, b) => near(b) * weight[b.engine] - near(a) * weight[a.engine]).slice(0, AudioPlayer.trafficVoices) : [];
-    const keep = new Set(chosen.map((c) => c.id));
+    if (!on) this.heardCars.clear();
+    else if ((this.pickIn -= delta) <= 0) {
+      this.pickIn = AudioPlayer.trafficPick;
+      const weight: Record<TrafficEngine, number> = { car: 1, sport: 1.15, diesel: 1.05, truck: 1.3, bike: 1.2 };
+      this.heardCars = new Set([...cars].sort((a, b) => near(b) * weight[b.engine] - near(a) * weight[a.engine]).slice(0, AudioPlayer.trafficVoices).map((c) => c.id));
+    }
+    const picked = this.heardCars;
     for (const [id, v] of this.trafficVoices) {
-      if (keep.has(id)) continue;
-      v.gain.gain.setTargetAtTime(0, now, 0.08);
+      if (picked.has(id)) continue;
+      this.glide(v.gain.gain, 0, now, 0.08);
       v.fading += delta;
       if (v.fading > 0.4) {
         v.src.stop();
@@ -858,7 +862,8 @@ export class AudioPlayer {
         this.trafficVoices.delete(id);
       }
     }
-    for (const c of chosen) {
+    for (const c of cars) {
+      if (!picked.has(c.id)) continue;
       let v = this.trafficVoices.get(c.id);
       if (!v || v.engine !== c.engine) {
         if (v) v.src.stop();
@@ -881,9 +886,9 @@ export class AudioPlayer {
       }
       v.fading = 0;
       const rate = settle(v.pitch * (0.62 + 0.42 * Math.min(c.speed, 1.3) + 0.06 * c.load), flow.evenness * AudioPlayer.chordPull);
-      v.src.playbackRate.setTargetAtTime(rate, now, 0.12);
-      v.gain.gain.setTargetAtTime(0.55 * near(c) * (0.55 + 0.45 * c.load + 0.2 * Math.min(c.speed, 1)), now, 0.12);
-      v.pan.pan.setTargetAtTime(Math.max(-0.7, Math.min(0.7, c.x / 320)), now, 0.12);
+      this.glide(v.src.playbackRate, rate, now, 0.12);
+      this.glide(v.gain.gain, 0.55 * near(c) * (0.55 + 0.45 * c.load + 0.2 * Math.min(c.speed, 1)), now, 0.12);
+      this.glide(v.pan.pan, Math.max(-0.7, Math.min(0.7, c.x / 320)), now, 0.12);
     }
     // The tyres: one bed, as loud as the moving traffic near the ring.
     const rolling = on ? Math.min(1, cars.reduce((sum, c) => sum + near(c) * Math.min(c.speed, 1), 0) / 4) : 0;
@@ -899,7 +904,7 @@ export class AudioPlayer {
       src.start();
       this.road = { src, gain };
     }
-    this.road?.gain.gain.setTargetAtTime(0.35 * rolling, now, 0.3);
+    if (this.road) this.glide(this.road.gain.gain, 0.35 * rolling, now, 0.3);
   }
 
   private loadTraffic(ctx: AudioContext): void {
@@ -948,9 +953,9 @@ export class AudioPlayer {
     }
     const now = ctx.currentTime;
     const voice = this.rainVoice;
-    voice.gain.gain.setTargetAtTime(AudioPlayer.rainVolume * rain, now, 0.7);
-    voice.hiss.frequency.setTargetAtTime(3200 + 3200 * rain, now, 0.7);
-    voice.body.gain.setTargetAtTime(rain * rain * 0.9, now, 0.7);
+    this.glide(voice.gain.gain, AudioPlayer.rainVolume * rain, now, 0.7);
+    this.glide(voice.hiss.frequency, 3200 + 3200 * rain, now, 0.7);
+    this.glide(voice.body.gain, rain * rain * 0.9, now, 0.7);
     if (sky.strikes !== this.strikes) {
       if (sky.strikes > this.strikes && rain > 0) this.thunder(ctx, this.ambient);
       this.strikes = sky.strikes;
@@ -1130,9 +1135,19 @@ export class AudioPlayer {
       const current = this.volumes.get(layer) ?? 0;
       const next = current + (target - current) * Math.min(1, delta / AudioPlayer.fade);
       this.volumes.set(layer, Math.abs(next) < 0.0005 ? 0 : next);
-      music.gains.get(layer)!.gain.setTargetAtTime(next * AudioPlayer.musicMaster, ctx.currentTime, 0.02);
+      this.glide(music.gains.get(layer)!.gain, next * AudioPlayer.musicMaster, ctx.currentTime, 0.02);
     }
-    music.filter.frequency.setTargetAtTime(Music.cutoff(mix.lowPass), ctx.currentTime, 0.015);
+    this.glide(music.filter.frequency, Music.cutoff(mix.lowPass), ctx.currentTime, 0.015);
+  }
+
+  private readonly glided = new WeakMap<AudioParam, number>();
+
+  /** `setTargetAtTime` for what is called every frame: a value that has not moved (0.1 %) adds no event to the param's timeline. Zero always arrives. */
+  private glide(param: AudioParam, to: number, at: number, settle: number): void {
+    const was = this.glided.get(param);
+    if (was !== undefined && (to === was || (to !== 0 && Math.abs(to - was) < 0.001 * Math.max(1, Math.abs(was))))) return;
+    this.glided.set(param, to);
+    param.setTargetAtTime(to, at, settle);
   }
 
   /** Master volume, 0 to 1; squared, so the slider follows the ear and not the amplitude. */

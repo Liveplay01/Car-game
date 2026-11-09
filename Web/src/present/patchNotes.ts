@@ -51,6 +51,22 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-11-09',
+    date: '9 November 2026',
+    title: 'Snowy Sakura',
+    impact: 'minor',
+    summary: [
+      'Stuck on a level? The quiet help now keeps easing the traffic after the fourth loss in a row.',
+      'game.gustaff.dev now takes you to game.timing.love and brings your progress along.',
+      'New map from the chests: Snowy Sakura (Epic), cherry blossom under fresh snow.',
+    ],
+    items: [
+      'Stuck on a level: the quiet help now goes two steps further. After the fourth lost shift in a row the ring keeps getting a little calmer (fewer cars, a slower ring, more time between new cars) until the level is cleared. Career shifts only, never the Daily, Unlimited, trials or challenges.',
+      'The old address game.gustaff.dev hands your save over to game.timing.love when you open it: level, money, chests, skins, settings and your player stay as they were. Open the game once on the old address (or the old app) and it moves for you.',
+      { text: 'New map from the chests: Snowy Sakura (Epic). Cherry trees in bloom with snow on their crowns, stone lanterns, pink petals on white ground, a frozen pond with a snow-capped torii, and petals and snowflakes drifting together.', from: null },
+    ],
+  },
+  {
     id: '2026-11-05',
     date: '5 November 2026',
     title: 'Quicker retries, quieter rewards',
