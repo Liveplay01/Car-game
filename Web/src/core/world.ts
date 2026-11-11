@@ -18,6 +18,7 @@ import {
   newDrive,
   isHeavy,
   isExplosive,
+  isCarType,
 } from './vehicle';
 import type { CrashFault, EliminationReason, FailCause, GameEvent, MergeRating, ShiftOutcome, ShiftResult, VersusPhase } from './events';
 import { ScoreBoard, Scoring } from './scoring';
@@ -689,7 +690,7 @@ export class World {
           }
           if (veh.isBot && !phase.isLeaving && phase.distanceToExit <= this.config.botExitNotice * this.ringSpeed) {
             // The ring belongs to the bots: one leaves only once its successor is in.
-            const inWave = !wrecksOnRoad && phase.drive.outOfFlowTime >= this.config.waveTime && !isModuleQueueAt(this, phase.s);
+            const inWave = !wrecksOnRoad && phase.drive.outOfFlowTime >= this.config.waveTime && !isModuleQueueAt(this, phase.s, veh.lane);
             const jammed = phase.drive.hazardTime >= this.config.botJamPatience || inWave;
             if (!jammed && stayingBots <= this.config.minRingBots) {
               phase.distanceToExit += circumference;
@@ -699,7 +700,7 @@ export class World {
             }
           }
           // The inner lane's way out crosses the outer lane: a car takes it only when it is clear.
-          if (veh.lane === 1 && !phase.exitChecked && phase.distanceToExit <= this.config.botExitNotice * this.ringSpeed) {
+          if (veh.lane === 1 && (!phase.exitChecked || this.layout.contraflow) && phase.distanceToExit <= this.config.botExitNotice * this.ringSpeed) {
             phase.exitChecked = true;
             if (phase.distanceToExit > 0 && !this.isExitClear(veh)) {
               phase.distanceToExit += circumference;
@@ -945,7 +946,9 @@ export class World {
       const vehicles = this.vehicles;
       for (let m = 0; m < vehicles.length; m++) {
         const other = vehicles[m];
-        if (other.id === veh.id || other.lane !== 0 || !(other.isCollidable || this.isObstacle(other))) continue;
+        // Against the flow the way out also crosses the inner lane's own way in.
+        const crosses = other.lane === 0 || (this.layout.contraflow && other.phase.kind !== 'ring');
+        if (other.id === veh.id || !crosses || !(other.isCollidable || this.isObstacle(other))) continue;
         const pose = this.predictedPose(other, t);
         if (pose && gap(box, this.hitbox(pose, other.type)) < clearance) return false;
       }
@@ -1019,12 +1022,23 @@ export class World {
     return (truck(a) && b.isPlayerPolice) || (truck(b) && a.isPlayerPolice);
   }
 
-  causesStrike(veh: Vehicle): boolean {
+  causesStrike(veh: Vehicle, other: Vehicle): boolean {
     if (veh.owner !== 'player' || veh.isCrashed) return false;
     if (this.config.chainCrashesCostStrikes) return true;
     // The player answers for a car until it passes the first exit; what happens on the ring after that is not its doing.
     if (veh.activeMerge) return true;
-    return veh.phase.kind === 'ring' && veh.phase.answerable > 0;
+    if (veh.phase.kind !== 'ring' || veh.phase.answerable <= 0) return false;
+    // After a rated merge only running into something counts (Leo, 11.11.2026): a car that cuts in or rams it from behind is the other driver's fault.
+    if (other.phase.kind === 'merging') return false;
+    const mine = this.virtualRingPosition(veh, 0);
+    const theirs = this.onLaneOf(veh, other);
+    return mine === null || theirs === null || this.layout.ringDistance(theirs, mine) >= this.layout.ring.length / 2;
+  }
+
+  /** Where `other` is now, counted along `veh`'s lane (the two run opposite ways under contraflow). */
+  private onLaneOf(veh: Vehicle, other: Vehicle): number | null {
+    const s = this.virtualRingPosition(other, 0);
+    return s === null ? null : this.layout.laneS(veh.lane, this.layout.laneS(other.lane, s));
   }
 
   /**
@@ -1040,7 +1054,7 @@ export class World {
     const wreckedCriminal = takedown ? undefined : [first, second].find((x) => this.isLiveCriminal(x));
     const wreckedTruck = seizure ? undefined : [first, second].find((x) => x.type === 'transporter' && !x.isCrashed);
     const explosives = [first, second].filter((x) => isExplosive(x.type) && !x.isCrashed).map((x) => x.id);
-    const culprits = [first, second].filter((x) => this.causesStrike(x));
+    const culprits = [first, second].filter((x) => this.causesStrike(x, x === first ? second : first));
     const mergedAt = new Set([first, second].filter((x) => !x.isCrashed && x.activeMerge !== null).map((x) => x.id));
     const strike = !takedown && !seizure && !raceStop && culprits.length > 0;
     const byPolice = strike && culprits.every((x) => x.type === 'police');
@@ -1115,7 +1129,11 @@ export class World {
           this.events.push({ type: 'shielded', seat: x.seat, point, time: now });
         } else this.events.push({ type: 'faulted', seat: x.seat, point, time: now });
       }
-    } else if (strike && this.isScoring && !this.config.mayhem && this.isStruckOut && now >= this.graceUntil) this.endShift('struckOut', now, byPolice ? 'policeCrash' : fault === 'ahead' ? 'mergeCrash' : fault === 'behind' ? 'cutOffCrash' : 'ringCrash');
+    } else if (strike && this.isScoring && !this.config.mayhem && this.isStruckOut && now >= this.graceUntil) {
+      const cause = byPolice ? 'policeCrash' : fault === 'ahead' ? 'mergeCrash' : fault === 'behind' ? 'cutOffCrash' : 'ringCrash';
+      if (cause === 'ringCrash' && this.inHomeStretch) this.closeShift();
+      else this.endShift('struckOut', now, cause);
+    }
     else if (strike && this.isScoring && this.config.trialRule === 'flawless') this.endShift('failed', now, 'ruleCrash');
     for (const id of explosives) explode(this, id, now);
   }
@@ -1126,7 +1144,7 @@ export class World {
     if (!merging) return null;
     const other = merging === first ? second : first;
     const mine = this.virtualRingPosition(merging, 0);
-    const theirs = this.virtualRingPosition(other, 0);
+    const theirs = this.onLaneOf(merging, other);
     if (mine === null || theirs === null) return null;
     return this.layout.ringDistance(theirs, mine) < this.layout.ring.length / 2 ? 'behind' : 'ahead';
   }
@@ -1369,7 +1387,7 @@ export class World {
       return wrap(this.layout.entryS(p.arm, veh.lane) + travelled, circumference);
     }
     if (p.kind === 'ring') {
-      const travelled = travelAhead(this, p.s, p.drive.speed ?? this.ringSpeed, t);
+      const travelled = travelAhead(this, p.s, p.drive.speed ?? this.ringSpeed, t, veh.lane);
       if (travelled >= p.distanceToExit && !this.staysOnRing(veh)) return null;
       return wrap(p.s + travelled, circumference);
     }
@@ -1398,7 +1416,7 @@ export class World {
       }
       case 'ring': {
         const exit = this.staysOnRing(veh) ? Infinity : p.distanceToExit;
-        return ringOrExit(p.s, exit, p.exitArm, travelAhead(this, p.s, p.drive.speed ?? this.ringSpeed, t));
+        return ringOrExit(p.s, exit, p.exitArm, travelAhead(this, p.s, p.drive.speed ?? this.ringSpeed, t, veh.lane));
       }
       case 'exiting': {
         const s = p.s + (p.drive.speed ?? this.ringSpeed) * t;
@@ -1458,7 +1476,8 @@ export class World {
   criminalTimeOf(id: number): number {
     const c = this.config;
     const factor = this.vehicle(id)?.role === 'boss' ? c.convoyTimeFactor : id === this.scoutVehicle ? c.scoutTimeFactor : 1;
-    return Math.max(c.criminalTime * factor, (this.layout.ring.length / c.ringSpeed) * c.criminalLapMargin);
+    const time = c.criminalTime + (this.layout.contraflow ? c.contraflowPursuit : 0);
+    return Math.max(time * factor, (this.layout.ring.length / c.ringSpeed) * c.criminalLapMargin);
   }
 
   get isInFlow(): boolean {
@@ -1822,7 +1841,7 @@ export class World {
       const veh = new Vehicle(this.makeId(), type, 'player', { kind: 'queued' }, pose);
       veh.seat = q.seat;
       // Two lanes: some of your cars are bound for the inner lane (police follow the criminal's lane, `chaseCriminalLane`).
-      if (this.layout.lanes > 1 && type !== 'police' && this.laneRng.unit() < c.playerInnerShare) veh.lane = 1;
+      if (this.layout.lanes > 1 && type !== 'police' && (!this.layout.contraflow || isCarType(type)) && this.laneRng.unit() < c.playerInnerShare) veh.lane = 1;
       this.vehicles.push(veh);
       q.vehicles.push(veh.id);
     }
@@ -2000,11 +2019,19 @@ export class World {
     this.shift.carsLeft = Math.max(0, this.shift.carsLeft - 1);
     const remaining = this.shift.carsLeft;
     if (this.shift.phase === 'running' && remaining < this.config.rushHourCars) this.beginRushHour(time);
-    if (remaining === 0 && this.shift.acceptsTaps) {
-      this.shift.phase = 'closing';
-      this.pendingTaps = [];
-      this.queue.heldTap = null;
-    }
+    if (remaining === 0 && this.shift.acceptsTaps) this.closeShift();
+  }
+
+  private closeShift(): void {
+    this.shift.phase = 'closing';
+    this.pendingTaps = [];
+    this.queue.heldTap = null;
+  }
+
+  /** A career shift with nearly all its cars sent: a ring crash no longer loses it (`homeStretchShare`). */
+  get inHomeStretch(): boolean {
+    const c = this.config;
+    return c.homeStretch && !c.endless && this.shift.carsSent >= Math.ceil(c.homeStretchShare * c.shiftCars);
   }
 
   private beginRushHour(time: number): void {
@@ -2030,12 +2057,17 @@ export class World {
     weddingThrough(this, now);
     const c = this.config;
     this.score.points += c.completionBonus;
-    this.score.money += c.shiftPay;
+    this.score.money += c.shiftPay + this.skillPay;
     if (this.isPerfectSoFar) {
       this.score.points += c.perfectRunPoints;
       this.score.money += Math.round(c.shiftPay * c.perfectRunPayFactor);
     }
     this.endShift('completed', now);
+  }
+
+  get skillPay(): number {
+    const c = this.config;
+    return Math.round(c.shiftPay * Math.min(c.tightFitPayCap, this.score.tightFits * c.tightFitPayStep));
   }
 
   get isPerfectSoFar(): boolean {
@@ -2094,6 +2126,7 @@ export class World {
       legendaryExtra: this.config.legendaryExtra,
       ambulances: s.ambulances,
       shaves: s.shaves,
+      skillPay: outcome === 'completed' ? this.skillPay : 0,
       criticals: s.criticals,
       jackpots: s.jackpots,
       blasts: s.blasts,
@@ -2272,7 +2305,7 @@ export function seatArms(layout: Layout, players: number): Arm[] {
   return Array.from({ length: count }, (_, k) => layout.arms[Math.round((k * n) / count) % n]);
 }
 
-export function isModuleQueueAt(w: World, s: number): boolean {
+export function isModuleQueueAt(w: World, s: number, lane = 0): boolean {
   const c = w.config;
   const slow = Object.entries(c.modules).filter(([, m]) => moduleZone(c, m).speedFactor < 1);
   if (slow.length === 0) return false;
@@ -2280,7 +2313,7 @@ export function isModuleQueueAt(w: World, s: number): boolean {
   const L = w.layout.ring.length;
   return slow.some(([slot, m]) => {
     const { arc } = moduleZone(c, m);
-    const start = wrap(w.layout.moduleRingS(Number(slot), c.moduleSlotCount) - arc / 2, L);
+    const start = wrap(w.layout.laneS(lane, w.layout.moduleRingS(Number(slot), c.moduleSlotCount)) - arc / 2, L);
     return w.layout.ringDistance(wrap(start - reach, L), s) <= reach + arc;
   });
 }

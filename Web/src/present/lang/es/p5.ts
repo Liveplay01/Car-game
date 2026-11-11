@@ -602,7 +602,6 @@ export default (S: Strings): Words<Strings> => ({
   shell: {
     dispatch: 'Aviso: el próximo coche será de policía',
     tapAnywhere: 'Toca en cualquier sitio',
-    tapAnywhereSub: 'no en los coches',
     dispatchSide: '¿Otro lado? Ajustes → Zurdo',
     dispatchLeft: (n) => `el próximo coche será de policía, quedan ${n} en este turno`,
     leave: 'Salir',
@@ -625,11 +624,8 @@ export default (S: Strings): Words<Strings> => ({
     /** The first visit's boot screen (index.html): the game in three steps while it loads. */
     learn: {
       waitTitle: 'Espera un hueco',
-      waitBody: 'Tu coche espera en la entrada. El tráfico de la rotonda gira en sentido antihorario.',
       tapTitle: 'Luego toca para lanzar tu coche',
-      tapBody: 'Toca en cualquier parte de la pantalla. Cuenta el momento del toque.',
       comboTitle: 'Las incorporaciones limpias suben tu combo',
-      comboBody: 'Cuanto más justo el hueco, más puntos',
       clean: 'Limpio',
       comboLabel: 'COMBO',
       loading: 'La rotonda se está cargando',

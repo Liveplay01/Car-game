@@ -602,7 +602,6 @@ export default (S: Strings): Words<Strings> => ({
   shell: {
     dispatch: '紧急出警：下一辆车变成警车',
     tapAnywhere: '点按任意位置',
-    tapAnywhereSub: '不要点车',
     dispatchSide: '想换到另一边？设置 → 左手模式',
     dispatchLeft: (n) => `下一辆车变成警车 · 这个班次还剩 ${n} 次`,
     leave: '离开',
@@ -625,11 +624,8 @@ export default (S: Strings): Words<Strings> => ({
     /** The first visit's boot screen (index.html): the game in three steps while it loads. */
     learn: {
       waitTitle: '等待空隙',
-      waitBody: '你的车停在入口。环岛上的车辆按逆时针方向行驶。',
       tapTitle: '然后点按，放出你的车',
-      tapBody: '点按屏幕任意位置。触碰的瞬间才算数。',
       comboTitle: '干净的并入会累积连击',
-      comboBody: '空隙越窄，得分越高',
       clean: '干净',
       comboLabel: 'COMBO',
       loading: '环岛加载中',

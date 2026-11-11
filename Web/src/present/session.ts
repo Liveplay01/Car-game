@@ -224,6 +224,8 @@ export class GameSession {
   /** Lost shifts in a row, and a tap made during the breather: it starts the next shift when the breather ends. */
   private failStreak = 0;
   private startBuffered = false;
+  /** First shift only: a tap while the cars still roll up is kept, not lost, and answered once they stand. */
+  private arrivalTap = false;
   private moneyLanded = false;
   private moneyTicks = 0;
   /** Real seconds since the result's money count ended (Infinity: not yet, or a lost shift). */
@@ -307,6 +309,7 @@ export class GameSession {
   private boot: BootDescent | null = null;
   private recede = 0;
   isInterrupted = false;
+  private interruptedAt = 0;
   countIn = 0;
   private sinceReady = 0;
   private soundSerial = 0;
@@ -1701,6 +1704,16 @@ export class GameSession {
         if (!this.versusSelected && !this.pan.travel && Math.abs(this.pan.pan) < ModePan.swipeThreshold) this.startOrCatchUp(undefined, simDelta);
       }
     }
+    if (this.arrivalTap && (this.screen.k !== 'playing' || !this.tutorial)) this.arrivalTap = false;
+    else if (this.arrivalTap && !this.world.isArriving() && this.world.queue.isReady) {
+      this.arrivalTap = false;
+      if (Tutorial.gapOpen(this.world)) this.tapWorld(undefined, simDelta);
+      else {
+        const front = this.world.queue.vehicles[0];
+        if (front !== undefined) { this.lamps.refuse(front); this.lamps.shake(front); }
+        this.play(['notYet'], ['edge']);
+      }
+    }
     this.sinceTakedown += realDelta;
     this.sinceHitStop += realDelta;
     this.sincePunch += realDelta;
@@ -1983,7 +1996,8 @@ export class GameSession {
               this.startPlaying();
               break;
             }
-            this.tapWorld(a.ago, simDelta);
+            if (this.tutorial && this.world.isArriving()) this.arrivalTap = true;
+            else this.tapWorld(a.ago, simDelta);
             break;
           }
           case 'ready':
@@ -2182,12 +2196,17 @@ export class GameSession {
         }
         break;
       case 'focusLost':
-        if (this.screen.k === 'playing') this.isInterrupted = true;
+        if (this.screen.k === 'playing' && !this.isInterrupted) {
+          this.isInterrupted = true;
+          this.interruptedAt = performance.now();
+        }
         break;
       case 'focusGained':
         if (this.isInterrupted) {
           this.isInterrupted = false;
-          this.countIn = this.reduceMotion ? 0 : GameSession.countInSeconds;
+          // Never longer than the break: a click into another window for half a second gets half a second back.
+          const away = (performance.now() - this.interruptedAt) / 1000;
+          this.countIn = this.reduceMotion ? 0 : Math.min(GameSession.countInSeconds, away);
         }
         break;
       case 'perform':
@@ -2230,6 +2249,7 @@ export class GameSession {
     const arriving = this.world.isArriving();
     this.startPlaying();
     if (!arriving) this.tapWorld(ago, simDelta);
+    else if (this.tutorial) this.arrivalTap = true;
   }
 
   /** A press anywhere on the canvas: chrome first, then the page under it, else the game. */
@@ -3878,6 +3898,7 @@ export class GameSession {
         // No count-up: the score's digits roll into place on their own (`addOdometer`).
         score: Math.round(world.score.points),
         money: Math.round(this.shownMoney),
+        firstShift: this.tutorial !== null && !this.tutorial.isOver,
         best: this.currentBest,
         comboAge: rm ? Infinity : this.sinceComboTier,
         mergePulse: rm ? 0 : (MERGE_PULSE.combo[this.mergeRating] ?? 0) * Ease.kick(this.sinceMerge),

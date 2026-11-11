@@ -4,7 +4,7 @@ import type { Pose } from '../core/paths';
 import type { Layout, Arm } from '../core/roundabout';
 import { type Config, moduleZone, moduleEntries } from '../core/config';
 import { type Vec2, v, add, sub, mul, dot, dist, left, right, fromAngle, length, normalize, angleDelta, lerpV, clamp, TAU } from '../core/vec2';
-import { type RenderList, rect, circle, arc, line, polygon, text, Ease, Metrics, toScreen } from './render';
+import { type RenderList, type RenderItem, rect, circle, arc, line, polygon, text, Ease, Metrics, toScreen } from './render';
 import type { ColorToken } from './theme';
 import { CarArt } from './carArt';
 import { Headlights } from './headlights';
@@ -473,6 +473,9 @@ export function towYardPose(slot: number, layout: Layout, c: Config): Pose {
   return { position: mul(fromAngle(slotAngle), base + 40), heading: slotAngle + Math.PI / 2 };
 }
 
+/** The road built last for a layout, reused while what shapes it stays: the drawer finds the very same items and keeps its picture. */
+const roadCache = new WeakMap<Layout, { key: string; items: RenderItem[] }>();
+
 const yardCache = new Map<string, Pose>();
 function cachedYard(slot: number, layout: Layout, c: Config): Pose {
   const key = `${slot}|${layout.ringRadius}|${layout.arms.map((a) => a.slot).join(',')}`;
@@ -502,6 +505,15 @@ export const SceneBuilder = {
     const lane = layout.laneWidth;
     const reach = 700;
     const from = list.items.length;
+    // A swipe's link road and a tagged or clipped group change with the frame: built afresh.
+    const plain = link <= 0 && list.tag === undefined && list.clip === undefined && list.glass === undefined && !list.fade;
+    const key = plain ? `${own ? layout.arms.indexOf(own) : -1}|${c.carLength}|${c.queueSpacing}|${c.queueVisible}|${c.moduleSlotCount}|${JSON.stringify(c.modules)}` : null;
+    const hit = key === null ? undefined : roadCache.get(layout);
+    if (hit && hit.key === key) {
+      for (const item of hit.items) list.items.push(item);
+      list.bake(from, 'road');
+      return;
+    }
     // Asphalt grain over the whole road once it is drawn: the markings wear with it.
     const grain = list.grain;
     list.grain = 'asphalt';
@@ -550,6 +562,7 @@ export const SceneBuilder = {
     list.w(circle(v(0, 0), layout.islandRadius + 3.5), 'kerb');
     list.w(circle(v(0, 0), layout.islandRadius), 'island');
     list.w(arc(v(0, 0), layout.islandRadius - 14, 1.5, 0, TAU), 'marking', 0.25);
+    if (key !== null) roadCache.set(layout, { key, items: list.items.slice(from) });
     // The road never moves: the drawer keeps its picture (`RenderList.bake`).
     list.bake(from, 'road');
   },

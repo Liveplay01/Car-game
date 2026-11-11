@@ -5,7 +5,7 @@ import { INVITE_LEVEL } from '../../../core/config';
 /** 简体中文 第1部分：教程、介绍、设置、云端、提示、对局。 */
 export default (_s: Strings): Words<Strings> => ({
   tutorial: {
-    sendCar: '等车流出现空隙，点按让你的车驶出',
+    sendCar: '入口变绿时点按',
     combo: '干净利落地并入车流，连击就会累积',
     tightFit: '空隙越窄，得分越高',
     strikes: (cars, police) => {

@@ -100,6 +100,16 @@ export const baseConfig = {
   playerInnerShare: 0.35,
   /** The inner lane is joined and left a little further round than the outer one. */
   innerMergeAngle: 0.42,
+  /**
+   * Contraflow (Claude, 11.11.2026): from Prestige ★`contraflowPrestige` on, a two-lane shift
+   * runs its inner lane clockwise, against the outer one, on `contraflowChance` of the shifts.
+   * Only plain cars take it; heavy and special vehicles stay outside.
+   */
+  contraflow: false,
+  contraflowPrestige: 8,
+  contraflowChance: 0.35,
+  /** Seconds more for each chase: the inner lane takes longer to join, so the police car leaves the queue later. */
+  contraflowPursuit: 6,
 
   // Vehicles
   carLength: 24,
@@ -348,6 +358,11 @@ export const baseConfig = {
   easeCarsStep: 1,
   easeMinShiftCars: 6,
   /**
+   * The first shift ever (Leo, 11.11.2026): a career that has never won starts with `freshEaseSteps` of quiet help and
+   * the fewest cars its level has, so the first gaps are wide and the first loss comes no earlier than the second shift.
+   */
+  freshEaseSteps: 2,
+  /**
    * Stopping after a loss (Leo, 25.10.2026): each visit that ends after a career shift moves `Career.quitLean` by
    * `easeQuitMemory` toward 1 (ended on a loss) or 0 (ended on a win). From `easeQuitLeaves` such visits on, a lean of
    * `easeQuitLean` or more brings the quiet help one loss sooner (never sooner than after the first loss).
@@ -375,6 +390,13 @@ export const baseConfig = {
    * sent as a challenge and sets no best time, since a friend could not play the same one.
    */
   assisted: false,
+  /**
+   * Home stretch (Leo, 11.11.2026): once `homeStretchShare` of the shift's cars are sent, a crash on the ring that would
+   * strike out ends the shift as a narrow win instead (no Perfect Run). Set per shift by `Careers.careerShift`; never in
+   * the Daily, Unlimited, a challenge, trial or Versus.
+   */
+  homeStretchShare: 0.9,
+  homeStretch: false,
   /**
    * Traffic that remembers (Leo, 24.10.2026; `core/habits.ts`): the ring cars keep a few notes through one shift, never into the
    * next. Merges tight against a car make it (and, once you play tight merge after merge, the cars that come next) a little more
@@ -973,6 +995,9 @@ export const baseConfig = {
   // Motivation
   perfectRunPoints: 1500,
   perfectRunPayFactor: 0.25,
+  /** Skill pay (Leo, 11.11.2026): a won shift pays `tightFitPayStep` of its pay more per Tight Fit, at most `tightFitPayCap`. */
+  tightFitPayStep: 0.01,
+  tightFitPayCap: 0.15,
   dailyPay: 300,
   /** The Weekly Elite pays this once a week, with a Premium Chest (core/weekly.ts). */
   weeklyPay: 6000,

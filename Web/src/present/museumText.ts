@@ -1,5 +1,5 @@
 import { type Config, type Weather, type CityEvent, type BossKind, weatherSeverity } from '../core/config';
-import type { SpecialKind, WeatherKind, DarkKind, MuseumEntry } from '../core/museum';
+import type { SpecialKind, WeatherKind, DarkKind, MuseumEntry, RoadKind } from '../core/museum';
 import type { FailCause } from '../core/events';
 import type { LandmarkId } from '../core/trials';
 import { Fmt, money, percent } from './format';
@@ -542,7 +542,7 @@ export function museumText(e: MuseumEntry): MuseumText {
     case 'event':
       return EVENT_TEXT[e.kind];
     case 'road':
-      return ROAD_TEXT;
+      return ROAD_TEXT[e.kind];
     case 'fail':
       return FAIL_TEXT[e.kind];
     case 'landmark':
@@ -550,15 +550,26 @@ export function museumText(e: MuseumEntry): MuseumText {
   }
 }
 
-/** The two-lane ring (its own kind of condition: the road itself). */
-const ROAD_TEXT: MuseumText = {
-  line: 'Read the gaps in both lanes',
-  brief: 'The arrow at your stop line shows which lane your car will take.',
-  explain: (c) => [
-    `From Level ${c.twoLaneLevel} the ring has an inner lane. Both lanes turn together, and traffic uses both.`,
-    'An arrow in front of your stop line shows where your front car is headed: straight into the outer lane, or bending left across it into the inner one.',
-    'A car bound for the inner lane needs a gap in the outer lane to cross and a gap in the inner lane to join. Cars leaving the inner lane cross the outer one too.',
-  ],
+/** The road itself as a condition: the two-lane ring, and the inner lane against the outer one. */
+const ROAD_TEXT: Record<RoadKind, MuseumText> = {
+  twoLane: {
+    line: 'Read the gaps in both lanes',
+    brief: 'The arrow at your stop line shows which lane your car will take.',
+    explain: (c) => [
+      `From Level ${c.twoLaneLevel} the ring has an inner lane. Both lanes turn together, and traffic uses both.`,
+      'An arrow in front of your stop line shows where your front car is headed: straight into the outer lane, or bending left across it into the inner one.',
+      'A car bound for the inner lane needs a gap in the outer lane to cross and a gap in the inner lane to join. Cars leaving the inner lane cross the outer one too.',
+    ],
+  },
+  contraflow: {
+    line: 'The inner lane runs the other way',
+    brief: 'The inner lane runs clockwise: its gaps come from the other side.',
+    explain: (c) => [
+      `From Prestige ★${c.contraflowPrestige}, some two-lane shifts run the inner lane clockwise, against the outer one.`,
+      'A car bound for the inner lane still crosses the outer lane first, then turns left into the inner one. Its gap comes from the other side than the outer lane’s.',
+      'Cars leaving the inner lane cross the outer one as well, so watch both directions before you tap. Criminals take a little longer to escape.',
+    ],
+  },
 };
 
 /** The famous roundabouts: each a fixed shift on its own real layout. */

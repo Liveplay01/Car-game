@@ -402,6 +402,8 @@ export interface HudInput {
   level: number;
   score: number;
   money: number;
+  /** The first shift: money and the best stay off the card until they mean something; the score and the pluses stay. */
+  firstShift?: boolean;
   best: string | null;
   /** Seconds since the multiplier tier went up (Infinity: not lately). */
   comboAge: number;
@@ -531,9 +533,11 @@ export const HUD = {
     TopBar.addCard(list, frame, 1, brief, challengeReach);
     list.tag = 'topbarLabels';
     const numbers = list.items.length;
-    TopBar.addMoneyColumn(list, cols.left, 'leading', Fmt.number(h.money), { valueSize: 20 * land(h.pops.money, 0.15), roll: { value: h.money, reduceMotion: h.reduceMotion ?? false } });
-    // During a shift the score leads (Leo, 11.11.2026): money and the best step back, full again on the result.
-    TopBar.quiet(list, numbers, h.pops.money);
+    if (!h.firstShift) {
+      TopBar.addMoneyColumn(list, cols.left, 'leading', Fmt.number(h.money), { valueSize: 20 * land(h.pops.money, 0.15), roll: { value: h.money, reduceMotion: h.reduceMotion ?? false } });
+      // During a shift the score leads (Leo, 11.11.2026): money and the best step back, full again on the result.
+      TopBar.quiet(list, numbers, h.pops.money);
+    }
     const c = cols.center;
     const tick = land(h.pops.cars, 0.12);
     const rush = world.shift.rushHourSince !== null;
@@ -591,7 +595,7 @@ export const HUD = {
         valueSize: 18 * land(h.race.pop, 0.15),
         valueColor: h.race.delta <= 0 ? 'accent' : 'destructive',
       });
-    } else if (h.best !== null) {
+    } else if (h.best !== null && !h.firstShift) {
       // No trophy over a dash: without a best there is nothing to chase yet.
       const best = list.items.length;
       TopBar.addBest(list, cols.right, h.best);
@@ -2103,7 +2107,9 @@ export const ResultBanner = {
           ? [S.modes.carsSent(r.carsSent), 'accent']
           : summary.mode === 'mayhem'
             ? [S.mayhem.summary(r.wrecks, r.biggestChain), 'fireOuter']
-            : null;
+            : (r.skillPay ?? 0) > 0
+              ? [S.result.skillPay(moneyText(Fmt.number(r.skillPay ?? 0))), 'coin']
+              : null;
     const close = summary.closeCall;
     // The ring's gold bar already shows the XP; only a level climbed gets words.
     const climbed = summary.elite && summary.elite.climbed > 0 ? summary.elite : null;

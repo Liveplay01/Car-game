@@ -179,7 +179,7 @@ function seeDucks(w: World, f: DuckFamily): void {
 
 /** Room from a ring car's nose to where it stops for a crossing ahead; null when the crossing is behind it or under it. */
 function duckGap(w: World, veh: Vehicle, s: number, band: DuckBand): number | null {
-  const ahead = w.layout.ringDistance(s, band.s);
+  const ahead = w.layout.ringDistance(s, w.layout.laneS(veh.lane, band.s));
   if (ahead > w.layout.ring.length / 2) return null;
   const gap = ahead - w.lengthOf(veh.type) / 2 - w.config.duckRoom;
   return gap > 0 ? gap : null;

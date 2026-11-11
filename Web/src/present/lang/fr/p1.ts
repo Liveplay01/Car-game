@@ -5,7 +5,7 @@ import { INVITE_LEVEL } from '../../../core/config';
 /** Français, Partie 1 : Tutoriel, Intros, Paramètres, Cloud, Astuces, Départs. */
 export default (_s: Strings): Words<Strings> => ({
   tutorial: {
-    sendCar: 'Attendez une ouverture, puis touchez pour lancer votre voiture',
+    sendCar: 'Touchez quand votre entrée passe au vert',
     combo: 'Des insertions propres augmentent votre combo',
     tightFit: 'Plus l’ouverture est serrée, plus vous marquez',
     strikes: (cars, police) => {

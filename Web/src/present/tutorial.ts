@@ -7,7 +7,7 @@ import { MenuKit } from './menukit';
 import { textWidth } from './icons';
 import { S } from './strings';
 import { interpolatedPose } from './scene';
-import { TopBar } from './hud';
+import { TopBar, plusSign } from './hud';
 
 export type TutorialStep = 'sendCar' | 'findGap' | 'combo' | 'tight' | 'quiet';
 
@@ -28,11 +28,22 @@ export class Tutorial {
     return S.tutorial.sendCar;
   }
 
+  /** The front car could go now and still a moment later: what the entry zone shows green. */
+  static gapOpen(world: World): boolean {
+    const id = world.queue.vehicles[0];
+    const car = id === undefined ? undefined : world.vehicle(id);
+    if (!car || !world.queue.isReady) return false;
+    const arm = world.layout.player;
+    return world.predictedMergeGap(arm, 0, 40, -Infinity, car.lane) > 0.04 && world.predictedMergeGap(arm, 0.25, 40, -Infinity, car.lane) > 0.04;
+  }
+
   step: TutorialStep = 'sendCar';
   age = 0;
   cleanMerges = 0;
   taughtTight = false;
   strikeAge: number | null = null;
+  /** Where the first strike happened and how many strikes stood then: a forgiven one shows as a spent shield there, not as text. */
+  strike: { point: Vec2; strikes: number; police: boolean } | null = null;
   isOver = false;
   /** Seconds since the hint's event happened: it fades out over its first 0.3. */
   hintLeft: number | null = null;
@@ -80,7 +91,10 @@ export class Tutorial {
         }
         break;
       case 'crash':
-        if (this.strikeAge === null && (event.isStrike || event.isPoliceCrash)) this.strikeAge = 0;
+        if (this.strikeAge === null && (event.isStrike || event.isPoliceCrash)) {
+          this.strikeAge = 0;
+          this.strike = { point: event.point, strikes: event.strikes, police: event.isPoliceCrash };
+        }
         break;
     }
   }
@@ -89,10 +103,17 @@ export class Tutorial {
     const cam = list.camera;
     const frontId = world.queue.vehicles[0];
     const front = frontId === undefined ? undefined : world.vehicle(frontId);
-    if ((this.step === 'sendCar' || this.step === 'findGap') && front) {
+    if (!this.isOver && front && world.queue.isReady) {
+      // The entry zone on the ring: green while the gap is open, red while it is shut.
+      const open = Tutorial.gapOpen(world);
+      const { player, ringRadius, laneWidth } = world.layout;
+      const from = player.angle - 0.12;
+      const to = player.angle + world.config.mergeAngle + 0.12;
+      list.w(arc(v(0, 0), ringRadius, laneWidth * 0.9, from, to, true), open ? 'juiceGreen' : 'destructive', open ? 0.22 : 0.16);
+      // The amber ring marks your car all through the first shift, as in the boot story; it beats only while a tap would land.
       const at = toScreen(cam, interpolatedPose(front, alpha).position);
-      const beat = reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(time * 4);
-      const fade = this.step === 'sendCar' ? 1 : Math.max(0, 1 - this.age / 1.5);
+      const beat = !open ? 0 : reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(time * 6);
+      const fade = (this.step === 'sendCar' ? 1 : 0.6) * (open ? 1 : 0.4);
       list.s(arc(at, 22 + 5 * beat, 2.5, 0, TAU), 'accent', (0.45 + 0.4 * beat) * fade);
       list.s(circle(at, 22 + 5 * beat), 'accent', 0.08 * fade);
     }
@@ -103,7 +124,16 @@ export class Tutorial {
       Tutorial.islandPill(list, hint, island, radius, this.age, this.hintLeft ?? 0, reduceMotion);
     }
     const sa = this.strikeAge;
-    if (sa !== null && sa < Tutorial.hintDuration) {
+    const hit = this.strike;
+    if (sa !== null && hit && !hit.police && hit.strikes < world.config.maxStrikes) {
+      // Forgiven: the shield the crash used up lifts off the wreck in the player's green and bursts.
+      const t = Ease.clamp01(sa / 1.2);
+      if (t >= 1) return;
+      const at = add(toScreen(cam, hit.point), v(0, reduceMotion ? -28 : -28 - 36 * Ease.outCubic(t)));
+      const opacity = Ease.outCubic(sa / 0.15) * (1 - Ease.clamp01((t - 0.55) / 0.45));
+      list.s(plusSign(at, 30 + (reduceMotion ? 0 : 10 * Ease.outCubic(t))), 'juiceGreen', opacity);
+      if (!reduceMotion) list.s(arc(at, 18 + 30 * Ease.outCubic(t), 3 * (1 - t), 0, TAU), 'juiceGreen', opacity * 0.8);
+    } else if (sa !== null && sa < Tutorial.hintDuration) {
       const at = v(cam.viewport.x / 2, TopBar.top + TopBar.height + 28);
       Tutorial.pill(list, S.tutorial.strikes(world.config.maxStrikes, world.config.policeShare > 0 ? world.config.maxPoliceCrashes : 0), at, sa, sa - (Tutorial.hintDuration - 0.3), reduceMotion, 'destructive');
     }

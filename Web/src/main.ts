@@ -165,8 +165,8 @@ const firstVisit = (!inPortal && !hasSave()) || bootDemo === 'learn';
 const learn = boot?.querySelector('.boot-learn');
 if (boot && learn && firstVisit) {
   const L = S.shell.learn;
-  const copy = [L.waitTitle, L.waitBody, L.tapTitle, L.tapBody, L.comboTitle, L.comboBody];
-  learn.querySelectorAll('strong, span[style*="text-wrap"]').forEach((el, i) => (el.textContent = copy[i]));
+  const titles = [L.waitTitle, L.tapTitle, L.comboTitle];
+  learn.querySelectorAll('strong').forEach((el, i) => (el.textContent = titles[i]));
   const labels = learn.querySelectorAll('text');
   labels[0].textContent = L.clean;
   labels[1].textContent = L.comboLabel;
@@ -175,6 +175,8 @@ if (boot && learn && firstVisit) {
   learn.querySelector('.learn-late button')!.textContent = L.skip;
   boot.classList.add('learn');
 }
+// The lesson's loop began here; the game takes over only where a loop ends, never mid-scene (Leo, 11.11.2026).
+const learnStart = performance.now();
 
 // The heading face (Overpass, `ui/shell.css`) is measured and drawn by the canvas. Nothing waits for it: the way in
 // shows no text, so the game starts with the stand-in and measures again when the font is there (it is bundled).
@@ -212,9 +214,9 @@ if (firstVisit) {
   });
 }
 await Promise.race([
-  Promise.all([shell.preload(), firstVisit ? pause(LEARN_MS) : null]),
+  firstVisit ? shell.preload().then(() => pause(LEARN_MS - ((performance.now() - learnStart) % LEARN_MS))) : shell.preload(),
   tapped,
-  firstVisit ? pause(LEARN_MS + BOOT_WAIT_MS) : pause(BOOT_WAIT_MS),
+  pause(firstVisit ? 2 * LEARN_MS : BOOT_WAIT_MS),
 ]);
 gameLoaded();
 // The game is on screen: the boot screen fades away, and later errors are the game's own business.

@@ -1,6 +1,6 @@
 # Idea.md – offene Ideen
 
-Stand: 04.11.2026
+Stand: 11.11.2026
 
 Diese Datei enthält nur Ideen, die **noch nicht umgesetzt** sind. Was gebaut ist, steht in
 [Spiel.md](Spiel.md) und [FOUNDATION.md](FOUNDATION.md), die Zahlen in `Web/src/core/config.ts`.
@@ -113,3 +113,33 @@ Offen, grob nach Nutzen:
 5. **Multiplayer.** Zustands-Hashes vergleichen; bei Abweichung zählt die Runde nicht.
 6. **Melden.** „Melden“ an Bestenlisteneinträgen, später rückwirkende Prüfung gespeicherter Replays.
 
+
+## Content-Ideen (Claude, 11.11.2026)
+
+Aus einer Design-Runde am 11.11.2026. Contraflow ist gebaut (ab Prestige ★8, `contraflow*` in `config.ts`).
+Doppel-Legendary gibt es schon seit 19.10.2026 (`legendaryExtraRanks`, `drawLegendaryExtra` in `core/levels.ts`).
+Offen, grob nach Nutzen:
+
+- **Goldene Lücke** (Aufwand S): Aus einem eigenen Seed-Strom (nie dem Verkehrsstrom) markiert das Spiel ab und zu eine
+  Lücke zwischen zwei KI-Autos mit goldenem Schimmer auf dem Asphalt. Wer genau dort einfädelt, bekommt doppelte Punkte
+  und +1 Kette. Die markierte Lücke ist oft eng, und wer auf sie wartet, bekommt mehr Verkehr. Anders als Critical Merge
+  eine Entscheidung vor dem Tap, angezeigt nur durch die Welt. Prüfen: Der vorsichtige Bot ignoriert sie und crasht nicht
+  öfter; ein gieriger Bot zeigt das Risiko. Einordnen in die Einstiegsleiter um Level 8. Offen: Zusammenspiel mit Critical Merge.
+- **Rivale der Woche** (Aufwand S): Aus Freunden oder der Rangliste ein Spieler knapp über dir; wer seinen
+  Unlimited-Rekord schlägt, bekommt eine Truhe. Ranglisten und der Push „überholt“ gibt es schon. Zielt auf die Wiederkehr nach Tag 2.
+- **Ampel-Arm „Green Wave“** (City Event, Aufwand S–M): Eine KI-Zufahrt bekommt eine Ampel und schickt ihren Verkehr
+  in Pulks, in festem Takt; die Phase leuchtet am Inselrand. Man tippt in die Pause zwischen zwei Pulks. Regeln bleiben
+  gleich, nur die Lücken ändern sich. Braucht Museumseintrag, Icon, Briefing.
+- **Knoten (Lücken-Rätsel)** (Aufwand M): Eine eingefrorene Situation mit drei eigenen Autos; Ziel: alle in einer
+  Ringrunde einfädeln, Sterne nach Präzision. Ein Generator in `core/` sucht Seeds, die der vorsichtige Bot nur mit genau
+  einem Timing-Fenster löst: 20 Rätsel pro Woche ohne Handarbeit. Trägt sich auf der Trial-Infrastruktur.
+- **Gauntlet** (ab ★1, Aufwand M): Ein Leben, Schichten mit je 5 Autos, jede Stufe bringt die nächste Mechanik der
+  Leiter (Polizei, Lkw, Regen, Krankenwagen, Boss, Nacht …). Zeigt in etwa 6 Minuten die ganze Welt; feste Leiter, also
+  vergleichbar auf einer Rangliste.
+- **Doppel-Legendary-Belohnung** (Aufwand S): Ein eigener Skin nach 10 geschafften Schichten mit zwei Legendary-Regeln.
+- **Melodie-Sets** (Aufwand M): Die Merge-Noten mit anderen Instrumenten oder Tonleitern (Marimba, Glocken, Synth),
+  freigeschaltet über Mastery-Stufen. Klänge per Python-Script wie die Casino-Sounds. Kein Vorteil auf der Straße.
+- **Spurmuster** (Aufwand S): Kosmetik für die Reifenspuren nach einer gekonnten Einfädelung (Chevron, Punkte,
+  Flammenrand). Nur Muster, keine Signalfarben: Fahrzeugfarben sind Spielinformation.
+- **Stadtchronik** (Aufwand S–M): Am Saisonende eine Karte zum Teilen: geschickte Autos, Wracks, längste Kette,
+  Lieblingswetter, gestellte Bosse. Daten liegen in `Career.stats`.

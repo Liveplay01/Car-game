@@ -602,7 +602,6 @@ export default (S: Strings): Words<Strings> => ({
   shell: {
     dispatch: 'Chiamata d’emergenza: la prossima auto sarà della polizia',
     tapAnywhere: 'Tocca ovunque',
-    tapAnywhereSub: 'non sulle auto',
     dispatchSide: 'Altro lato? Impostazioni → Mancino',
     dispatchLeft: (n) => `la prossima auto sarà della polizia, ancora ${n} in questo turno`,
     leave: 'Esci',
@@ -625,11 +624,8 @@ export default (S: Strings): Words<Strings> => ({
     /** The first visit's boot screen (index.html): the game in three steps while it loads. */
     learn: {
       waitTitle: 'Aspetta un varco',
-      waitBody: 'La tua auto aspetta all’ingresso. Il traffico della rotatoria gira in senso antiorario.',
       tapTitle: 'Poi tocca per far partire la tua auto',
-      tapBody: 'Tocca ovunque sullo schermo. Conta il momento del tocco.',
       comboTitle: 'Gli inserimenti puliti fanno salire il combo',
-      comboBody: 'Più stretto è il varco, più punti ottieni',
       clean: 'Pulito',
       comboLabel: 'COMBO',
       loading: 'La rotatoria si sta caricando',

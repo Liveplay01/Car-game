@@ -419,14 +419,26 @@ const museum: Translation['museum'] = {
   },
 
   road: {
-    line: 'Lies die Lücken auf beiden Spuren',
-    brief: 'Der Pfeil an deiner Haltelinie zeigt, auf welche Spur dein Auto fährt.',
-    explain: (c) => [
-      `Ab Level ${c.twoLaneLevel} hat der Ring eine Innenspur. Beide Spuren drehen sich zusammen, und der Verkehr nutzt beide.`,
-      'Ein Pfeil vor deiner Haltelinie zeigt, wohin dein vorderes Auto fährt: geradeaus auf die Außenspur oder nach links über sie hinweg auf die Innenspur.',
-      'Ein Auto auf dem Weg zur Innenspur braucht eine Lücke auf der Außenspur zum Queren und eine Lücke auf der Innenspur zum Einfädeln. Autos, die die Innenspur verlassen, queren die Außenspur ebenfalls.',
-    ],
+    twoLane: {
+      line: 'Lies die Lücken auf beiden Spuren',
+      brief: 'Der Pfeil an deiner Haltelinie zeigt, auf welche Spur dein Auto fährt.',
+      explain: (c) => [
+        `Ab Level ${c.twoLaneLevel} hat der Ring eine Innenspur. Beide Spuren drehen sich zusammen, und der Verkehr nutzt beide.`,
+        'Ein Pfeil vor deiner Haltelinie zeigt, wohin dein vorderes Auto fährt: geradeaus auf die Außenspur oder nach links über sie hinweg auf die Innenspur.',
+        'Ein Auto auf dem Weg zur Innenspur braucht eine Lücke auf der Außenspur zum Queren und eine Lücke auf der Innenspur zum Einfädeln. Autos, die die Innenspur verlassen, queren die Außenspur ebenfalls.',
+      ],
+    },
+    contraflow: {
+      line: 'Die Innenspur fährt andersherum',
+      brief: 'Die Innenspur fährt im Uhrzeigersinn: Ihre Lücken kommen von der anderen Seite.',
+      explain: (c) => [
+        `Ab Prestige ★${c.contraflowPrestige} fährt in manchen Schichten mit zwei Spuren die Innenspur im Uhrzeigersinn, gegen die Außenspur.`,
+        'Ein Auto auf dem Weg zur Innenspur quert weiterhin zuerst die Außenspur und biegt dann links auf die Innenspur ein. Seine Lücke kommt von der anderen Seite als die der Außenspur.',
+        'Autos, die die Innenspur verlassen, queren die Außenspur ebenfalls: Schau vor dem Tippen in beide Richtungen. Verbrecher brauchen etwas länger, bis du sie erwischst.',
+      ],
+    },
   },
+
 
   landmark: {
     'landmark.etoile': {

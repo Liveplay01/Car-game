@@ -98,7 +98,8 @@
       .boot a:focus-visible { outline: 2px solid #ffb703; outline-offset: 3px; }
       @keyframes boot-show { from { visibility: visible; transform: translateY(8px); } to { max-height: 32rem; opacity: 1; visibility: visible; transform: none; } }
       /* The very first visit (main.ts sets `learn`): in place of the plain dark, the game in three steps while it
-         loads (Leo, 22.10.2026). One loop of 10.8 s, three phases of 3.6 s: wait for a gap, tap, merge into a combo. */
+         loads (Leo, 22.10.2026). One loop of 10.8 s, three phases of 3.6 s: wait for a gap, tap, merge into a combo.
+         A silent demo (Leo, 11.11.2026): one line per phase, and phase 1 shows one tap too early. */
       .boot.learn:not(.failed) { padding: calc(16px + env(safe-area-inset-top, 0px)) 24px calc(24px + env(safe-area-inset-bottom, 0px)); }
       .boot-learn { display: none; flex: 1; flex-direction: column; width: 100%; max-width: 420px; min-height: 0; }
       .boot.learn:not(.failed) .boot-learn { display: flex; }
@@ -111,7 +112,7 @@
       @keyframes learn-wait-pulse{0%{transform:scale(.8);opacity:.9}100%{transform:scale(1.7);opacity:0}}
       @keyframes learn-wait-k{0%{opacity:0}2%,42.5%{opacity:1}43.4%,55.6%{opacity:0}57%,65.2%{opacity:1}65.6%,74%{opacity:0}75.5%,84.1%{opacity:1}84.5%,100%{opacity:0}}
       @keyframes learn-c1a{0%{opacity:0;transform:translateY(12px)}3%,95%{opacity:1;transform:none}99%,100%{opacity:0;transform:none}}
-      @keyframes learn-c1w{0%,43.33%{transform:translate(0,30px) rotate(-90deg)}46%{transform:translate(0,8px) rotate(-60deg)}48.67%{transform:none}50%{transform:scale(.96,1.05)}51.5%,100%{transform:none}}
+      @keyframes learn-c1w{0%,26%{transform:translate(0,30px) rotate(-90deg)}27.4%{transform:translate(0,21px) rotate(-84deg)}29.6%,43.33%{transform:translate(0,30px) rotate(-90deg)}46%{transform:translate(0,8px) rotate(-60deg)}48.67%{transform:none}50%{transform:scale(.96,1.05)}51.5%,100%{transform:none}}
       @keyframes learn-c1r{0%,48.67%{transform:rotate(0)}100%{transform:rotate(-554.4deg)}}
       @keyframes learn-c2a{0%,51.85%{opacity:0;transform:translateY(12px)}55.56%,95%{opacity:1;transform:none}99%,100%{opacity:0;transform:none}}
       @keyframes learn-c2w{0%,65.56%{transform:translate(0,30px) rotate(-90deg)}68.22%{transform:translate(0,8px) rotate(-60deg)}70.89%{transform:none}72.2%{transform:scale(.96,1.05)}73.5%,100%{transform:none}}
@@ -119,7 +120,10 @@
       @keyframes learn-c3a{0%,70.37%{opacity:0;transform:translateY(12px)}74.07%,95%{opacity:1;transform:none}99%,100%{opacity:0;transform:none}}
       @keyframes learn-c3w{0%,84.48%{transform:translate(0,30px) rotate(-90deg)}87.15%{transform:translate(0,8px) rotate(-60deg)}89.81%{transform:none}91%{transform:scale(.96,1.05)}92.2%,100%{transform:none}}
       @keyframes learn-c3r{0%,89.81%{transform:rotate(0)}100%{transform:rotate(-110deg)}}
-      @keyframes learn-hand-k{0%,35%{opacity:0;transform:translate(5px,6px)}38%,42.6%{opacity:1;transform:none}43.4%{transform:translateY(1.6px) scale(.92)}45%{transform:none}52%{opacity:1;transform:none}56%,100%{opacity:0;transform:none}}
+      @keyframes learn-hand-k{0%,20%{opacity:0;transform:translate(5px,6px)}22.5%,25.4%{opacity:1;transform:none}26%{transform:translateY(1.6px) scale(.92)}27%{opacity:1;transform:none}29.5%,35%{opacity:0;transform:translate(5px,6px)}38%,42.6%{opacity:1;transform:none}43.4%{transform:translateY(1.6px) scale(.92)}45%{transform:none}52%{opacity:1;transform:none}56%,100%{opacity:0;transform:none}}
+      @keyframes learn-rip0{0%,25.8%{opacity:0;transform:scale(.3)}26.2%{opacity:1;transform:scale(.6)}30.6%,100%{opacity:0;transform:scale(1.9)}}
+      /* The one wrong tap: sent while the ring is busy, the car bumps a passing one and backs off in a puff. */
+      @keyframes learn-puff-k{0%,27.2%{opacity:0;transform:scale(.4)}27.9%{opacity:1;transform:scale(1)}31.5%,100%{opacity:0;transform:scale(1.7)}}
       @keyframes learn-rip1{0%,43.2%{opacity:0;transform:scale(.3)}43.6%{opacity:1;transform:scale(.6)}48%,100%{opacity:0;transform:scale(1.9)}}
       @keyframes learn-rip2{0%,65.4%{opacity:0;transform:scale(.3)}65.8%{opacity:1;transform:scale(.6)}70.2%,100%{opacity:0;transform:scale(1.9)}}
       @keyframes learn-rip3{0%,84.4%{opacity:0;transform:scale(.3)}84.8%{opacity:1;transform:scale(.6)}89.2%,100%{opacity:0;transform:scale(1.9)}}
@@ -239,6 +243,11 @@
         <text x="100" y="113" text-anchor="middle" fill="#30d158" style="opacity:0;font:italic 900 28px 'Overpass Variable',system-ui,sans-serif;transform-box:fill-box;transform-origin:center;animation:learn-x2 10.8s linear infinite">×2</text>
         <text x="100" y="113" text-anchor="middle" fill="#30d158" style="opacity:0;font:italic 900 28px 'Overpass Variable',system-ui,sans-serif;transform-box:fill-box;transform-origin:center;animation:learn-x3 10.8s linear infinite">×3</text>
         
+        <g style="opacity:0;transform-box:fill-box;transform-origin:center;animation:learn-puff-k 10.8s cubic-bezier(0.23,1,0.32,1) infinite">
+        <circle cx="100" cy="166" r="11" fill="none" stroke="#ff453a" stroke-width="2"></circle>
+        <circle cx="93" cy="164" r="5" fill="#8b95a3" fill-opacity="0.8"></circle><circle cx="107" cy="163" r="4" fill="#8b95a3" fill-opacity="0.7"></circle><circle cx="101" cy="171" r="4.5" fill="#8b95a3" fill-opacity="0.6"></circle>
+        </g>
+        <circle cx="125.2" cy="186.4" r="9" fill="none" stroke="#ffffff" stroke-width="1.6" style="opacity:0;transform-box:fill-box;transform-origin:center;animation:learn-rip0 10.8s cubic-bezier(0.23,1,0.32,1) infinite"></circle>
         <circle cx="125.2" cy="186.4" r="9" fill="none" stroke="#ffffff" stroke-width="1.6" style="opacity:0;transform-box:fill-box;transform-origin:center;animation:learn-rip1 10.8s cubic-bezier(0.23,1,0.32,1) infinite"></circle>
         <circle cx="125.2" cy="186.4" r="9" fill="none" stroke="#ffffff" stroke-width="1.6" style="opacity:0;transform-box:fill-box;transform-origin:center;animation:learn-rip2 10.8s cubic-bezier(0.23,1,0.32,1) infinite"></circle>
         <circle cx="125.2" cy="186.4" r="9" fill="none" stroke="#ffffff" stroke-width="1.6" style="opacity:0;transform-box:fill-box;transform-origin:center;animation:learn-rip3 10.8s cubic-bezier(0.23,1,0.32,1) infinite"></circle>
@@ -251,15 +260,12 @@
         <div style="display:grid;text-align:center;padding:8px 0 24px">
         <div style="grid-area:1/1;display:flex;flex-direction:column;gap:8px;animation:learn-txt1 10.8s linear infinite">
         <strong style="margin:0;font:800 28px/1.15 'Overpass Variable',ui-rounded,system-ui,sans-serif;letter-spacing:-0.01em;text-wrap:balance"></strong>
-        <span style="margin:0;color:#99a2af;font-size:16px;line-height:1.5;text-wrap:pretty"></span>
         </div>
         <div style="grid-area:1/1;display:flex;flex-direction:column;gap:8px;opacity:0;animation:learn-txt2 10.8s linear infinite">
         <strong style="margin:0;font:800 28px/1.15 'Overpass Variable',ui-rounded,system-ui,sans-serif;letter-spacing:-0.01em;text-wrap:balance"></strong>
-        <span style="margin:0;color:#99a2af;font-size:16px;line-height:1.5;text-wrap:pretty"></span>
         </div>
         <div style="grid-area:1/1;display:flex;flex-direction:column;gap:8px;opacity:0;animation:learn-txt3 10.8s linear infinite">
         <strong style="margin:0;font:800 28px/1.15 'Overpass Variable',ui-rounded,system-ui,sans-serif;letter-spacing:-0.01em;text-wrap:balance"></strong>
-        <span style="margin:0;color:#99a2af;font-size:16px;line-height:1.5;text-wrap:pretty"></span>
         </div>
         </div>
         

@@ -1,6 +1,6 @@
 import { gravity } from './config';
 import type { Arm } from './roundabout';
-import { type Waiting, type Merging, Vehicle, type VehicleType, isInFlow, isEmergency, isLoad } from './vehicle';
+import { type Waiting, type Merging, Vehicle, type VehicleType, isInFlow, isEmergency, isLoad, isCarType } from './vehicle';
 import { wrap, angleOf } from './vec2';
 import type { World } from './world';
 import { reservedCriminalArm, criminalDueArm, reservedTransporterArm, joinsTooClose } from './specials';
@@ -145,6 +145,8 @@ function spawnWaiting(w: World, arm: Arm): void {
 /** Two lanes: some of the ordinary traffic keeps to the inner lane; buses and specials stay outside. */
 function rollLane(w: World, type: VehicleType): 0 | 1 {
   if (w.layout.lanes < 2 || type === 'bus' || type === 'tanker') return 0;
+  // Against the flow only plain cars: the specials' rules count along the outer lane.
+  if (w.layout.contraflow && !isCarType(type)) return 0;
   return w.laneRng.unit() < w.config.innerLaneShare ? 1 : 0;
 }
 
@@ -272,7 +274,7 @@ function closesSafely(w: World, arm: Arm, lane: number, type: VehicleType): bool
     if (other.lane !== lane || p.kind !== 'ring') continue;
     const s = w.virtualRingPosition(other, profile.duration);
     if (s === null) continue;
-    const closing = w.ringSpeed - plannedSpeed(w, p.s, p.drive.speed ?? w.ringSpeed);
+    const closing = w.ringSpeed - plannedSpeed(w, p.s, p.drive.speed ?? w.ringSpeed, lane);
     if (closing <= 0) continue;
     const gap = w.layout.ringDistance(arrival, s) - (mine + w.lengthOf(other.type)) / 2 - c.stopGap;
     if (gap < (type === 'pickup' ? closing : (closing * closing) / (2 * brake))) return false;
@@ -308,7 +310,7 @@ function canBargeIn(w: World, arm: Arm, type: VehicleType, lane: 0 | 1): boolean
 
 /** On two lanes the criminal and the racers take whichever lane has the gap: a busy outer lane no longer keeps them out. */
 function bargesIn(w: World, arm: Arm, veh: Vehicle): boolean {
-  const lanes: (0 | 1)[] = w.layout.lanes >= 2 && (veh.type === 'pickup' || veh.type === 'racer') ? [veh.lane, veh.lane === 0 ? 1 : 0] : [veh.lane];
+  const lanes: (0 | 1)[] = w.layout.lanes >= 2 && !w.layout.contraflow && (veh.type === 'pickup' || veh.type === 'racer') ? [veh.lane, veh.lane === 0 ? 1 : 0] : [veh.lane];
   const lane = lanes.find((l) => canBargeIn(w, arm, veh.type, l));
   if (lane === undefined) return false;
   veh.lane = lane;

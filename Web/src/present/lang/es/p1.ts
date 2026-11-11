@@ -5,7 +5,7 @@ import { INVITE_LEVEL } from '../../../core/config';
 /** Español, Parte 1: Tutorial, Presentaciones, Ajustes, Nube, Pistas, Carreras. */
 export default (_s: Strings): Words<Strings> => ({
   tutorial: {
-    sendCar: 'Espera un hueco y toca para enviar tu coche',
+    sendCar: 'Toca cuando tu entrada se ponga verde',
     combo: 'Las incorporaciones limpias aumentan tu combo',
     tightFit: 'Cuanto más justo el hueco, más puntos',
     strikes: (cars, police) => {

@@ -419,14 +419,26 @@ const museum: Translation['museum'] = {
   },
 
   road: {
-    line: 'Lisez les créneaux sur les deux voies',
-    brief: 'La flèche à votre ligne d’arrêt indique vers quelle voie s’engage votre véhicule.',
-    explain: (c) => [
-      `À partir du niveau ${c.twoLaneLevel}, l’anneau s’équipe d’une voie intérieure. Les deux anneaux tournent de concert et le trafic exploite les deux.`,
-      'Une flèche devant votre ligne d’arrêt signale la trajectoire : tout droit sur la voie extérieure ou vers la gauche pour piquer vers l’intérieur.',
-      'Un véhicule visant l’anneau intérieur doit franchir l’anneau extérieur puis trouver son créneau à l’intérieur. Les sorties coupent également les voies.',
-    ],
+    twoLane: {
+      line: 'Lisez les créneaux sur les deux voies',
+      brief: 'La flèche à votre ligne d’arrêt indique vers quelle voie s’engage votre véhicule.',
+      explain: (c) => [
+        `À partir du niveau ${c.twoLaneLevel}, l’anneau s’équipe d’une voie intérieure. Les deux anneaux tournent de concert et le trafic exploite les deux.`,
+        'Une flèche devant votre ligne d’arrêt signale la trajectoire : tout droit sur la voie extérieure ou vers la gauche pour piquer vers l’intérieur.',
+        'Un véhicule visant l’anneau intérieur doit franchir l’anneau extérieur puis trouver son créneau à l’intérieur. Les sorties coupent également les voies.',
+      ],
+    },
+    contraflow: {
+      line: 'La voie intérieure tourne dans l’autre sens',
+      brief: 'La voie intérieure tourne dans le sens horaire : ses créneaux arrivent de l’autre côté.',
+      explain: (c) => [
+        `Dès le Prestige ★${c.contraflowPrestige}, certains services à deux voies font tourner la voie intérieure dans le sens horaire, à contresens de la voie extérieure.`,
+        'Un véhicule qui va vers la voie intérieure traverse toujours d’abord la voie extérieure, puis tourne à gauche pour s’y engager. Son créneau arrive du côté opposé à celui de la voie extérieure.',
+        'Les véhicules qui quittent la voie intérieure traversent eux aussi la voie extérieure : regardez dans les deux sens avant de toucher. Les criminels mettent un peu plus de temps à s’échapper.',
+      ],
+    },
   },
+
 
   landmark: {
     'landmark.etoile': {

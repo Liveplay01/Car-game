@@ -21,9 +21,13 @@ type Initialize = (options: {
 
 const ENDED = ['allAdsCompleted', 'skipped', 'manuallyEnded'];
 
+/** Development only (`?adfake`): a pretend ad of two seconds, so the offers can be tried without the ad network. Not in the production build. */
+const fakeAds = import.meta.env.DEV && new URLSearchParams(location.search).has('adfake');
+const FAKE_AD_MS = 2000;
+
 // Ads only run behind `?werbung` for now (`adReady`), so the SDK and its partner scripts load only then.
-// Drop the `testAds` check when ads go live for everyone.
-if (testAds) {
+// Drop the `testAds` check when ads go live for everyone. A pretend ad needs no SDK.
+if (testAds && !fakeAds) {
   const script = document.createElement('script');
   script.src = 'https://cdn.applixir.com/applixir.app.v6.1.0.js';
   script.async = true;
@@ -36,11 +40,15 @@ function sdk(): Initialize | null {
 }
 
 export function applixirReady(): boolean {
-  return sdk() !== null && document.getElementById(PLAYER_ID) !== null;
+  return fakeAds || (sdk() !== null && document.getElementById(PLAYER_ID) !== null);
 }
 
 /** Plays the rewarded ad and says how it went. False when the SDK did not load (blocker, offline). */
 export function applixirRewardedAd(done: (outcome: RewardedOutcome) => void): boolean {
+  if (fakeAds) {
+    window.setTimeout(() => done('watched'), FAKE_AD_MS);
+    return true;
+  }
   const init = sdk();
   if (!init) return false;
   let rewarded = false;

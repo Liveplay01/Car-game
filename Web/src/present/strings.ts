@@ -31,7 +31,7 @@ export const S = {
   gameTitle: 'Roundabout Timing',
 
   tutorial: {
-    sendCar: 'Wait for a gap, then tap to send your car',
+    sendCar: 'Tap when your entry turns green',
     combo: 'Clean merges build your combo',
     /** After a few safe merges: surviving is not all there is. */
     tightFit: 'The tighter the gap, the more points',
@@ -1248,7 +1248,7 @@ export const S = {
         case 'event':
           return S.cityEvent(e.kind);
         case 'road':
-          return 'Two Lanes';
+          return e.kind === 'contraflow' ? 'Contraflow' : 'Two Lanes';
         case 'landmark':
           return S.trials.name(e.kind);
         case 'fail':
@@ -1896,7 +1896,6 @@ export const S = {
     dispatch: 'Emergency dispatch: the next car becomes a police car',
     /** The first shifts on a touch screen (`.tap-hint`): the whole screen is the button, not the cars. */
     tapAnywhere: 'Tap anywhere',
-    tapAnywhereSub: 'not on the cars',
     dispatchSide: 'Other side? Settings → Left-handed',
     dispatchLeft: (n: number): string => `the next car becomes a police car, ${n} left this shift`,
     leave: 'Leave',
@@ -1921,11 +1920,8 @@ export const S = {
     /** The first visit's boot screen (index.html): the game in three steps while it loads. */
     learn: {
       waitTitle: 'Wait for a gap',
-      waitBody: 'Your car waits at the entrance. Traffic on the roundabout drives counter-clockwise.',
       tapTitle: 'Then tap to send your car',
-      tapBody: 'Tap anywhere on the screen. The moment you touch counts.',
       comboTitle: 'Clean merges build your combo',
-      comboBody: 'The tighter the gap, the more points',
       clean: 'Clean',
       comboLabel: 'COMBO',
       loading: 'The roundabout is loading',
@@ -2809,6 +2805,8 @@ export const S = {
     points: (n: string): string => `${n} points`,
     nextLevel: (l: number): string => `Tap for level ${l}`,
     retryLevel: (l: number): string => `Tap to try level ${l} again`,
+    /** A won shift's extra pay for its Tight Fits (`tightFitPayStep`), the island's detail line. */
+    skillPay: (amount: string): string => `+${amount} for Tight Fits`,
     /** Only what happened: no "0 busted" in the levels before the first criminal. */
     stats(combo: number, tightFits: number, busted: number, transporters: number, time: string): string {
       return [

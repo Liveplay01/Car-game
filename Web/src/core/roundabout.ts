@@ -1,12 +1,12 @@
 import { type Config, cloneConfig, mergePathLength, builtArmSlots } from './config';
 import { type Path, type Pose, type Bezier, circlePath, curvePath, line } from './paths';
 
-/** A lane of the ring, parametrised by the outer lane's distance: both lanes turn together. */
-function lanePath(radius: number, reference: number): Path {
+/** A lane of the ring, parametrised by the outer lane's distance: both lanes turn together. `reverse` drives it clockwise (contraflow). */
+function lanePath(radius: number, reference: number, reverse = false): Path {
   const length = TAU * reference;
   const pose = (s: number): Pose => {
-    const angle = wrap(s / reference);
-    return { position: mul(fromAngle(angle), radius), heading: angle + Math.PI / 2 };
+    const angle = wrap(reverse ? -s / reference : s / reference);
+    return { position: mul(fromAngle(angle), radius), heading: angle + (reverse ? -Math.PI / 2 : Math.PI / 2) };
   };
   return { length, closed: true, pose, point: (s) => pose(s).position };
 }
@@ -53,6 +53,8 @@ export class Layout {
   readonly laneExits: Path[][];
   readonly laneEntryS: number[][];
   readonly laneExitS: number[][];
+  /** Contraflow (★8, two lanes): the inner lane runs clockwise, against the outer one. Its ring distance counts clockwise. */
+  readonly contraflow: boolean;
   /** Where the island begins: inside the innermost lane. */
   readonly islandRadius: number;
   /** World area the camera keeps in view: the ring and the visible queue. */
@@ -98,22 +100,25 @@ export class Layout {
 
     // The inner lane: its paths are built on every layout (cheap), used only with two lanes.
     this.lanes = Math.max(1, Math.min(2, input.lanes));
+    this.contraflow = this.lanes > 1 && input.contraflow;
     const inner = cloneConfig(config);
     inner.ringRadius = radius - config.laneWidth;
     inner.mergeAngle = config.innerMergeAngle;
-    this.rings = [this.ring, lanePath(inner.ringRadius, radius)];
-    this.laneEntries = [this.entries, this.arms.map((arm) => curvePath([entryCurve(arm.angle, stop, inner)]))];
+    const dir = this.contraflow ? -1 : 1;
+    this.rings = [this.ring, lanePath(inner.ringRadius, radius, this.contraflow)];
+    this.laneEntries = [this.entries, this.arms.map((arm) => curvePath([entryCurve(arm.angle, stop, inner, dir)]))];
     this.laneExits = [
       this.exits,
       this.arms.map((arm) => {
-        const curve = exitCurve(arm.angle, stop, inner);
+        const curve = exitCurve(arm.angle, stop, inner, dir);
         const outward = fromAngle(arm.angle);
         const end = add(mul(outward, stop + 260), mul(right(outward), config.laneWidth / 2));
         return curvePath([curve, line(curve.p3, end)]);
       }),
     ];
-    this.laneEntryS = [this.entryRingS, this.arms.map((a) => wrap(a.angle + inner.mergeAngle) * radius)];
-    this.laneExitS = [this.exitRingS, this.arms.map((a) => wrap(a.angle - inner.mergeAngle) * radius)];
+    const innerS = (angle: number): number => wrap(dir * angle) * radius;
+    this.laneEntryS = [this.entryRingS, this.arms.map((a) => innerS(a.angle + dir * inner.mergeAngle))];
+    this.laneExitS = [this.exitRingS, this.arms.map((a) => innerS(a.angle - dir * inner.mergeAngle))];
     this.islandRadius = radius - config.laneWidth / 2 - (this.lanes - 1) * config.laneWidth;
     this.outerReach = config.mergeAngle * radius + config.carLength / 2;
     this.allReach = Math.max(config.mergeAngle, this.lanes > 1 ? inner.mergeAngle : 0) * radius + config.carLength / 2;
@@ -164,6 +169,11 @@ export class Layout {
     return { position: add(stop.position, mul(armOutward(arm), this.queueSpacing * slot)), heading: stop.heading };
   }
 
+  /** A lane-0 ring distance (modules, zones, a wreck's spot) on `lane`'s own count; its own inverse. */
+  laneS(lane: number, s: number): number {
+    return this.contraflow && lane === 1 ? wrap(-s, this.ring.length) : s;
+  }
+
   /** Ring distance forward from a to b. */
   ringDistance(a: number, b: number): number {
     return wrap(b - a, this.ring.length);
@@ -201,27 +211,27 @@ export class Layout {
   }
 }
 
-/** Right-hand traffic: straight towards the ring, then right onto it, meeting it tangentially. */
-function entryCurve(angle: number, stopDistance: number, config: Config): Bezier {
+/** Right-hand traffic: straight towards the ring, then right onto it, meeting it tangentially. `dir` -1 turns left onto a clockwise lane. */
+function entryCurve(angle: number, stopDistance: number, config: Config, dir = 1): Bezier {
   const outward = fromAngle(angle);
   const inward = mul(outward, -1);
   const side = right(inward);
   const p0 = add(mul(outward, stopDistance), mul(side, config.laneWidth / 2));
-  const endAngle = angle + config.mergeAngle;
+  const endAngle = angle + dir * config.mergeAngle;
   const p3 = mul(fromAngle(endAngle), config.ringRadius);
-  const tangent = fromAngle(endAngle + Math.PI / 2);
+  const tangent = fromAngle(endAngle + (dir * Math.PI) / 2);
   const chord = sub(p3, p0);
   const lateral = Math.abs(dot(chord, side));
   return { p0, p1: add(p0, mul(inward, length(chord) * 0.5)), p2: sub(p3, mul(tangent, lateral * 0.9)), p3 };
 }
 
 /** Mirror image of the entry: leaves the ring tangentially, then heads out on the right lane. */
-function exitCurve(angle: number, stopDistance: number, config: Config): Bezier {
+function exitCurve(angle: number, stopDistance: number, config: Config, dir = 1): Bezier {
   const outward = fromAngle(angle);
   const side = right(outward);
-  const startAngle = angle - config.mergeAngle;
+  const startAngle = angle - dir * config.mergeAngle;
   const p0 = mul(fromAngle(startAngle), config.ringRadius);
-  const tangent = fromAngle(startAngle + Math.PI / 2);
+  const tangent = fromAngle(startAngle + (dir * Math.PI) / 2);
   const p3 = add(mul(outward, stopDistance), mul(side, config.laneWidth / 2));
   const chord = sub(p3, p0);
   const lateral = Math.abs(dot(chord, side));

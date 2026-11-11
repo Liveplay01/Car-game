@@ -631,6 +631,7 @@ export default (S: Strings): Words<Strings> => ({
     points: (n) => `${n} Punkte`,
     nextLevel: (l) => `Tippe für Level ${l}`,
     retryLevel: (l) => `Tippe, um Level ${l} erneut zu versuchen`,
+    skillPay: (a) => `+${a} für Knappe Lücken`,
     stats(combo, tightFits, busted, transporters, time) {
       return [
         time,

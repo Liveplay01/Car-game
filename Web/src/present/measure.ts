@@ -21,10 +21,13 @@ const DISPLAY_KEY = 1e7;
 
 /** The CSS font for a run: bold text from 20 points up is display text, and `display` makes it so at any size (a number that shrinks to fit keeps its face). */
 export function fontFor(size: number, bold: boolean, display = false, wght = 900): string {
-  const key = display ? -size - DISPLAY_KEY * (1 + (900 - wght) / 100) : bold ? -size - 1 : size;
+  // Quarter points: a growing text otherwise asks for a new size every frame, and the browser resolves each new font
+  // string anew (40–50 ms in one frame on a slow phone when the result card springs in).
+  const px = Math.round(size * 4) / 4;
+  const key = display ? -px - DISPLAY_KEY * (1 + (900 - wght) / 100) : bold ? -px - 1 : px;
   let font = fonts.get(key);
   if (font === undefined) {
-    font = bold && (display || size >= 20) ? `${CJK ? '' : 'italic '}${wght} ${size}px ${FONT_DISPLAY}` : `${bold ? 700 : 500} ${size}px ${FONT}`;
+    font = bold && (display || px >= 20) ? `${CJK ? '' : 'italic '}${wght} ${px}px ${FONT_DISPLAY}` : `${bold ? 700 : 500} ${px}px ${FONT}`;
     // A text that grows or shrinks asks for a new size every frame: keep the map small.
     if (fonts.size > 2000) fonts.clear();
     fonts.set(key, font);
@@ -34,7 +37,7 @@ export function fontFor(size: number, bold: boolean, display = false, wght = 900
 
 /** Made on first use, so the rules and texts also load where there is no DOM (tests). */
 let measureCanvas: CanvasRenderingContext2D | null = null;
-/** Widths by size in tenths of a point (bold as negative), then by text: no key is built per call. */
+/** Widths by size in quarter points like `fontFor` (bold as negative), then by text: no key is built per call. */
 const widthCache = new Map<number, Map<string, number>>();
 let widths = 0;
 
@@ -46,8 +49,8 @@ export function forgetMeasures(): void {
 
 /** Exact width of a run of text at `size` points (the renderers measure exactly). */
 export function measure(textRun: string, size: number, bold: boolean, display = false, wght = 900): number {
-  const tenths = Math.round(size * 10);
-  const key = display ? -tenths - DISPLAY_KEY * (1 + (900 - wght) / 100) : bold ? -tenths - 1 : tenths;
+  const quarters = Math.round(size * 4);
+  const key = display ? -quarters - DISPLAY_KEY * (1 + (900 - wght) / 100) : bold ? -quarters - 1 : quarters;
   let row = widthCache.get(key);
   let w = row?.get(textRun);
   if (w === undefined) {

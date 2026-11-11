@@ -265,7 +265,7 @@ export default (S: Strings): Words<Strings> => ({
         case 'event':
           return S.cityEvent(e.kind);
         case 'road':
-          return '双车道';
+          return e.kind === 'contraflow' ? '逆向车道' : '双车道';
         case 'landmark':
           return S.trials.name(e.kind);
         case 'fail':

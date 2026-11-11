@@ -615,6 +615,7 @@ export default (S: Strings): Words<Strings> => ({
     points: (n) => `${n} 分`,
     nextLevel: (l) => `点按进入 ${l} 级`,
     retryLevel: (l) => `点按重试 ${l} 级`,
+    skillPay: (a) => `险过奖励 +${a}`,
     stats(combo, tightFits, busted, transporters, time) {
       return [
         time,

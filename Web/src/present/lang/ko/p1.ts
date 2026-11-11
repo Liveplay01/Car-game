@@ -5,7 +5,7 @@ import { INVITE_LEVEL } from '../../../core/config';
 /** 한국어 파트 1: 튜토리얼, 소개, 설정, 클라우드, 힌트, 플레이. */
 export default (_s: Strings): Words<Strings> => ({
   tutorial: {
-    sendCar: '간격이 열리길 기다렸다가 탭해서 차를 보내세요',
+    sendCar: '진입로가 초록색이 되면 탭',
     combo: '깔끔하게 합류하면 콤보가 쌓여요',
     tightFit: '간격이 좁을수록 점수가 높아요',
     strikes: (cars, police) => {

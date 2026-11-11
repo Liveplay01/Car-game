@@ -159,7 +159,22 @@ export class CanvasDrawer {
   }
 
   private groundKey(list: RenderList, c: Camera): string {
-    return `${list.staticKey}|${list.staticEnd}|${list.background}|${list.backdrop}|${list.groundGrain}|${c.center.x},${c.center.y},${c.focus.x},${c.focus.y},${c.scale},${c.viewport.x},${c.viewport.y}|${this.canvas.width}x${this.canvas.height}@${this.dpr}|${this.offset.x},${this.offset.y}`;
+    return `${list.staticKey}|${list.staticEnd}|${list.background}|${list.backdrop}|${list.groundGrain}|${this.view(c)}`;
+  }
+
+  /** The camera, canvas and offset a picture was baked for, as text made again only when one of them changes. */
+  private readonly viewNums = new Float64Array(12);
+  private viewText = '';
+  private view(c: Camera): string {
+    const n = this.viewNums;
+    const now = [c.center.x, c.center.y, c.focus.x, c.focus.y, c.scale, c.viewport.x, c.viewport.y, this.canvas.width, this.canvas.height, this.dpr, this.offset.x, this.offset.y] as const;
+    let same = this.viewText !== '';
+    for (let i = 0; i < 12 && same; i++) same = n[i] === now[i];
+    if (!same) {
+      n.set(now);
+      this.viewText = now.join(',');
+    }
+    return this.viewText;
   }
 
   /** Background, ground texture and the still items, on whichever context is `this.ctx`. */
@@ -393,7 +408,7 @@ export class CanvasDrawer {
       slot.version++;
     }
     const c = still.cam;
-    const key = `${bake.key ?? slot.version}|${c.center.x},${c.center.y},${c.focus.x},${c.focus.y},${c.scale}|${this.canvas.width}x${this.canvas.height}@${this.dpr}|${this.offset.x},${this.offset.y}`;
+    const key = `${bake.key ?? slot.version}|${this.view(c)}`;
     const holds = slot.last === key;
     slot.last = key;
     if (slot.key !== key) {
@@ -812,7 +827,8 @@ export class CanvasDrawer {
       case 'rect':
         x = fx + (p.center.x - cx0) * s;
         y = fy - (p.center.y - cy0) * s;
-        reach = (Math.hypot(p.size.x, p.size.y) / 2) * s;
+        // |x| + |y| bounds the half diagonal from above (at most √2 too wide): a cull needs no root.
+        reach = ((Math.abs(p.size.x) + Math.abs(p.size.y)) / 2) * s;
         break;
       case 'sprite':
         x = fx + (p.center.x - cx0) * s;
@@ -831,7 +847,7 @@ export class CanvasDrawer {
         const by = fy - (p.to.y - cy0) * s;
         x = (ax + bx) / 2;
         y = (ay + by) / 2;
-        reach = Math.hypot(ax - bx, ay - by) / 2 + p.thickness * s;
+        reach = (Math.abs(ax - bx) + Math.abs(ay - by)) / 2 + p.thickness * s;
         break;
       }
       case 'polygon': {

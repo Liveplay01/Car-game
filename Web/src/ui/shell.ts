@@ -154,7 +154,7 @@ export class Shell {
   private readonly dispatchBtn: HTMLButtonElement;
   private readonly dispatchCount: HTMLSpanElement;
   /** The first shifts on a touch screen: tap anywhere, beside the arm; and over the dispatch button, that it can change sides. */
-  private readonly tapHint = h('div', { class: 'tap-hint', 'aria-hidden': 'true' }, h('span', { class: 'tap-hint-icon' }, h('span', { class: 'tap-hint-ring' }), animatedIcon('tap')), h('span', { class: 'tap-hint-text' }, h('b', {}, S.shell.tapAnywhere), h('span', {}, S.shell.tapAnywhereSub)));
+  private readonly tapHint = h('div', { class: 'tap-hint', 'aria-hidden': 'true' }, h('span', { class: 'tap-hint-icon' }, h('span', { class: 'tap-hint-ring' }), animatedIcon('tap')), h('span', { class: 'tap-hint-text' }, h('b', {}, S.shell.tapAnywhere)));
   private readonly dispatchHint = h('div', { class: 'dispatch-hint', 'aria-hidden': 'true' }, S.shell.dispatchSide);
   private readonly photoBtn: HTMLButtonElement;
   /** On the Game tab while a Heat is open: the next step of the waiting shift. */

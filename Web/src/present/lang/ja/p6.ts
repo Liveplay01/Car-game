@@ -615,6 +615,7 @@ export default (S: Strings): Words<Strings> => ({
     points: (n) => `${n}点`,
     nextLevel: (l) => `タップでレベル${l}へ`,
     retryLevel: (l) => `タップでレベル${l}をもう一度`,
+    skillPay: (a) => `ギリギリ報酬 +${a}`,
     stats(combo, tightFits, busted, transporters, time) {
       return [
         time,

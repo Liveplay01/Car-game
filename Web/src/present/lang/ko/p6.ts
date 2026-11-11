@@ -615,6 +615,7 @@ export default (S: Strings): Words<Strings> => ({
     points: (n) => `${n}점`,
     nextLevel: (l) => `탭해서 레벨 ${l}로`,
     retryLevel: (l) => `탭해서 레벨 ${l} 다시 도전`,
+    skillPay: (a) => `아슬아슬 보너스 +${a}`,
     stats(combo, tightFits, busted, transporters, time) {
       return [
         time,

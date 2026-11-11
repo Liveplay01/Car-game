@@ -113,6 +113,7 @@ export function forLevel(base: Config, level: number, seed: number, bossLevel = 
   c.minRingBots = Math.max(base.minRingBots, Math.min(base.maxMinRingBots, base.minRingBots + Math.floor((l - 1) * base.ringBotsPerLevel)));
   c.tankerShare = l >= base.tankerLevel ? base.tankerLevelShare : 0;
   c.lanes = l >= base.twoLaneLevel ? 2 : 1;
+  c.contraflow = c.lanes > 1 && base.prestige >= base.contraflowPrestige && new Rng((seed ^ 0x6a09e667) >>> 0).unit() < base.contraflowChance;
   c.militaryChance = l >= base.militaryLevel ? base.militaryLevelChance : 0;
   c.shiftPay = base.shiftPayBase + base.shiftPayPerLevel * l;
   c.level = l;
@@ -146,8 +147,11 @@ export function forIntro(base: Config, level: number): Config {
   return c;
 }
 
-/** `steps` of quiet help after lost shifts (`easeMaxSteps`): fewer cars on the ring and in the shift, a slower ring, more time between AI cars, a crash more forgiven every `easeStrikeEvery` steps. */
-export function forEase(base: Config, steps: number): Config {
+/**
+ * `steps` of quiet help after lost shifts (`easeMaxSteps`): fewer cars on the ring and in the shift, a slower ring, more time between AI cars, a crash more forgiven every `easeStrikeEvery` steps.
+ * `strikeSteps` counts the steps that forgive crashes (default: all of them): the fresh start's traffic help is not loss-driven, its spare crash comes from the intro ladder.
+ */
+export function forEase(base: Config, steps: number, strikeSteps = steps): Config {
   const s = Math.min(Math.max(0, steps), base.easeMaxSteps);
   if (s === 0) return base;
   const c = cloneConfig(base);
@@ -160,7 +164,7 @@ export function forEase(base: Config, steps: number): Config {
   c.rushHourTempo *= slower;
   c.aiSpawnDelay = { lo: c.aiSpawnDelay.lo * later, hi: c.aiSpawnDelay.hi * later };
   c.shiftCars = Math.max(Math.min(c.shiftCars, base.easeMinShiftCars), c.shiftCars - s * base.easeCarsStep);
-  c.maxStrikes += Math.floor(s / Math.max(1, base.easeStrikeEvery));
+  c.maxStrikes += Math.floor(Math.min(Math.max(0, strikeSteps), s) / Math.max(1, base.easeStrikeEvery));
   c.assisted = true;
   return c;
 }

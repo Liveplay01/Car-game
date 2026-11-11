@@ -602,7 +602,6 @@ export default (S: Strings): Words<Strings> => ({
   shell: {
     dispatch: '緊急出動: 次の車がパトカーになる',
     tapAnywhere: 'どこでもタップ',
-    tapAnywhereSub: '車はタップしない',
     dispatchSide: '反対側がいい？ 設定 → 左利きモード',
     dispatchLeft: (n) => `次の車がパトカーになる · このシフトであと${n}回`,
     leave: '退出',
@@ -625,11 +624,8 @@ export default (S: Strings): Words<Strings> => ({
     /** The first visit's boot screen (index.html): the game in three steps while it loads. */
     learn: {
       waitTitle: 'すき間を待とう',
-      waitBody: 'あなたの車は入口で待っています。ラウンドアバウトの車は反時計回りに走ります。',
       tapTitle: 'タップして車を送り出そう',
-      tapBody: '画面のどこをタップしてもOK。触れた瞬間が大事です。',
       comboTitle: 'きれいな合流でコンボが伸びる',
-      comboBody: 'すき間がせまいほど高得点',
       clean: 'クリーン',
       comboLabel: 'COMBO',
       loading: 'ラウンドアバウトを読み込み中',

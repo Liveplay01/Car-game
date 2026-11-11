@@ -24,7 +24,7 @@ export type SpecialKind = Exclude<VehicleType, (typeof ORDINARY)[number]>;
 export type WeatherKind = Exclude<Weather, 'clear'>;
 export type DarkKind = Exclude<Darkness, 'day'>;
 /** The road itself: the two-lane ring from its level on. */
-export type RoadKind = 'twoLane';
+export type RoadKind = 'twoLane' | 'contraflow';
 
 /** The first level whose shifts can bring each special. A new vehicle type must be listed here or in `ORDINARY`. */
 const SPECIAL_LEVEL: Record<SpecialKind, (c: Config) => number> = {
@@ -101,6 +101,7 @@ export function shelfEntries(shelf: MuseumShelf): MuseumEntry[] {
     case 2:
       return [
         { k: 'road', kind: 'twoLane' },
+        { k: 'road', kind: 'contraflow' },
         ...WEATHER_KINDS.map((kind): MuseumEntry => ({ k: 'weather', kind })),
         ...DARK_KINDS.map((kind): MuseumEntry => ({ k: 'dark', kind })),
         ...CITY_EVENTS.map((kind): MuseumEntry => ({ k: 'event', kind })),
@@ -141,6 +142,7 @@ export function firstLevel(e: MuseumEntry, c: Config): number {
 /** Where an entry first comes for a career that Prestiges at Level 50: a Prestige rank (0: from the start) and the level on it. */
 export function firstPlace(e: MuseumEntry, c: Config): { rank: number; level: number } {
   if (e.k === 'boss') return bossPlace(e.kind, c);
+  if (e.k === 'road' && e.kind === 'contraflow') return { rank: c.contraflowPrestige, level: c.twoLaneLevel };
   const rank = e.k === 'special' ? SPECIAL_RANK[e.kind]?.(c) ?? 0 : e.k === 'landmark' ? landmarkOf(e.kind)?.prestige ?? 0 : 0;
   return rank > 0 ? { rank, level: 1 } : { rank: 0, level: firstLevel(e, c) };
 }
@@ -162,7 +164,7 @@ export type ConditionEntry = Extract<MuseumEntry, { k: 'weather' | 'dark' | 'eve
 /** The conditions a shift is played in, in the order the ready screen names them. */
 export function conditionsOf(c: Config): ConditionEntry[] {
   const out: ConditionEntry[] = [];
-  if (c.lanes > 1) out.push({ k: 'road', kind: 'twoLane' });
+  if (c.lanes > 1) out.push({ k: 'road', kind: c.contraflow ? 'contraflow' : 'twoLane' });
   if (c.night) out.push({ k: 'dark', kind: c.blackout ? 'blackout' : 'night' });
   if (c.weather !== 'clear') out.push({ k: 'weather', kind: c.weather });
   if (c.cityEvent) out.push({ k: 'event', kind: c.cityEvent });
@@ -205,6 +207,7 @@ export function inferredSightings(
     .filter((e) => {
       // A failure is only ever met by failing, a landmark by passing it: an old save has not earned them.
       if (e.k === 'fail' || e.k === 'landmark') return false;
+      if (e.k === 'road' && e.kind === 'contraflow') return prestige >= c.contraflowPrestige;
       if (prestige > 0) return true;
       if (e.k === 'boss') return bossesBeaten.includes(e.kind) || level > firstLevel(e, c);
       if (e.k === 'special' && (e.kind === 'pickup' || e.kind === 'police')) return stats.takedowns > 0 || level > 2;

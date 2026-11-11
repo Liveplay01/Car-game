@@ -16,13 +16,13 @@ interface Zone {
   factor: number;
 }
 
-const zoneLists = new WeakMap<World, Zone[]>();
+const zoneLists = new WeakMap<World, Zone[][]>();
 
-/** The slowing stretches of a world, worked out once: modules and roadworks do not change during a shift. */
-function zonesOf(w: World): Zone[] {
-  let zones = zoneLists.get(w);
-  if (!zones) {
-    zones = [];
+/** The slowing stretches of a world on a lane's own ring distance, worked out once: modules and roadworks do not change during a shift. */
+function zonesOf(w: World, lane = 0): Zone[] {
+  let lists = zoneLists.get(w);
+  if (!lists) {
+    const zones: Zone[] = [];
     const works = w.roadworks;
     if (works) zones.push({ start: works.start, arc: works.arc, factor: w.config.roadworksSpeedFactor });
     for (const [slotText, module] of Object.entries(w.config.modules)) {
@@ -31,15 +31,18 @@ function zonesOf(w: World): Zone[] {
       const centre = w.layout.moduleRingS(Number(slotText), w.config.moduleSlotCount);
       zones.push({ start: wrap(centre - zone.arc / 2, w.layout.ring.length), arc: zone.arc, factor: zone.speedFactor });
     }
-    zoneLists.set(w, zones);
+    // A clockwise lane meets the same stretch from its other end.
+    const mirrored = zones.map((z) => ({ ...z, start: w.layout.laneS(1, z.start + z.arc) }));
+    lists = [zones, w.layout.contraflow ? mirrored : zones];
+    zoneLists.set(w, lists);
   }
-  return zones;
+  return lists[lane];
 }
 
 /** How fast traffic may drive at this point of the ring: roadworks and module zones. */
-export function speedLimitAt(w: World, s: number): number {
+export function speedLimitAt(w: World, s: number, lane = 0): number {
   let limit = w.ringSpeed;
-  for (const zone of zonesOf(w)) {
+  for (const zone of zonesOf(w, lane)) {
     const ahead = w.layout.ringDistance(zone.start, s);
     if (ahead >= 0 && ahead <= zone.arc) limit = Math.min(limit, w.ringSpeed * zone.factor);
   }
@@ -51,10 +54,10 @@ export function speedLimitAt(w: World, s: number): number {
  * zone's limit by the time it gets there, braking as gently as `drive` eases off. Without this a car only began
  * to slow inside the roadworks and never got down to their speed in a stretch that short.
  */
-export function approachLimitAt(w: World, s: number): number {
+export function approachLimitAt(w: World, s: number, lane = 0): number {
   const easing = w.config.driverAcceleration * gravity(w.config);
-  let limit = speedLimitAt(w, s);
-  for (const zone of zonesOf(w)) {
+  let limit = speedLimitAt(w, s, lane);
+  for (const zone of zonesOf(w, lane)) {
     const v = w.ringSpeed * zone.factor;
     limit = Math.min(limit, Math.sqrt(v * v + 2 * easing * w.layout.ringDistance(s, zone.start)));
   }
@@ -71,8 +74,8 @@ const PLAN_SPACING = 20;
  * How far a car at `s` doing `speed` gets in `t` seconds when a zone slows it on the way: it eases
  * down to the limit like any driver (`drive`). Without zones, or below the limit, it is `speed * t`.
  */
-export function travelAhead(w: World, s: number, speed: number, t: number): number {
-  const zones = zonesOf(w);
+export function travelAhead(w: World, s: number, speed: number, t: number, lane = 0): number {
+  const zones = zonesOf(w, lane);
   if (zones.length === 0) return speed * t;
   const easing = w.config.driverAcceleration * gravity(w.config);
   const circumference = w.layout.ring.length;
@@ -80,7 +83,7 @@ export function travelAhead(w: World, s: number, speed: number, t: number): numb
   let v = speed;
   for (let left = t; left > 1e-9; left -= FORECAST_STEP) {
     const dt = Math.min(FORECAST_STEP, left);
-    const limit = approachLimitAt(w, wrap(s + travelled, circumference));
+    const limit = approachLimitAt(w, wrap(s + travelled, circumference), lane);
     if (v > limit) v = Math.max(limit, v - easing * dt);
     travelled += v * dt;
   }
@@ -92,11 +95,11 @@ export function travelAhead(w: World, s: number, speed: number, t: number): numb
  * slowed to by a zone it is about to enter. Drivers read the road ahead and do not wait for the
  * brake lights (a follower seeing only the car in front braked too late at the toll and the roadworks).
  */
-export function plannedSpeed(w: World, s: number, speed: number): number {
-  if (zonesOf(w).length === 0) return speed;
+export function plannedSpeed(w: World, s: number, speed: number, lane = 0): number {
+  if (zonesOf(w, lane).length === 0) return speed;
   const circumference = w.layout.ring.length;
-  let planned = Math.min(speed, speedLimitAt(w, s));
-  for (let d = PLAN_SPACING; d <= speed * FORESIGHT; d += PLAN_SPACING) planned = Math.min(planned, speedLimitAt(w, wrap(s + d, circumference)));
+  let planned = Math.min(speed, speedLimitAt(w, s, lane));
+  for (let d = PLAN_SPACING; d <= speed * FORESIGHT; d += PLAN_SPACING) planned = Math.min(planned, speedLimitAt(w, wrap(s + d, circumference), lane));
   return planned;
 }
 
@@ -176,6 +179,8 @@ export function detourArmSlot(c: Config, slot: number): number | null {
 export function detourExit(w: World, arm: Arm, planned: Arm, laps: number, lane: number): Arm | null {
   const c = w.config;
   const layout = w.layout;
+  // Signs face the outer flow; a contraflow car never reads them.
+  if (layout.contraflow && lane === 1) return null;
   const plannedDistance = layout.ringDistanceArms(arm, planned, lane) + laps * layout.ring.length;
   const entry = layout.entryS(arm, lane);
   const signs: { slot: number; at: number; exit: Arm }[] = [];
@@ -205,7 +210,7 @@ export function chargeModules(w: World, veh: Vehicle, s: number, travelled: numb
   for (const [slotText, module] of entries) {
     const slot = Number(slotText);
     const centre = w.layout.moduleRingS(slot, c.moduleSlotCount);
-    const ahead = w.layout.ringDistance(s, centre);
+    const ahead = w.layout.ringDistance(s, w.layout.laneS(veh.lane, centre));
     if (ahead < 0 || ahead >= travelled) continue;
     const amount = fee(w, module, veh, moduleLevel(c, slot));
     if (amount <= 0) continue;

@@ -419,14 +419,26 @@ const museum: Translation['museum'] = {
   },
 
   road: {
-    line: 'Calcula los huecos en ambos carriles',
-    brief: 'La flecha en tu línea de detención indica a qué carril se dirige tu coche.',
-    explain: (c) => [
-      `A partir del nivel ${c.twoLaneLevel}, la rotonda añade un carril interior. Ambos giran coordinados y el tráfico utiliza los dos.`,
-      'Una flecha frente a tu línea indica el destino de tu coche: recto al carril exterior o cruzándolo hacia el interior.',
-      'Un coche que se dirige al carril interior necesita un hueco en el exterior para cruzar y otro en el interior para incorporarse. Los coches que dejan el carril interior cruzan también el exterior.',
-    ],
+    twoLane: {
+      line: 'Calcula los huecos en ambos carriles',
+      brief: 'La flecha en tu línea de detención indica a qué carril se dirige tu coche.',
+      explain: (c) => [
+        `A partir del nivel ${c.twoLaneLevel}, la rotonda añade un carril interior. Ambos giran coordinados y el tráfico utiliza los dos.`,
+        'Una flecha frente a tu línea indica el destino de tu coche: recto al carril exterior o cruzándolo hacia el interior.',
+        'Un coche que se dirige al carril interior necesita un hueco en el exterior para cruzar y otro en el interior para incorporarse. Los coches que dejan el carril interior cruzan también el exterior.',
+      ],
+    },
+    contraflow: {
+      line: 'El carril interior va al revés',
+      brief: 'El carril interior gira en el sentido de las agujas del reloj: sus huecos llegan por el otro lado.',
+      explain: (c) => [
+        `Desde Prestigio ★${c.contraflowPrestige}, en algunos turnos con dos carriles el carril interior gira en el sentido de las agujas del reloj, contra el exterior.`,
+        'Un coche que va al carril interior sigue cruzando primero el exterior y luego gira a la izquierda para entrar. Su hueco llega por el lado contrario al del carril exterior.',
+        'Los coches que salen del carril interior también cruzan el exterior: mira en ambas direcciones antes de tocar. Los criminales tardan un poco más en escaparse.',
+      ],
+    },
   },
+
 
   landmark: {
     'landmark.etoile': {

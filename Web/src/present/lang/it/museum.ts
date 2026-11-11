@@ -422,14 +422,26 @@ const museum: Translation['museum'] = {
   },
 
   road: {
-    line: 'Calcola i varchi su entrambe le corsie',
-    brief: 'La freccia sulla tua linea d\'arresto indica verso quale corsia si dirige l\'auto.',
-    explain: (c) => [
-      `A partire dal livello ${c.twoLaneLevel}, la rotonda aggiunge una corsia interna. Entrambe ruotano coordinate e le auto le usano entrambe.`,
-      'Una freccia davanti alla tua linea mostra la direzione dell\'auto: dritto sulla corsia esterna o attraverso di essa verso l\'interno.',
-      'Un\'auto diretta alla corsia interna ha bisogno di un varco all\'esterno per passare e di uno all\'interno per immettersi. Le auto che lasciano la corsia interna attraversano a loro volta quella esterna.',
-    ],
+    twoLane: {
+      line: 'Calcola i varchi su entrambe le corsie',
+      brief: 'La freccia sulla tua linea d\'arresto indica verso quale corsia si dirige l\'auto.',
+      explain: (c) => [
+        `A partire dal livello ${c.twoLaneLevel}, la rotonda aggiunge una corsia interna. Entrambe ruotano coordinate e le auto le usano entrambe.`,
+        'Una freccia davanti alla tua linea mostra la direzione dell\'auto: dritto sulla corsia esterna o attraverso di essa verso l\'interno.',
+        'Un\'auto diretta alla corsia interna ha bisogno di un varco all\'esterno per passare e di uno all\'interno per immettersi. Le auto che lasciano la corsia interna attraversano a loro volta quella esterna.',
+      ],
+    },
+    contraflow: {
+      line: 'La corsia interna gira al contrario',
+      brief: 'La corsia interna gira in senso orario: i suoi varchi arrivano dall’altro lato.',
+      explain: (c) => [
+        `Da Prestigio ★${c.contraflowPrestige}, in alcuni turni a due corsie la corsia interna gira in senso orario, contro quella esterna.`,
+        'Un’auto diretta alla corsia interna attraversa sempre prima quella esterna, poi svolta a sinistra per immettersi. Il suo varco arriva dal lato opposto rispetto a quello della corsia esterna.',
+        'Anche le auto che lasciano la corsia interna attraversano quella esterna: guarda in entrambe le direzioni prima di toccare. I criminali impiegano un po’ di più a scappare.',
+      ],
+    },
   },
+
 
   landmark: {
     'landmark.etoile': {

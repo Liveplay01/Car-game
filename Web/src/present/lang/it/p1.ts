@@ -5,7 +5,7 @@ import { INVITE_LEVEL } from '../../../core/config';
 /** Italiano, Parte 1: Tutorial, Introduzioni, Impostazioni, Cloud, Suggerimenti, Corse. */
 export default (_s: Strings): Words<Strings> => ({
   tutorial: {
-    sendCar: 'Attendi uno spazio, poi tocca per inviare la tua auto',
+    sendCar: 'Tocca quando il tuo ingresso diventa verde',
     combo: 'Gli inserimenti puliti aumentano la tua combo',
     tightFit: 'Più stretto lo spazio, più punti',
     strikes: (cars, police) => {

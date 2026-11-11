@@ -602,7 +602,6 @@ export default (S: Strings): Words<Strings> => ({
   shell: {
     dispatch: 'Notruf: Das nächste Auto wird zum Streifenwagen',
     tapAnywhere: 'Tippe irgendwo',
-    tapAnywhereSub: 'nicht auf die Autos',
     dispatchSide: 'Andere Seite? Einstellungen → Linkshänder',
     dispatchLeft: (n) => `das nächste Auto wird zum Streifenwagen, noch ${n} in dieser Schicht`,
     leave: 'Verlassen',
@@ -625,11 +624,8 @@ export default (S: Strings): Words<Strings> => ({
     /** The first visit's boot screen (index.html): the game in three steps while it loads. */
     learn: {
       waitTitle: 'Warte auf eine Lücke',
-      waitBody: 'Dein Auto steht an der Einfahrt. Der Verkehr im Kreisel fährt gegen den Uhrzeigersinn.',
       tapTitle: 'Dann tippe, um dein Auto loszuschicken',
-      tapBody: 'Tippen geht überall auf dem Bildschirm. Es zählt der Moment der Berührung.',
       comboTitle: 'Saubere Einfädler bauen deine Combo auf',
-      comboBody: 'Je knapper die Lücke, desto mehr Punkte',
       clean: 'Sauber',
       comboLabel: 'COMBO',
       loading: 'Der Kreisel lädt',

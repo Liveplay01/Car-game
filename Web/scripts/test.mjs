@@ -132,6 +132,58 @@ test('the careful bot never crashes (levels 1, 5, 12)', () => {
   }
 });
 
+test('home stretch: only career shifts, and a ring crash late in one never loses it', () => {
+  const c = newCareer();
+  c.mastery.shiftsCompleted = 1;
+  c.level = 20;
+  assert.equal(Careers.careerShift(c, baseConfig, 5).homeStretch, true);
+  for (const mode of ['shift', 'unlimited', 'mayhem']) assert.equal(Careers.shiftConfig(c, mode, baseConfig, 5).homeStretch, false, mode);
+  assert.equal(forLevel(baseConfig, 20, 5).homeStretch, false);
+  const eager = (world) => world.queue.isReady;
+  for (let s = 1; s <= 40; s++) {
+    const cfg = { ...forLevel(baseConfig, 20, s), homeStretch: true };
+    const world = new World(cfg, s, { startsOnFirstTap: false });
+    let result = null;
+    let strikes = 0;
+    for (let i = 0; i < 120 * 180 && !result; i++) {
+      if (eager(world)) world.tap(world.time);
+      world.step();
+      for (const e of world.takeEvents()) {
+        if (e.type === 'shiftEnded') result = e.result;
+        if (e.type === 'crash') strikes = Math.max(strikes, e.strikes);
+      }
+    }
+    const late = result.carsSent >= Math.ceil(cfg.homeStretchShare * cfg.shiftCars);
+    assert.ok(!(late && result.failCause === 'ringCrash'), `shift ${s} lost to a ring crash in the home stretch`);
+    if (result.outcome === 'completed' && strikes >= cfg.maxStrikes) assert.equal(result.isPerfectRun, false);
+  }
+  for (const homeStretch of [true, false]) {
+    const cfg = { ...forLevel(baseConfig, 20, 7), homeStretch };
+    const world = new World(cfg, 7, { startsOnFirstTap: false });
+    const at = Math.ceil(cfg.homeStretchShare * cfg.shiftCars);
+    let before = null;
+    for (let i = 0; i < 120 * 180 && world.shift.carsSent < at && world.isScoring; i++) {
+      if (world.shift.carsSent === at - 1) before ??= world.inHomeStretch;
+      if (careful(world)) world.tap(world.time);
+      world.step();
+      world.takeEvents();
+    }
+    assert.equal(world.shift.carsSent, at);
+    assert.equal(before, false);
+    assert.equal(world.inHomeStretch, homeStretch);
+  }
+  assert.equal(new World({ ...forLevel(baseConfig, 20, 7), homeStretch: true, endless: true }, 7, {}).inHomeStretch, false);
+});
+
+test('skill pay: a won shift pays 1 % more per Tight Fit, at most 15 %', () => {
+  for (let s = 1; s <= 8; s++) {
+    const { result } = play(s * 104729, 12, careful);
+    const pay = forLevel(baseConfig, 12, s * 104729).shiftPay;
+    const want = result.outcome === 'completed' ? Math.round(pay * Math.min(baseConfig.tightFitPayCap, result.tightFits * baseConfig.tightFitPayStep)) : 0;
+    assert.equal(result.skillPay, want, `shift ${s}`);
+  }
+});
+
 // MARK: Traffic that remembers
 
 test('the Game tab does not point at the Daily before it is open', () => {

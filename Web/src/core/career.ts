@@ -1373,19 +1373,22 @@ export const Careers = {
   /**
    * A plain career shift (not the Daily, a challenge or a trial), eased by what this career has been through: after
    * `easeAfterLosses` lost shifts on the level the fewest cars it has and quieter traffic with every further loss
-   * (`forEase`), a forgiven first crash until the first won shift and through the intro ladder (`introForgiveLevel`), and the first bad weather and the first night for
+   * (`forEase`, from the very first shift on with `freshEaseSteps`), a forgiven first crash until the first won shift and through the intro ladder (`introForgiveLevel`), and the first bad weather and the first night for
    * sure once their level is passed. Each marks the shift `assisted`.
    */
   careerShift(c: Career, base: Config, seed: number): Config {
-    let cfg = { ...Careers.shiftConfig(c, 'shift', base, seed), bossLoot: true };
+    let cfg = { ...Careers.shiftConfig(c, 'shift', base, seed), bossLoot: true, homeStretch: true };
     const eased = (next: Config): Config => ({ ...next, assisted: true });
     const fresh = c.prestige === 0 && c.mastery.shiftsCompleted === 0;
     if (fresh || (c.prestige === 0 && c.level <= base.introForgiveLevel)) cfg = eased({ ...cfg, maxStrikes: cfg.maxStrikes + 1 });
     const after = Math.max(1, (fresh ? base.easeAfterLossesNew : base.easeAfterLosses) - (Careers.quitsOnLoss(c, base) ? 1 : 0));
-    if (c.levelLosses >= after) {
+    const lossSteps = c.levelLosses >= after ? c.levelLosses - after + 1 : 0;
+    // The fresh start's steps are a baseline on top of the loss-driven help, so every loss still takes traffic out.
+    const steps = (fresh ? base.freshEaseSteps : 0) + lossSteps;
+    if (steps > 0) {
       const fewest = shiftCarsRange(cfg.level, base)[0];
       if (cfg.shiftCars > fewest && !cfg.convoy) cfg = eased({ ...cfg, shiftCars: fewest });
-      cfg = forEase(cfg, c.levelLosses - after + 1);
+      cfg = forEase(cfg, steps, lossSteps);
     }
     // A Legendary Shift has its own sky; a career after a Prestige has met it all.
     if (cfg.legendary === null && c.prestige === 0) {

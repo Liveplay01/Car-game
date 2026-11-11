@@ -228,7 +228,7 @@ export function joinsMilitaryZone(w: World, veh: Vehicle, arm: Arm): boolean {
     if (o.id === veh.id || o.isCrashed) return false;
     const s = w.virtualRingPosition(o, profile.duration);
     if (s === null) return false;
-    const ahead = w.layout.ringDistance(arrival, s);
+    const ahead = w.layout.ringDistance(arrival, w.layout.laneS(o.lane, s));
     return Math.min(ahead, w.layout.ring.length - ahead) < apart;
   });
 }

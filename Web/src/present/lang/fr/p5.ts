@@ -602,7 +602,6 @@ export default (S: Strings): Words<Strings> => ({
   shell: {
     dispatch: 'Appel d’urgence : la prochaine voiture sera de police',
     tapAnywhere: 'Touchez n’importe où',
-    tapAnywhereSub: 'pas sur les voitures',
     dispatchSide: 'Autre côté ? Paramètres → Gaucher',
     dispatchLeft: (n) => `la prochaine voiture sera de police, encore ${n} ce service`,
     leave: 'Quitter',
@@ -625,11 +624,8 @@ export default (S: Strings): Words<Strings> => ({
     /** The first visit's boot screen (index.html): the game in three steps while it loads. */
     learn: {
       waitTitle: 'Attends un créneau',
-      waitBody: 'Ta voiture attend à l’entrée. La circulation du rond-point tourne dans le sens inverse des aiguilles d’une montre.',
       tapTitle: 'Puis touche pour lancer ta voiture',
-      tapBody: 'Touche n’importe où sur l’écran. Seul compte l’instant du toucher.',
       comboTitle: 'Les insertions propres font monter ton combo',
-      comboBody: 'Plus le créneau est serré, plus tu gagnes de points',
       clean: 'Propre',
       comboLabel: 'COMBO',
       loading: 'Le rond-point se charge',

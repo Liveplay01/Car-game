@@ -1,5 +1,5 @@
 // Headless balancing check, like `swift run Sim`: plays whole shifts with bots.
-//   node scripts/sim.mjs [shifts] [level] [--mayhem] [--modules=slot:module[:level],…] [--legendary=gridlock|dragnet|heavyLoad|darkStorm|zeroTolerance] [--heat=0..8] [--adaptive] [--ease=0..5] [--strikes=N]
+//   node scripts/sim.mjs [shifts] [level] [--mayhem] [--modules=slot:module[:level],…] [--legendary=gridlock|dragnet|heavyLoad|darkStorm|zeroTolerance] [--heat=0..8] [--adaptive] [--ease=0..5] [--strikes=N] [--contraflow]
 // A careful bot (taps only when the predicted merge gap is safe) must never crash;
 // a random tapper must crash often. A novice (the careful read, a human reaction delay, now and then too greedy)
 // stands in for a new player: on Levels 1–5 with `--ease=N` steps of quiet help it should win at least half its shifts. Boss levels are every 15th (15 convoy, 30 getaway,
@@ -30,6 +30,7 @@ try {
     const config = mayhem ? forMayhem(shift) : shift;
     if (process.argv.includes('--adaptive')) config.adaptive = true;
     if (strikes > 0) config.maxStrikes = strikes;
+    if (process.argv.includes('--contraflow')) config.contraflow = config.lanes > 1;
     for (const [slot, module, moduleLevel = '1'] of built) {
       config.modules[slot] = module;
       config.moduleLevels[slot] = Number(moduleLevel);

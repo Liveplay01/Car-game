@@ -1,5 +1,5 @@
 import { gravity } from './config';
-import { type Drive, type Merging, isInFlow, isLoad, newDrive, profileDistance, type Vehicle } from './vehicle';
+import { type Drive, type Merging, isInFlow, isLoad, newDrive, profileDistance, profileSpeed, type Vehicle } from './vehicle';
 import type { Arm } from './roundabout';
 import { capsule } from './collision';
 import { nearestOnPath } from './paths';
@@ -66,7 +66,7 @@ export function updateDrivers(w: World, dt: number): void {
         leads.sort((a, b) => a.gap - b.gap || a.id - b.id);
       }
       if (w.owesStop(veh)) busStop(w, veh, p.s, p.drive.speed ?? w.ringSpeed, leads, dt);
-      let limit = zones ? approachLimitAt(w, p.s) : undefined;
+      let limit = zones ? approachLimitAt(w, p.s, veh.lane) : undefined;
       // The learner hesitates now and then: it brakes for nothing, and the traffic bunches up.
       if (isStalling(w, veh.id)) limit = Math.min(limit ?? w.ringSpeed, w.ringSpeed * w.config.learnerStallSpeed);
       // The oversize load crawls all the way round; the traffic behind it follows suit.
@@ -133,7 +133,9 @@ function paceMerge(w: World, p: Merging, occupants: Occupant[], id: number, lane
   if (p.pace === undefined && target >= nominal) return;
   // Still at the line it simply pulls away more gently; once rolling it has to brake.
   const atLine = profileDistance(p.profile, p.elapsed) < c.carLength / 2;
-  const braked = atLine ? target : Math.max(target, current - c.driverBrake * t.brake * g * dt);
+  // Braking starts from the speed it drove last step: the launch profile gains far more per step than brakes take off, so a pace share of it would keep speeding up into a slow car (Leo, 11.11.2026).
+  const before = (profileSpeed(p.profile, Math.max(0, p.elapsed - (dt * w.ringSpeed * (p.pace ?? 1)) / p.profile.ringSpeed)) * w.ringSpeed * (p.pace ?? 1)) / p.profile.ringSpeed;
+  const braked = atLine ? target : Math.max(target, Math.min(current, before) - c.driverBrake * t.brake * g * dt);
   const next = target < current ? braked : Math.min(target, current + c.driverAcceleration * t.accel * g * dt);
   if (next >= nominal - 1e-9) {
     p.pace = undefined;
@@ -277,7 +279,7 @@ function ringLaneOccupants(w: World, foresight: boolean): Occupant[] {
     const lane = veh.lane;
     if (p.kind === 'ring') {
       const speed = p.drive.speed ?? w.ringSpeed;
-      out.push({ id: veh.id, lane, s: p.s, speed: foresight ? plannedSpeed(w, p.s, speed) : speed, length: w.lengthOf(veh.type) });
+      out.push({ id: veh.id, lane, s: p.s, speed: foresight ? plannedSpeed(w, p.s, speed, lane) : speed, length: w.lengthOf(veh.type) });
     } else if (p.kind === 'merging' && (p.pace ?? 1) < 1 && w.mergeRemaining(p, lane) < c.carLength * JOINING_REACH) {
       // Held up by the jam right at the join: the ring traffic behind has to mind it too.
       const s = wrap(w.layout.entryS(p.arm, lane) - w.mergeRemaining(p, lane), circumference);
@@ -296,8 +298,8 @@ function ringLaneOccupants(w: World, foresight: boolean): Occupant[] {
         }
         if (Math.abs(length(nearest) - radius) - c.carWidth / 2 >= halfLane - c.carWidth / 2 + 1) continue;
         const angle = angleOf(nearest);
-        const s = wrap(angle, TAU) * w.layout.ringRadius;
-        const tangent = fromAngle(angle + Math.PI / 2);
+        const s = w.layout.laneS(l, wrap(angle, TAU) * w.layout.ringRadius);
+        const tangent = fromAngle(angle + (w.layout.contraflow && l === 1 ? -Math.PI / 2 : Math.PI / 2));
         out.push({ id: veh.id, lane: l, s, speed: Math.max(0, dot(p.velocity, tangent)), length: w.lengthOf(veh.type) });
       }
     }

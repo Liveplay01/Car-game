@@ -66,6 +66,8 @@ export interface ShiftResult {
   ambulances: number;
   /** Close shaves past a motorbike (a Tight Fit or Near Miss right next to one). */
   shaves: number;
+  /** The won shift's skill pay for its Tight Fits (`tightFitPayStep`), inside `money`. */
+  skillPay?: number;
   /** Critical Merges this shift, and Jackpot transporters paid. */
   criticals: number;
   jackpots: number;

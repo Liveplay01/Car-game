@@ -602,7 +602,6 @@ export default (S: Strings): Words<Strings> => ({
   shell: {
     dispatch: '긴급 출동: 다음 차가 경찰차가 돼요',
     tapAnywhere: '아무 곳이나 탭',
-    tapAnywhereSub: '차는 탭하지 마세요',
     dispatchSide: '반대쪽이 좋나요? 설정 → 왼손잡이 모드',
     dispatchLeft: (n) => `다음 차가 경찰차가 돼요 · 이번 시프트에 ${n}번 남음`,
     leave: '나가기',
@@ -625,11 +624,8 @@ export default (S: Strings): Words<Strings> => ({
     /** The first visit's boot screen (index.html): the game in three steps while it loads. */
     learn: {
       waitTitle: '빈틈을 기다려요',
-      waitBody: '내 차는 입구에서 기다리고 있어요. 로터리 차들은 시계 반대 방향으로 달려요.',
       tapTitle: '그다음 탭해서 차를 보내요',
-      tapBody: '화면 어디든 탭하면 돼요. 닿는 순간이 중요해요.',
       comboTitle: '깔끔한 합류가 콤보를 쌓아요',
-      comboBody: '틈이 좁을수록 점수가 높아요',
       clean: '깔끔',
       comboLabel: 'COMBO',
       loading: '로터리를 불러오는 중',
