@@ -1929,6 +1929,8 @@ export const S = {
       loading: 'The roundabout is loading',
       skipNote: 'Still loading assets. This ends by itself as soon as they are ready.',
       skip: 'Skip',
+      /** The same button once the game is ready: it starts the game now. */
+      play: 'Play',
     },
     stalledBody: 'Something went wrong in the game. Reload to carry on; your progress is safe on this device.',
     reload: 'Reload',

@@ -204,7 +204,12 @@ const tapped = new Promise<void>((resolve) => {
 });
 if (firstVisit) {
   void pause(LEARN_MS).then(() => boot?.classList.add('late'));
-  void shell.preload().then(() => boot?.classList.add('ready'));
+  void shell.preload().then(() => {
+    // Ready before the lesson ends: the loud button now starts the game, so it says so.
+    const button = boot?.querySelector('.learn-late button');
+    if (button) button.textContent = S.shell.learn.play;
+    boot?.classList.add('ready');
+  });
 }
 await Promise.race([
   Promise.all([shell.preload(), firstVisit ? pause(LEARN_MS) : null]),

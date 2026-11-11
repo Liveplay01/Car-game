@@ -155,6 +155,8 @@ const duckDemo = import.meta.env.DEV && typeof location !== 'undefined' && new U
  */
 export class GameSession {
   static readonly maxFrameDelta = 0.25;
+  /** Simulation steps one display frame may run (about 67 ms at 120 Hz). */
+  static readonly maxSteps = 8;
   static readonly resultDelay = 1.2;
   /** A lost shift shows its result sooner: the crash reads at once, and the breather follows. */
   static readonly lossDelay = 0.8;
@@ -1666,13 +1668,14 @@ export class GameSession {
     const events: GameEvent[] = [];
     if (runs) {
       let steps = 0;
-      while (this.accumulator >= STEP && steps < 60) {
+      while (this.accumulator >= STEP && steps < GameSession.maxSteps) {
         this.world.step();
         events.push(...this.world.takeEvents());
         this.accumulator -= STEP;
         steps++;
       }
-      if (steps >= 60) this.accumulator = 0;
+      // A slow frame lets the road fall behind the clock instead of catching up: no cars leaping ahead after a hitch, no spiral of ever longer frames.
+      if (steps >= GameSession.maxSteps) this.accumulator %= STEP;
       this.react(events);
       this.museum.noteSightings();
       this.briefings.advance(simDelta, this.world);

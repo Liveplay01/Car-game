@@ -1373,14 +1373,14 @@ export const Careers = {
   /**
    * A plain career shift (not the Daily, a challenge or a trial), eased by what this career has been through: after
    * `easeAfterLosses` lost shifts on the level the fewest cars it has and quieter traffic with every further loss
-   * (`forEase`), a forgiven first crash until the first won shift, and the first bad weather and the first night for
+   * (`forEase`), a forgiven first crash until the first won shift and through the intro ladder (`introForgiveLevel`), and the first bad weather and the first night for
    * sure once their level is passed. Each marks the shift `assisted`.
    */
   careerShift(c: Career, base: Config, seed: number): Config {
     let cfg = { ...Careers.shiftConfig(c, 'shift', base, seed), bossLoot: true };
     const eased = (next: Config): Config => ({ ...next, assisted: true });
     const fresh = c.prestige === 0 && c.mastery.shiftsCompleted === 0;
-    if (fresh) cfg = eased({ ...cfg, maxStrikes: cfg.maxStrikes + 1 });
+    if (fresh || (c.prestige === 0 && c.level <= base.introForgiveLevel)) cfg = eased({ ...cfg, maxStrikes: cfg.maxStrikes + 1 });
     const after = Math.max(1, (fresh ? base.easeAfterLossesNew : base.easeAfterLosses) - (Careers.quitsOnLoss(c, base) ? 1 : 0));
     if (c.levelLosses >= after) {
       const fewest = shiftCarsRange(cfg.level, base)[0];

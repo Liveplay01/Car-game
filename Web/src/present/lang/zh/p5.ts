@@ -635,6 +635,7 @@ export default (S: Strings): Words<Strings> => ({
       loading: '环岛加载中',
       skipNote: '资源仍在加载。加载完成后会自动结束。',
       skip: '跳过',
+      play: '开始玩',
     },
     stalledBody: '游戏出了点问题。刷新后继续；你的进度在这台设备上是安全的。',
     reload: '刷新',

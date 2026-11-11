@@ -337,6 +337,17 @@ export const baseConfig = {
   easeTempoStep: 0.05,
   easeSpawnStep: 0.2,
   /**
+   * The intro wall (Umami, Nov 2026): Level 2–5 won 11–16 % of shifts, and the quiet help barely moved it (2–5 % once
+   * eased), since nearly every loss is a single crash at a merge. The forgiven first crash now lasts the whole intro
+   * ladder (up to `introForgiveLevel`, before the first Prestige), and every `easeStrikeEvery` steps of quiet help forgive
+   * one more crash and every step takes `easeCarsStep` cars out of the shift (never below `easeMinShiftCars`).
+   * `npm run sim -- 60 N --strikes=2 --ease=2` plays it with the novice bot.
+   */
+  introForgiveLevel: 5,
+  easeStrikeEvery: 2,
+  easeCarsStep: 1,
+  easeMinShiftCars: 6,
+  /**
    * Stopping after a loss (Leo, 25.10.2026): each visit that ends after a career shift moves `Career.quitLean` by
    * `easeQuitMemory` toward 1 (ended on a loss) or 0 (ended on a win). From `easeQuitLeaves` such visits on, a lean of
    * `easeQuitLean` or more brings the quiet help one loss sooner (never sooner than after the first loss).

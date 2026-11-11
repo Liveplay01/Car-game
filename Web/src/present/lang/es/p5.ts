@@ -635,6 +635,7 @@ export default (S: Strings): Words<Strings> => ({
       loading: 'La rotonda se está cargando',
       skipNote: 'Aún se están cargando recursos. Esto termina solo en cuanto estén listos.',
       skip: 'Saltar',
+      play: 'Jugar',
     },
     stalledBody: 'Algo ha fallado en el juego. Recarga para continuar; tu progreso está seguro en este dispositivo.',
     reload: 'Recargar',

@@ -635,6 +635,7 @@ export default (S: Strings): Words<Strings> => ({
       loading: 'Der Kreisel lädt',
       skipNote: 'Es werden noch Dateien geladen. Das endet automatisch, sobald alles bereit ist.',
       skip: 'Überspringen',
+      play: 'Spielen',
     },
     stalledBody: 'Im Spiel ist etwas schiefgelaufen. Lade neu, um weiterzumachen; dein Fortschritt ist auf diesem Gerät sicher.',
     reload: 'Neu laden',

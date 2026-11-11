@@ -745,6 +745,9 @@ export const SceneBuilder = {
         // A soft pool of the player's colour under the car: whose it is, even on a busy ring.
         const L = CarArt.length(veh.type, world.config);
         list.w(rect(pose.position, v(L + 7, world.config.carWidth + 7), Metrics.vehicleCornerRadius + 3.5, pose.heading), mark.color, 0.2 * mark.glow);
+      } else if (!marks && veh.owner === 'player') {
+        // Your cars keep the colour of your lane under them on the ring too: which ones are yours, in a busy roundabout.
+        list.w(rect(pose.position, v(CarArt.length(veh.type, world.config) + 6, world.config.carWidth + 6), Metrics.vehicleCornerRadius + 3, pose.heading), 'accent', 0.16);
       }
       // The syndicate: a black boss car with a gold line, gunmetal escorts. Not a skin: they
       // must read as who they are.

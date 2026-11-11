@@ -635,6 +635,7 @@ export default (S: Strings): Words<Strings> => ({
       loading: 'ラウンドアバウトを読み込み中',
       skipNote: 'まだデータを読み込んでいます。完了すると自動で終わります。',
       skip: 'スキップ',
+      play: 'プレイ',
     },
     stalledBody: 'ゲームで問題が起きました。続けるには再読み込みしてください。進行状況はこの端末で安全です。',
     reload: '再読み込み',

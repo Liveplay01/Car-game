@@ -6,6 +6,7 @@ import type { Upgrade } from './levels';
 import { Scoring } from './scoring';
 import { type TierId, nextTier } from './tiers';
 import { PITY_LEGENDARY_CHESTS } from './loot';
+import { Unlocks } from './unlocks';
 
 /**
  * Open loops (Leo, 28.09.2026): there is always a next thing within reach, and after a lost
@@ -115,7 +116,8 @@ export const Goals = {
 
   /** A goal within arm's reach to tease on the waiting screen (Goal-Gradient Effect). */
   teaser(c: Career, day: number, config: Config = baseConfig): GoalTeaser | null {
-    if (c.dailyPlayed < day) {
+    // Not before the Daily is open (`dailyUnlockLevel`): a first shift should not point at something still hidden.
+    if (c.dailyPlayed < day && Unlocks.isKnown(c, 'daily', config)) {
       return { k: 'daily', streak: c.dailyStreak };
     }
     const goal = Goals.money(c, config);

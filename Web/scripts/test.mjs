@@ -134,6 +134,14 @@ test('the careful bot never crashes (levels 1, 5, 12)', () => {
 
 // MARK: Traffic that remembers
 
+test('the Game tab does not point at the Daily before it is open', () => {
+  const c = newCareer();
+  c.level = baseConfig.dailyUnlockLevel - 1;
+  assert.notEqual(Goals.teaser(c, 100, baseConfig)?.k, 'daily');
+  c.level = baseConfig.dailyUnlockLevel;
+  assert.equal(Goals.teaser(c, 100, baseConfig)?.k, 'daily');
+});
+
 test('adaptive traffic: only career shifts from its level on, never the Daily, Unlimited or a trial', () => {
   const c = newCareer();
   c.mastery.shiftsCompleted = 1;
@@ -3131,7 +3139,7 @@ test('the precision upgrades: close merges pay a tip, a chain in the flow is lef
   assert.equal(world.savesChain('clean'), false, 'two saves a shift');
 });
 
-test('two losses on a level ease the next shift to its fewest cars, until the level is cleared', async () => {
+test('two losses on a level ease the next shift below its fewest cars, until the level is cleared', async () => {
   const { shiftCarsRange } = await load('/src/core/levels.ts');
   const c = newCareer();
   c.mastery.shiftsCompleted = 1;
@@ -3141,7 +3149,7 @@ test('two losses on a level ease the next shift to its fewest cars, until the le
   for (let i = 0; i < baseConfig.easeAfterLosses; i++) Careers.noteShift(c, false);
   for (const seed of [1, 2, 3, 4, 5]) {
     const cfg = Careers.careerShift(c, baseConfig, seed);
-    assert.equal(cfg.shiftCars, fewest, `seed ${seed}`);
+    assert.equal(cfg.shiftCars, fewest - baseConfig.easeCarsStep, `seed ${seed}: the fewest, then one step less`);
   }
   Careers.noteShift(c, true);
   assert.equal(c.levelLosses, 0);
@@ -3149,7 +3157,7 @@ test('two losses on a level ease the next shift to its fewest cars, until the le
   assert.ok([1, 2, 3, 4, 5].every((seed) => !Careers.careerShift(c, baseConfig, seed).assisted));
 });
 
-test('quiet help: a career without a won shift gets a spare crash and eases after one loss, then step by step', async () => {
+test('quiet help: a career gets a spare crash through the intro ladder and eases after one loss, then step by step', async () => {
   const { forEase } = await load('/src/core/levels.ts');
   const c = newCareer();
   const first = Careers.careerShift(c, baseConfig, 3);
@@ -3162,9 +3170,15 @@ test('quiet help: a career without a won shift gets a spare crash and eases afte
   assert.ok(two.tempoEnd < one.tempoEnd && two.aiSpawnDelay.lo > one.aiSpawnDelay.lo && two.densityEnd <= one.densityEnd, 'every further loss takes more traffic out');
   assert.equal(forEase(baseConfig, 99).tempoEnd, forEase(baseConfig, baseConfig.easeMaxSteps).tempoEnd, 'capped');
   assert.equal(forEase(baseConfig, 0), baseConfig);
+  assert.equal(forEase(baseConfig, baseConfig.easeStrikeEvery).maxStrikes, baseConfig.maxStrikes + 1, 'deep help forgives a crash');
+  assert.equal(forEase({ ...baseConfig, shiftCars: 7 }, 99).shiftCars, baseConfig.easeMinShiftCars, 'never below the floor');
+  assert.equal(forEase({ ...baseConfig, shiftCars: 4 }, 99).shiftCars, 4, 'never adds cars');
   c.mastery.shiftsCompleted = 1;
   Careers.noteShift(c, true);
-  assert.equal(Careers.careerShift(c, baseConfig, 3).maxStrikes, baseConfig.maxStrikes, 'a won shift ends the spare crash');
+  c.level = baseConfig.introForgiveLevel;
+  assert.equal(Careers.careerShift(c, baseConfig, 3).maxStrikes, baseConfig.maxStrikes + 1, 'the spare crash lasts the intro ladder');
+  c.level = baseConfig.introForgiveLevel + 1;
+  assert.equal(Careers.careerShift(c, baseConfig, 3).maxStrikes, baseConfig.maxStrikes, 'past the intro ladder a won shift ends the spare crash');
   assert.equal(Careers.shiftConfig(newCareer(), 'shift', baseConfig, 3).maxStrikes, baseConfig.maxStrikes, 'the Daily and challenges never get it');
 });
 

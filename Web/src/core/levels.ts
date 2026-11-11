@@ -146,7 +146,7 @@ export function forIntro(base: Config, level: number): Config {
   return c;
 }
 
-/** `steps` of quiet help after lost shifts (`easeMaxSteps`): fewer cars on the ring, a slower ring, more time between AI cars. */
+/** `steps` of quiet help after lost shifts (`easeMaxSteps`): fewer cars on the ring and in the shift, a slower ring, more time between AI cars, a crash more forgiven every `easeStrikeEvery` steps. */
 export function forEase(base: Config, steps: number): Config {
   const s = Math.min(Math.max(0, steps), base.easeMaxSteps);
   if (s === 0) return base;
@@ -159,6 +159,8 @@ export function forEase(base: Config, steps: number): Config {
   c.tempoEnd *= slower;
   c.rushHourTempo *= slower;
   c.aiSpawnDelay = { lo: c.aiSpawnDelay.lo * later, hi: c.aiSpawnDelay.hi * later };
+  c.shiftCars = Math.max(Math.min(c.shiftCars, base.easeMinShiftCars), c.shiftCars - s * base.easeCarsStep);
+  c.maxStrikes += Math.floor(s / Math.max(1, base.easeStrikeEvery));
   c.assisted = true;
   return c;
 }

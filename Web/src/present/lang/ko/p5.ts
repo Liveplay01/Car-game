@@ -635,6 +635,7 @@ export default (S: Strings): Words<Strings> => ({
       loading: '로터리를 불러오는 중',
       skipNote: '아직 에셋을 불러오는 중이에요. 준비되면 자동으로 끝나요.',
       skip: '건너뛰기',
+      play: '플레이',
     },
     stalledBody: '게임에서 문제가 생겼어요. 계속하려면 새로고침하세요. 진행 상황은 이 기기에서 안전해요.',
     reload: '새로고침',

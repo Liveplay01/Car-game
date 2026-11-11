@@ -635,6 +635,7 @@ export default (S: Strings): Words<Strings> => ({
       loading: 'La rotatoria si sta caricando',
       skipNote: 'Si stanno ancora caricando delle risorse. Finisce da solo appena sono pronte.',
       skip: 'Salta',
+      play: 'Gioca',
     },
     stalledBody: 'Si è verificato un intoppo. Ricarica per riprendere; i tuoi progressi sono al sicuro su questo dispositivo.',
     reload: 'Ricarica',

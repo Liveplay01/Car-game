@@ -635,6 +635,7 @@ export default (S: Strings): Words<Strings> => ({
       loading: 'Le rond-point se charge',
       skipNote: 'Des ressources se chargent encore. Cet écran se ferme tout seul dès qu’elles sont prêtes.',
       skip: 'Passer',
+      play: 'Jouer',
     },
     stalledBody: 'Une anomalie est survenue dans le jeu. Rechargez pour reprendre ; votre progression est en sécurité sur cet appareil.',
     reload: 'Recharger',

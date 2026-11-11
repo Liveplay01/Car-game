@@ -51,6 +51,23 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-11-11',
+    date: '11 November 2026',
+    title: 'A gentler start',
+    impact: 'major',
+    summary: [
+      'Levels 1 to 5 forgive one more crash, and losing twice now takes more cars off the ring.',
+      "Your own cars glow in your lane's colour on the ring, so you always see which ones are yours.",
+    ],
+    items: [
+      'A gentler start: through level 5 every career shift forgives one more crash, not only until your first win. Lose a level twice and the next try brings fewer cars than the level ever has, and every second step of that quiet help forgives another crash. Career shifts only, never the Daily, Unlimited, trials or challenges.',
+      "Your own cars keep the colour of your lane once they are on the ring, a soft glow under each one, so in a busy roundabout you can tell yours from the traffic at a glance.",
+      'After a stutter (a busy phone, a tab switched back) the road no longer leaps ahead to catch up with the clock: it simply carries on where it was.',
+      'On your very first visit, the big button on the loading screen now says Play once the game is ready, instead of Skip.',
+      'The Game tab no longer points at the Daily Shift before level 3, where it opens.',
+    ],
+  },
+  {
     id: '2026-11-09',
     date: '9 November 2026',
     title: 'Snowy Sakura',
