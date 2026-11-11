@@ -305,6 +305,7 @@ export class VersusMatch {
     if (this.countIn === 0) {
       this.sceneTime += dt;
       this.effects.update(dt, this.world, reduceMotion);
+      this.effects.advanceShake(dt);
       this.lamps.update(this.world, dt);
     }
     if (this.isOver) this.sinceOver += dt;

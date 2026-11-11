@@ -1148,7 +1148,7 @@ a.row-link {
   pointer-events: auto;
   visibility: visible;
   transition: opacity 180ms var(--ease-out), transform 160ms var(--ease-out), visibility 0s;
-  animation: pill-in 360ms var(--ease-back) var(--pill-delay, 0ms) backwards;
+  animation: pill-in 280ms cubic-bezier(0.34, 1.2, 0.64, 1) var(--pill-delay, 0ms) backwards;
 }
 
 @keyframes pill-in {
@@ -1350,13 +1350,13 @@ a.row-link {
   height: 26px;
 }
 
-/* On a phone the pills are smaller (Leo, 08.10.2026): the stack took too much of the road. The look is 36 px tall,
-   the touch area stays 40 px, and the gap is the rest of it. */
+/* On a phone the pills are smaller (Leo, 08.10.2026): the stack took too much of the road. The look is 40 px tall
+   (36 px was hard to hit while steering, critique 11.11.2026), the touch area reaches into the 6 px gap: 52 px. */
 @media (pointer: coarse) and (max-width: 560px), (pointer: coarse) and (max-height: 480px) {
   :root {
     --pill-w: 144px;
-    --pill-h: 36px;
-    --pill-gap: 4px;
+    --pill-h: 40px;
+    --pill-gap: 6px;
   }
 
   .settings-btn,
@@ -1415,20 +1415,20 @@ a.row-link {
   translate: none;
   scale: none;
   pointer-events: auto;
-  animation: pill-in 360ms var(--ease-back) var(--pill-delay, 0ms) backwards;
+  animation: pill-in 280ms cubic-bezier(0.34, 1.2, 0.64, 1) var(--pill-delay, 0ms) backwards;
 }
 
-/* From the bottom of the stack up: the pill next to Settings first. */
+/* From the bottom of the stack up: the pill next to Settings first, 40 ms apart so the stack reads as one gesture. */
 .run-bar > :nth-child(1) {
-  --pill-delay: 90ms;
+  --pill-delay: 80ms;
 }
 
 .run-bar > :nth-child(2) {
-  --pill-delay: 60ms;
+  --pill-delay: 40ms;
 }
 
 .run-bar > :nth-child(3) {
-  --pill-delay: 30ms;
+  --pill-delay: 0ms;
 }
 
 @starting-style {
@@ -1761,6 +1761,12 @@ a.row-link {
   animation: tap-ring 1.6s var(--ease-out) infinite;
 }
 
+/* Hidden, the endless loop would still restyle the page every frame: Chrome runs an invisible animation on the main thread. */
+.tap-hint:not(.show) .tap-hint-icon svg,
+.tap-hint:not(.show) .tap-hint-ring {
+  animation-play-state: paused;
+}
+
 .tap-hint-text {
   display: flex;
   flex-direction: column;
@@ -1831,7 +1837,8 @@ a.row-link {
   bottom: calc(var(--safe-bottom) + var(--s5));
   width: 60px;
   height: 60px;
-  border: 1.5px solid rgba(79, 163, 255, 0.7);
+  /* 0.7 sank into the night scene (about #3a6fd0); the ring has to stay findable at a glance. */
+  border: 1.5px solid rgba(79, 163, 255, 0.9);
 }
 
 .dispatch-btn svg {
@@ -1915,6 +1922,19 @@ a.row-link {
     font: 600 0.75rem/1 var(--font);
     color: var(--muted);
     letter-spacing: 0.01em;
+  }
+
+  /* On the pill the hint stands beside it, on the side away from the screen edge, instead of biting its corner. */
+  .settings-btn .keycap {
+    top: 50%;
+    right: auto;
+    left: calc(100% + var(--s2));
+    translate: 0 -50%;
+  }
+
+  [data-hand='left'] .settings-btn .keycap {
+    left: auto;
+    right: calc(100% + var(--s2));
   }
 }
 
@@ -2352,14 +2372,12 @@ a.row-link {
   color: var(--accent-ink);
 }
 
-/* "2 Truhen bereit" is too wide for a phone pill: the label takes a second line inside the pill instead of an ellipsis. */
+/* The chest pill reads "2 Truhen" (the full sentence is the aria-label), so one line fits the phone pill. */
 .run-btn .chest-label {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  white-space: normal;
-  line-height: 1.1;
-  text-align: start;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .versus-sheet {
@@ -2706,7 +2724,7 @@ a.row-link {
   margin-bottom: 0;
   overflow: visible;
   opacity: 1;
-  animation: pill-in 360ms var(--ease-back) var(--pill-delay, 0ms) backwards;
+  animation: pill-in 280ms cubic-bezier(0.34, 1.2, 0.64, 1) var(--pill-delay, 0ms) backwards;
 }
 
 .mod {

@@ -314,7 +314,7 @@ export default (_s: Strings): Words<Strings> => ({
     brokenLink: 'Ce lien de défi est invalide ou tronqué.',
     copied: 'Lien du défi copié',
     linkReady: 'Lien prêt. Touchez à nouveau « Défier un ami » pour le partager.',
-    openChest: (n) => (n > 1 ? `${n} coffres prêts` : 'Coffre prêt'),
+    openChest: (n) => (n > 1 ? `${n} coffres` : 'Coffre prêt'),
     openChestLabel: (n) => (n > 1 ? `${n} coffres prêts, à ouvrir` : 'Coffre prêt, à ouvrir'),
     pictureText: 'Mon service dans Roundabout Timing',
     pictureSaved: 'Image enregistrée',

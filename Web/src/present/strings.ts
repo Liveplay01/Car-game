@@ -367,7 +367,7 @@ export const S = {
     copied: 'Challenge link copied',
     linkReady: 'Link ready. Tap Challenge a friend again to share it.',
     /** The pill on the Game tab that leads to the Chests page while chests wait. */
-    openChest: (n: number): string => (n > 1 ? `${n} chests ready` : 'Chest ready'),
+    openChest: (n: number): string => (n > 1 ? `${n} chests` : 'Chest ready'),
     openChestLabel: (n: number): string => (n > 1 ? `${n} chests ready, open them` : 'Chest ready, open it'),
     pictureText: 'My shift in Roundabout Timing',
     pictureSaved: 'Picture saved',
@@ -876,6 +876,8 @@ export const S = {
     tryUnlimited: { caption: 'GAME MODES', text: 'Swipe sideways for Unlimited: no levels, just go until you crash' },
     /** Taught once, on a later visit or after a few shifts: the scoring pays for close merges. */
     tightFit: { caption: 'TIP', text: 'Closer pays more: join right behind a car for a Tight Fit, twice the points' },
+    /** Taught once, after the first crash a plus sign forgave: what the plus signs under the score are. */
+    pluses: { caption: 'TIP', text: 'Each plus under the score forgives one crash: green any crash, blue one with the police' },
     swipeCaption: 'GAME MODES',
     swipeHint: 'Swipe for more modes',
     /** The same on a screen without touch: the arrow keys switch the mode. */

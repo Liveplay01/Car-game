@@ -158,9 +158,13 @@ export class CrashEffects {
     for (const id of ids) this.fires.set(id, Math.max(this.fires.get(id) ?? 0, strength));
   }
 
+  /** The shake runs on the clock, not on game time: slow motion would stretch the jolt into a sway. */
+  advanceShake(dt: number): void {
+    this.shakeAge += dt;
+  }
+
   update(dt: number, world: World, reduceMotion = false): void {
     if (dt <= 0) return;
-    this.shakeAge += dt;
     const c = world.config;
     for (const id of this.fires.keys()) if (!world.vehicle(id)?.isCrashed) this.fires.delete(id);
     for (const id of this.torn.keys()) if (!world.vehicle(id)) this.torn.delete(id);

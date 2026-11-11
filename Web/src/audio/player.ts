@@ -1194,6 +1194,7 @@ export class Haptics {
     crash: [45, 30, 25],
     rushHour: [10, 60, 15, 60, 20],
     shiftComplete: [15, 60, 30],
+    shiftFailed: [40, 90, 80],
     wanted: [10, 80, 14, 80, 18],
     takedown: [40, 50, 12, 40, 12],
     secured: [10, 80, 14, 80, 18],

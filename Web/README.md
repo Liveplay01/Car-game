@@ -32,7 +32,7 @@ tapper should crash in almost every shift.
 check (Playwright, `npm run e2e`) does not need a picture. `state()` says where the game is (screen, level, money,
 the shift, the result, the visible text of the DOM layers), `play('careful' | 'random' | 'none', seconds)` plays
 one whole shift faster than real time (about half a second) and returns the result, `wait(seconds)` lets time pass,
-`perform(action)` does a screen action (`{ k: 'showSocial', section: 1 }`). `perf(frames)` times the frames of what is showing (building the scene and drawing it, in ms, with the item count); use it with CPU throttling (Chrome DevTools, 4×) for a phone-like number, before and after a rendering change. Start with `/?demo&level=12` for a
+`perform(action)` does a screen action (`{ k: 'showSocial', section: 1 }`). `cues()` returns (and clears) the sounds and haptics the game asked for since the last call, with world time and pitch. `perf(frames)` times the frames of what is showing (building the scene and drawing it, in ms, with the item count); use it with CPU throttling (Chrome DevTools, 4×) for a phone-like number, before and after a rendering change. Start with `/?demo&level=12` for a
 save to look around in. The careful bot here taps once per display frame, so it now and then crashes where
 `npm run sim` (120 Hz) does not: use `sim` for balance, the probe for "does the screen flow work".
 

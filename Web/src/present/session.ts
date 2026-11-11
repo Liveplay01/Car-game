@@ -94,14 +94,14 @@ import { TRIALS, ASCENSIONS, LANDMARKS, LEVEL_TRIALS, trial as trialById, trialC
 
 /** What the platform reports; key and touch mapping stays in `main.ts`. */
 export type InputAction =
-  | { k: 'tap'; ago?: number }
+  | { k: 'tap'; ago?: number; stamp?: number }
   | { k: 'confirm' }
   | { k: 'back' }
   | { k: 'restart' }
   | { k: 'dispatch' }
   | { k: 'focusLost' }
   | { k: 'focusGained' }
-  | { k: 'pointerDown'; p: Vec2; ago?: number }
+  | { k: 'pointerDown'; p: Vec2; ago?: number; stamp?: number }
   | { k: 'pointerMove'; p: Vec2 }
   | { k: 'pointerUp'; p: Vec2 }
   | { k: 'hover'; p: Vec2 | null }
@@ -1707,6 +1707,8 @@ export class GameSession {
     this.sinceMerge += realDelta;
     this.sinceLanded += realDelta;
     this.lamps.advance(realDelta);
+    this.effects.advanceShake(realDelta);
+    this.explosions.advanceShake(realDelta);
     this.sinceDenied += realDelta;
     this.adPillAge += realDelta;
     // Whether anyone finds the Today page, and whether the Daily still waits when they do (Leo, 16.10.2026).
@@ -3218,7 +3220,14 @@ export class GameSession {
   /** A crash forgiven: the ring lights up with plus signs and a soft chord, no words over the shift. */
   private healRing(color: ColorToken, second: ColorToken): void {
     this.rim.signal('heal', color, second);
-    if (this.screen.k === 'playing') this.play(['heal'], ['secured']);
+    if (this.screen.k !== 'playing') return;
+    this.play(['heal'], ['secured']);
+    // The plus signs under the score explain themselves once, on the next waiting screen, after the first one is spent.
+    if (this.save.tutorialDone && !this.save.hints.includes('pluses')) {
+      this.save.hints.push('pluses');
+      this.store();
+      this.tip(S.modes.pluses);
+    }
   }
 
   /**
@@ -4056,7 +4065,6 @@ export class GameSession {
           bonus: this.shiftRan && Goals.streakBonus(career, this.today, this.config) ? this.config.streakBonusPay : null,
           endsIn: streakEndsIn(career, this.today, this.config),
           freezes: career.streakFreezes,
-          calendar: Careers.streakCalendar(career, this.today),
           challenges: { done: challengesDone, total: todaysChallenges.length, reward: todaysChallenges.reduce((n, ch) => n + challengeReward(ch, reach, career.prestige), 0) },
         }
       : null;

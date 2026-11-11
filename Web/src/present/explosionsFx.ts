@@ -122,10 +122,14 @@ export class ExplosionEffects {
     }
   }
 
-  update(dt: number, gravityValue: number): void {
-    if (dt <= 0) return;
+  /** The shake runs on the clock, not on game time, like `CrashEffects.advanceShake`. */
+  advanceShake(dt: number): void {
     this.shakeClock += dt;
     this.trauma = Math.max(0, this.trauma - this.traumaDecay * dt);
+  }
+
+  update(dt: number, gravityValue: number): void {
+    if (dt <= 0) return;
     this.punch *= Math.exp(-dt / 0.22);
     this.flash *= Math.exp(-dt / 0.09);
     const scrape = CrashEffects.debrisFriction * gravityValue * dt;

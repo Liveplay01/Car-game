@@ -314,7 +314,7 @@ export default (_s: Strings): Words<Strings> => ({
     brokenLink: 'このチャレンジリンクは壊れているか、途中で切れています。',
     copied: 'チャレンジリンクをコピーしました',
     linkReady: 'リンクの準備ができました。もう一度「友だちに挑戦」をタップして共有してください。',
-    openChest: (n) => (n > 1 ? `宝箱${n}個が待機中` : '宝箱が待機中'),
+    openChest: (n) => (n > 1 ? `宝箱 ×${n}` : '宝箱が待機中'),
     openChestLabel: (n) => (n > 1 ? `宝箱${n}個が待機中、開封できます` : '宝箱が待機中、開封できます'),
     pictureText: 'Roundabout Timingでの私のシフト',
     pictureSaved: '画像を保存しました',

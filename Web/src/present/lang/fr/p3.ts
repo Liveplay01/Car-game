@@ -165,6 +165,7 @@ export default (S: Strings): Words<Strings> => ({
     carsSent: (n) => (n === 1 ? '1 voiture' : `${n} voitures`),
     tryUnlimited: { caption: 'MODES DE JEU', text: 'Balayez pour Sans limites : pas de niveaux, roulez jusqu’au crash' },
     tightFit: { caption: 'ASTUCE', text: 'Plus près rapporte plus : serrez la voiture précédente pour une Insertion serrée aux points doublés' },
+    pluses: { caption: 'ASTUCE', text: 'Chaque plus sous le score pardonne un accident : vert n’importe lequel, bleu un avec la police' },
     swipeCaption: 'MODES DE JEU',
     swipeHint: 'Balayez pour afficher plus de modes',
     tryUnlimitedKeys: { caption: 'MODES DE JEU', text: 'Appuyez sur → pour Sans limites : pas de niveaux, roulez jusqu’au crash' },

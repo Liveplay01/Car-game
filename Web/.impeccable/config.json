@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          "src/ui/shell.css"
+        ],
+        "createdAt": "2026-11-11T16:31:34.697Z",
+        "reason": "Claude: .title-name.tier-4 is the legendary title's glint, an intentional rarity effect predating this change"
+      }
+    ]
+  }
+}

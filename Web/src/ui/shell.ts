@@ -1571,7 +1571,7 @@ export class Shell {
       } catch {
         /* ignore */
       }
-      this.push({ k: 'pointerDown', p: this.toViewport(e), ago: Math.max(0, (performance.now() - e.timeStamp) / 1000) });
+      this.push({ k: 'pointerDown', p: this.toViewport(e), stamp: e.timeStamp });
     });
     canvas.addEventListener('pointermove', (e) => {
       if (e.pointerType === 'mouse') this.push({ k: 'hover', p: this.toViewport(e) });
@@ -1656,7 +1656,7 @@ export class Shell {
       if (e.code === 'Space') {
         if (ownsKeys) return;
         e.preventDefault();
-        this.push({ k: 'tap', ago: Math.max(0, (performance.now() - e.timeStamp) / 1000) });
+        this.push({ k: 'tap', stamp: e.timeStamp });
       } else if (key === 'Enter' && !ownsKeys) {
         e.preventDefault();
         this.push({ k: 'confirm' });
@@ -1822,6 +1822,9 @@ export class Shell {
     this.last = now;
     const actions = this.actions;
     this.actions = [];
+    // How long before this frame each tap happened: measured against the frame's own clock, not the handler's, so the
+    // wait for the next (possibly skipped) frame does not stamp it late.
+    for (const a of actions) if ((a.k === 'tap' || a.k === 'pointerDown') && a.stamp !== undefined) a.ago = Math.max(0, (now - a.stamp) / 1000);
     for (const a of actions) if (TRAIL_ACTIONS.has(a.k)) crumb(a.k);
     const s = this.session;
     const match = this.versus.match;

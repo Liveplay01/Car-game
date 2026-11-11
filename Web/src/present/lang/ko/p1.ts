@@ -314,7 +314,7 @@ export default (_s: Strings): Words<Strings> => ({
     brokenLink: '이 챌린지 링크는 깨졌거나 잘렸어요.',
     copied: '챌린지 링크를 복사했어요',
     linkReady: '링크가 준비됐어요. “친구에게 도전”을 다시 탭해서 공유하세요.',
-    openChest: (n) => (n > 1 ? `상자 ${n}개 대기 중` : '상자 대기 중'),
+    openChest: (n) => (n > 1 ? `상자 ${n}개` : '상자 대기 중'),
     openChestLabel: (n) => (n > 1 ? `상자 ${n}개 대기 중, 열 수 있어요` : '상자 대기 중, 열 수 있어요'),
     pictureText: 'Roundabout Timing에서의 내 시프트',
     pictureSaved: '이미지를 저장했어요',

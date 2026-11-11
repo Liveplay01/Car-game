@@ -164,6 +164,7 @@ export default (S: Strings): Words<Strings> => ({
     carsSent: (n) => `${n}台`,
     tryUnlimited: { caption: 'ゲームモード', text: '横にスワイプでアンリミテッドへ。レベルなし、クラッシュするまで走ろう' },
     tightFit: { caption: 'ヒント', text: '近いほどお得: 車のすぐ後ろに合流すればギリギリ、得点2倍' },
+    pluses: { caption: 'ヒント', text: 'スコアの下のプラスは事故を1回許す: 緑はどの事故も、青は警察との事故' },
     swipeCaption: 'ゲームモード',
     swipeHint: 'スワイプでモードを切り替え',
     tryUnlimitedKeys: { caption: 'ゲームモード', text: '→キーでアンリミテッドへ。レベルなし、クラッシュするまで走ろう' },

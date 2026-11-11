@@ -314,7 +314,7 @@ export default (_s: Strings): Words<Strings> => ({
     brokenLink: 'Dieser Herausforderungslink ist defekt oder abgeschnitten.',
     copied: 'Herausforderungslink kopiert',
     linkReady: 'Link bereit. Tippe erneut auf „Freund herausfordern“, um ihn zu teilen.',
-    openChest: (n) => (n > 1 ? `${n} Truhen bereit` : 'Truhe bereit'),
+    openChest: (n) => (n > 1 ? `${n} Truhen` : 'Truhe bereit'),
     openChestLabel: (n) => (n > 1 ? `${n} Truhen bereit, zum Öffnen` : 'Truhe bereit, zum Öffnen'),
     pictureText: 'Meine Schicht in Roundabout Timing',
     pictureSaved: 'Bild gespeichert',

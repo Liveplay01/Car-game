@@ -399,7 +399,7 @@ export interface Career {
  * and a backup of the progress (each once, from its level on; `config.*HintAfterLevel`), and
  * what a Perfect Run is, the first time one happens.
  */
-export const HINTS = ['modes', 'install', 'perfectRun', 'reduceMotion', 'invite', 'scout', 'tightFit', 'unlimitedTip', 'portalLogin', 'notifications', 'notificationsStreak', 'tomorrow', 'account', 'introsStarted', 'newsStarted', 'intro.museum', 'intro.builder', 'intro.daily', 'intro.trials', 'intro.pass', 'intro.casino', 'intro.club', 'intro.gamefund', 'intro.mafia', 'intro.crew'] as const;
+export const HINTS = ['modes', 'install', 'perfectRun', 'reduceMotion', 'invite', 'scout', 'tightFit', 'pluses', 'unlimitedTip', 'portalLogin', 'notifications', 'notificationsStreak', 'tomorrow', 'account', 'introsStarted', 'newsStarted', 'intro.museum', 'intro.builder', 'intro.daily', 'intro.trials', 'intro.pass', 'intro.casino', 'intro.club', 'intro.gamefund', 'intro.mafia', 'intro.crew'] as const;
 export type Hint = (typeof HINTS)[number] | `news.${string}`;
 
 /** Everything that is saved (`storage/save.ts` reads and writes it). */

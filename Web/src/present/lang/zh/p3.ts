@@ -164,6 +164,7 @@ export default (S: Strings): Words<Strings> => ({
     carsSent: (n) => `${n} 辆车`,
     tryUnlimited: { caption: '游戏模式', text: '左右滑动进入无限模式：没有等级，一直开到撞车' },
     tightFit: { caption: '提示', text: '越近越值钱：紧贴一辆车的后面并入，就是险过，得分翻倍' },
+    pluses: { caption: '提示', text: '分数下的每个加号可抵消一次撞车：绿色抵消任何撞车，蓝色抵消与警车的撞车' },
     swipeCaption: '游戏模式',
     swipeHint: '滑动查看更多模式',
     tryUnlimitedKeys: { caption: '游戏模式', text: '按 → 进入无限模式：没有等级，一直开到撞车' },

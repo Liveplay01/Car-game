@@ -27,6 +27,22 @@ export function installProbe(shell: Shell): void {
 
   /** Main-thread stalls over 50 ms since the page opened (`startTime` as `performance.now()`), for hunting a hitch. */
   const stalls: Stall[] = [];
+
+  /** Every sound and haptic the session asks for, with the world time, so feedback can be checked without listening. */
+  const heard: Cue[] = [];
+  const out = game['output'];
+  if (out) {
+    const sound = out.sound.bind(out);
+    const haptic = out.haptic.bind(out);
+    out.sound = (id, pitch, pan) => {
+      heard.push({ at: +game.world.time.toFixed(2), sound: id, pitch: +pitch.toFixed(3) });
+      sound(id, pitch, pan);
+    };
+    out.haptic = (id, softness) => {
+      heard.push({ at: +game.world.time.toFixed(2), haptic: id });
+      haptic(id, softness);
+    };
+  }
   new PerformanceObserver((list) => list.getEntries().forEach((e) => stalls.push({ at: Math.round(e.startTime), ms: Math.round(e.duration) }))).observe({ type: 'longtask', buffered: true });
 
   const state = (): Snapshot => {
@@ -117,8 +133,42 @@ export function installProbe(shell: Shell): void {
       step();
       return state();
     },
+    /**
+     * The first crash's camera shake, frame by frame in real time: the reckless bot plays until the screen moves, then
+     * `frames` more frames are watched. Peak and settle in screen points and ms, `swings`: direction changes along the
+     * strongest axis (about two per cycle), `slow`: the game's time scale at the crash.
+     */
+    shake: (frames = 60) => {
+      arrive();
+      if (game.screen.k === 'result') game.perform({ k: 'restart' });
+      // Only the crash's own jolt, without the camera's breathing and framing.
+      const jolt = () => {
+        const a = game['effects'].shakeOffset;
+        const b = game['explosions'].shakeOffset;
+        return v(a.x + b.x, a.y + b.y);
+      };
+      step();
+      for (let i = 0; i < 120 / FRAME && Math.hypot(jolt().x, jolt().y) < 0.5; i++) {
+        if (game.screen.k === 'ready') game.perform({ k: 'startShift' });
+        step(game.screen.k === 'playing' && wants('reckless') ? [{ k: 'tap' }] : []);
+      }
+      const slow = +game.timeScale.toFixed(2);
+      const trace = [jolt()];
+      for (let i = 1; i < frames; i++) {
+        step();
+        trace.push(jolt());
+      }
+      const size = trace.map((s) => Math.hypot(s.x, s.y));
+      const axis = trace.reduce((a, s) => Math.max(a, Math.abs(s.x)), 0) >= trace.reduce((a, s) => Math.max(a, Math.abs(s.y)), 0) ? 'x' : 'y';
+      let swings = 0;
+      for (let i = 2; i < trace.length; i++) if (Math.sign(trace[i][axis] - trace[i - 1][axis]) * Math.sign(trace[i - 1][axis] - trace[i - 2][axis]) < 0) swings++;
+      const last = size.reduce((at, s, i) => (s >= 1 ? i : at), -1);
+      return { slow, peak: +Math.max(...size).toFixed(1), settleMs: Math.round(((last + 1) * 1000) / 60), swings, curve: size.filter((_, i) => i % 3 === 0).map((s) => +s.toFixed(1)) };
+    },
     /** Milliseconds per frame, building the scene and drawing it, on whatever is showing (a shift is started if the game waits). */
     stalls: () => stalls,
+    /** The sounds and haptics since the last call (taken out of the log). */
+    cues: () => heard.splice(0),
     perf: (frames = 300) => {
       if (game.screen.k === 'ready') game.perform({ k: 'startShift' });
       const drawer = shell['drawer'];
@@ -147,6 +197,13 @@ export function installProbe(shell: Shell): void {
 export interface Stall {
   at: number;
   ms: number;
+}
+
+export interface Cue {
+  at: number;
+  sound?: string;
+  pitch?: number;
+  haptic?: string;
 }
 
 export interface Spread {
@@ -185,6 +242,8 @@ export interface Probe {
   perform(action: Parameters<Shell['game']['perform']>[0]): Snapshot;
   say(text: string): Snapshot;
   ducks(): Snapshot;
+  shake(frames?: number): { slow: number; peak: number; settleMs: number; swings: number; curve: number[] };
   stalls(): Stall[];
+  cues(): Cue[];
   perf(frames?: number): { screen: string; items: number; build: Spread; draw: Spread };
 }

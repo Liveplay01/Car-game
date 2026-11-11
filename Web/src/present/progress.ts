@@ -573,7 +573,7 @@ export const ProgressPage = {
   addCardRow(list: RenderList, r: Rect, x: number, o: number, row: { title: string; line: string; reward?: number; status?: string; done?: boolean; link?: string; dim?: boolean }): void {
     const c = R.center(r);
     const right = r.maxX - 16;
-    const linkWidth = row.link ? textWidth(row.link, 11) + 12 : 0;
+    const linkWidth = row.link ? textWidth(row.link, 12) + 12 : 0;
     const topWidth = row.reward !== undefined ? textWidth(Fmt.number(row.reward), 13) + 30 : row.status ? textWidth(row.status, 13) + 12 : 0;
     drawFitted(list, row.title, v(x, c.y - 9), 14, right - x - topWidth, row.dim ? 'muted' : 'primary', { opacity: o, weight: 'bold' });
     drawFitted(list, row.line, v(x, c.y + 11), 12, right - x - linkWidth, 'muted', { opacity: o });
@@ -684,7 +684,9 @@ export const ProgressPage = {
   /** The streak card's call to play, at most two lines (the card grows for the second). */
   streakStatus(career: Career, today: number, width: number): string[] {
     const P = S.progress;
-    const status = career.dailyStreak === 0 ? P.streakStart : Careers.isDailyOpen(career, today) ? P.streakKeep : P.streakDone;
+    // No streak: the start line stands beside the 0 instead (addStreak).
+    if (career.dailyStreak === 0) return [];
+    const status = Careers.isDailyOpen(career, today) ? P.streakKeep : P.streakDone;
     const lines = wrapText(status, width - 32, 12, true);
     return lines.length > 2 ? [lines[0], lines.slice(1).join(' ')] : lines;
   },
@@ -704,6 +706,8 @@ export const ProgressPage = {
     const pop = reduceMotion ? 1 : 1 + 0.04 * Math.max(0, Math.sin(clock * 3.1)) * Math.min(1, tier / 3);
     drawText(list, String(days), v(x, r.minY + 66), ShopPage.fitted(String(days), 52, R.width(r) * 0.28) * pop, days > 0 ? 'primary' : 'muted', { opacity: o, weight: 'bold', align: 'center' });
     drawText(list, days === 1 ? P.streakDay : P.streakDays, v(x, r.minY + 98), 12, 'muted', { opacity: o, align: 'center' });
+    // With no streak the way to start one stands beside the 0, not at the foot of the card.
+    if (days === 0) wrapText(P.streakStart, R.width(r) * 0.36, 12, true).slice(0, 4).forEach((t, i) => drawText(list, t, v(x, r.minY + 124 + i * ProgressPage.streakLine), 12, 'accent', { opacity: o, weight: 'bold', align: 'center' }));
 
     // The milestones as a road: days under each post, chests a little bigger. The stretch already driven is warm.
     const next = Careers.nextStreakMilestone(career);
@@ -764,11 +768,12 @@ export const ProgressPage = {
     const week = weekNumber(today);
     const shift = weeklyTrial(week);
     const passed = Careers.isWeeklyDone(career, week);
+    // The way in stands alone on the right, like Open in the shop; the days left ride in the title so the goal keeps its room.
     ProgressPage.addCardRow(list, r, r.minX + 16, o, {
-      title: `${S.weekly.title} · ${S.weekly.elite(shift.elite ?? 'flawless')}`,
+      title: passed ? `${S.weekly.title} · ${S.weekly.elite(shift.elite ?? 'flawless')}` : `${S.weekly.title} · ${S.weekly.daysLeft(weekDaysLeft(today))}`,
       line: passed ? S.weekly.passedThisWeek : S.weekly.goal(shift),
       ...(passed ? { status: `${S.daily.done} ✓`, done: true } : { reward: shift.reward }),
-      link: `${S.weekly.daysLeft(weekDaysLeft(today))} · ${S.trials.play} ›`,
+      link: `${S.trials.play} ›`,
     });
   },
 

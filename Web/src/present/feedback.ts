@@ -1,7 +1,7 @@
 import type { GameEvent, CrashReport, VersusPhase } from '../core/events';
 import type { World } from '../core/world';
 import type { VehicleType } from '../core/vehicle';
-import type { BossKind } from '../core/config';
+import { baseConfig, type BossKind } from '../core/config';
 import { Scoring } from '../core/scoring';
 import type { Vec2 } from '../core/vec2';
 import { Ease, unitHash } from './render';
@@ -122,6 +122,8 @@ export type HapticID =
   | 'crash'
   | 'rushHour'
   | 'shiftComplete'
+  /** A lost shift (not a detonation): a thud and a longer, heavier one under the FAIL pause. */
+  | 'shiftFailed'
   | 'wanted'
   | 'takedown'
   | 'secured'
@@ -165,7 +167,7 @@ export const Feedback = {
 
   /** One vibration replaces the one running, so a frame plays only the strongest of its haptics: this list, strongest first. */
   hapticRank: [
-    'explosion', 'crash', 'bossTakedown', 'takedown', 'seized', 'chest', 'rushHour', 'wanted', 'secured', 'shiftComplete',
+    'explosion', 'shiftFailed', 'crash', 'bossTakedown', 'takedown', 'seized', 'chest', 'rushHour', 'wanted', 'secured', 'shiftComplete',
     'paid', 'critical', 'flow', 'comboUp', 'perfect', 'tightFit', 'nearMiss', 'merge', 'edge',
   ] as HapticID[],
 
@@ -195,10 +197,16 @@ export const Feedback = {
         return 'secured';
       case 'transporterSeized':
       case 'transporterLost':
+      // A special vehicle's bonus lost to a tap: heard and felt like the lost cargo, not only seen on the rim.
+      case 'oversizeSpoilt':
+      case 'weddingSpoilt':
+      case 'learnerSpoilt':
+      case 'ambulanceLost':
         return 'seized';
       case 'transporterPaid':
         return e.amount > 0 ? (e.jackpot ? 'jackpot' : 'paid') : null;
       case 'heistRecovered':
+      case 'unlimitedStage':
         return 'paid';
       case 'modulePaid':
         return 'toll';
@@ -247,6 +255,9 @@ export const Feedback = {
       case 'note':
         // The melody takes the combo itself, not a ratio.
         return combo;
+      case 'comboUp':
+        // Each tier a whole tone higher, so tier 4 sounds further than tier 1.
+        return 2 ** ((2 * Math.max(0, Scoring.tier(combo, baseConfig) - 1)) / 12);
       case 'toll':
       case 'crashLight':
       case 'crash':
@@ -283,7 +294,8 @@ export const Feedback = {
       case 'rushHour':
         return 'rushHour';
       case 'shiftEnded':
-        return e.result.outcome === 'completed' ? 'shiftComplete' : null;
+        if (e.result.outcome === 'completed') return 'shiftComplete';
+        return e.result.detonated ? null : 'shiftFailed';
       case 'criminalWarning':
       case 'militaryWarning':
         return 'wanted';
@@ -293,6 +305,10 @@ export const Feedback = {
         return 'secured';
       case 'transporterSeized':
       case 'transporterLost':
+      case 'oversizeSpoilt':
+      case 'weddingSpoilt':
+      case 'learnerSpoilt':
+      case 'ambulanceLost':
         return 'seized';
       case 'transporterPaid':
         return e.amount > 0 ? (e.jackpot ? 'chest' : 'paid') : null;
@@ -305,6 +321,7 @@ export const Feedback = {
       case 'ambulanceWarning':
         return 'secured';
       case 'ambulanceCleared':
+      case 'unlimitedStage':
         return 'paid';
       case 'armourHit':
         return 'takedown';
@@ -346,6 +363,10 @@ export const Feedback = {
       case 'armourHit':
       case 'ambulanceBlocked':
       case 'ambulanceCleared':
+      case 'ambulanceLost':
+      case 'oversizeSpoilt':
+      case 'weddingSpoilt':
+      case 'learnerSpoilt':
         return e.point;
       default:
         return null;

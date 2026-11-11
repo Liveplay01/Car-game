@@ -309,7 +309,7 @@ export default (_s: Strings): Words<Strings> => ({
     brokenLink: 'Questo link di sfida non è valido o è incompleto.',
     copied: 'Link della sfida copiato',
     linkReady: 'Link pronto. Tocca di nuovo «Sfida un amico» per condividerlo.',
-    openChest: (n) => (n > 1 ? `${n} bauli pronti` : 'Baule pronto'),
+    openChest: (n) => (n > 1 ? `${n} bauli` : 'Baule pronto'),
     openChestLabel: (n) => (n > 1 ? `${n} bauli pronti, da aprire` : 'Baule pronto, da aprire'),
     pictureText: 'Il mio turno in Roundabout Timing',
     pictureSaved: 'Immagine salvata',

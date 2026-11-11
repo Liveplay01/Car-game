@@ -124,7 +124,7 @@ export const TopBar = {
     const x = frame.minX + pad;
     const { size, lines } = TopBar.fitBrief(view.brief.text, width, textScale);
     const lineHeight = size * 1.2;
-    const captionSize = 10;
+    const captionSize = 11;
     const gap = 4;
     const block = captionSize + gap + lines.length * lineHeight;
     const top = frame.minY + (TopBar.height - block) / 2 + drop;
@@ -153,7 +153,7 @@ export const TopBar = {
     const center = R.center(frame);
     const drop = o.reduceMotion ? 0 : (1 - view.card) * TopBar.briefTravel;
     const room = 52;
-    const captionSize = 10;
+    const captionSize = 11;
     const gap = 4;
     const words = (brief: Brief, a: number, lift: number): void => {
       const fit = TopBar.fitBrief(brief.text, R.width(frame) - 2 * room, o.textScale);
@@ -211,7 +211,7 @@ export const TopBar = {
   addColumn(list: RenderList, col: Rect, a: Align, caption: string, value: string, o: { captionColor?: ColorToken; valueSize?: number; valueColor?: ColorToken; opacity?: number; valueOpacity?: number } = {}): void {
     const x = TopBar.anchor(col, a);
     const opacity = o.opacity ?? 1;
-    list.s(text(caption, v(x, col.minY + TopBar.captionRow), 10, a, 'bold'), o.captionColor ?? 'muted', opacity);
+    list.s(text(caption, v(x, col.minY + TopBar.captionRow), 11, a, 'bold'), o.captionColor ?? 'muted', opacity);
     list.s(text(value, v(x, col.minY + TopBar.valueRow), o.valueSize ?? 20, a, 'display'), o.valueColor ?? 'primary', o.valueOpacity ?? opacity);
   },
 
@@ -224,6 +224,12 @@ export const TopBar = {
     list.s(text(value, at, size, 'trailing', 'display'), o.valueColor ?? 'primary', opacity);
     const room = textWidth(value, size, true, true);
     trophy(list, v(x - room - 13, at.y), 14, 'coin', opacity);
+  },
+
+  /** What stands beside the score while a shift runs (items from `from` on) steps back to half; `pop` below 1 (a payout landing) lifts it for that moment. */
+  quiet(list: RenderList, from: number, pop = 1): void {
+    const a = 0.5 + 0.5 * (1 - Ease.clamp01(pop));
+    for (let i = from; i < list.items.length; i++) list.items[i] = moved(list.items[i], v(0, 0), a);
   },
 
   /** `roll`: the amount as an odometer (the live top card); without it the text is set (the result's count-up already moves). */
@@ -503,7 +509,7 @@ export const HUD = {
       const inset = R.inset(c, TopBar.litInset);
       list.s(rect(R.center(inset), v(R.width(inset), R.height(inset)), R.height(inset) / 2), 'fireOuter', 0.28);
     }
-    list.s(text(chain > 1 ? S.mayhem.chain(chain) : S.mayhem.flames, v(R.center(c).x, c.minY + TopBar.captionRow), 10, 'center', 'bold'), chain > 1 ? 'fireCore' : 'muted');
+    list.s(text(chain > 1 ? S.mayhem.chain(chain) : S.mayhem.flames, v(R.center(c).x, c.minY + TopBar.captionRow), 11, 'center', 'bold'), chain > 1 ? 'fireCore' : 'muted');
     flameTag(list, Fmt.number(h.flames), v(R.center(c).x, c.minY + TopBar.valueRow), Metrics.timerSize * land(h.flamePop, 0.3), 'center', 'primary', 1, 'display');
     TopBar.addBest(list, cols.right, h.best ?? '–', { valueColor: h.best === null ? 'muted' : 'primary' });
     list.tag = undefined;
@@ -526,6 +532,8 @@ export const HUD = {
     list.tag = 'topbarLabels';
     const numbers = list.items.length;
     TopBar.addMoneyColumn(list, cols.left, 'leading', Fmt.number(h.money), { valueSize: 20 * land(h.pops.money, 0.15), roll: { value: h.money, reduceMotion: h.reduceMotion ?? false } });
+    // During a shift the score leads (Leo, 11.11.2026): money and the best step back, full again on the result.
+    TopBar.quiet(list, numbers, h.pops.money);
     const c = cols.center;
     const tick = land(h.pops.cars, 0.12);
     const rush = world.shift.rushHourSince !== null;
@@ -583,7 +591,12 @@ export const HUD = {
         valueSize: 18 * land(h.race.pop, 0.15),
         valueColor: h.race.delta <= 0 ? 'accent' : 'destructive',
       });
-    } else TopBar.addBest(list, cols.right, h.best ?? '–', { valueColor: h.best === null ? 'muted' : 'primary' });
+    } else if (h.best !== null) {
+      // No trophy over a dash: without a best there is nothing to chase yet.
+      const best = list.items.length;
+      TopBar.addBest(list, cols.right, h.best);
+      TopBar.quiet(list, best);
+    }
     if (brief) {
       // The numbers fade and lift away while the briefing settles in from below, and back.
       const shown = brief.card;
@@ -623,7 +636,8 @@ export const HUD = {
     const tierPulse = 0.16 * Ease.kick(tierAge * 0.6);
     const pulse = Math.abs(tierPulse) > Math.abs(mergePulse) ? tierPulse : mergePulse;
     const size = Metrics.multiplierSize * (1 + pulse);
-    list.s(text(comboMultiplier(Scoring.multiplierOfTier(tier, c)), center, size, 'center', 'bold'), color);
+    // No ×1 on the island: the multiplier appears with its first step, on the tier change's kick.
+    if (tier > 0) list.s(text(comboMultiplier(Scoring.multiplierOfTier(tier, c)), center, size, 'center', 'bold'), color);
     if (world.score.combo > 0) list.s(text(S.hud.combo(world.score.combo), add(center, v(0, 34)), Metrics.comboLabelSize * (1 + mergePulse), 'center', 'bold'), 'muted');
     HUD.addComboProgress(list, world, add(center, v(0, 50)), reduceMotion);
     if (world.shift.isRushHour) list.s(text(S.hud.rushFactor(c.rushHourScoreFactor), add(center, v(0, -38)), Metrics.comboLabelSize, 'center', 'bold'), 'rushHour');
@@ -1536,8 +1550,6 @@ export interface DailyCard {
   freezes: number;
   next: StreakMilestone | null;
   splash: number | null;
-  /** This week, Monday first (`Careers.streakCalendar`). */
-  calendar: { day: number; state: 'done' | 'frozen' | 'missed' | 'open' | 'later' }[];
   /** Today's challenges: done, how many, and what all of them pay. */
   challenges: { done: number; total: number; reward: number };
 }
@@ -1620,8 +1632,10 @@ function islandRow(list: RenderList, s: string | null, radius: number, size: num
  * screen keeps the one-line pill instead.
  */
 export const DailyStrip = {
-  height: 52,
+  // One row since 11.11.2026 (Leo): the streak and today's goals, no week calendar. Before a 20-second shift one glance is enough.
+  height: 40,
   maxWidth: 440,
+  textSize: 12,
 
   /** Fits when the grown card still ends above the prompt and the ring, with the card's own air. */
   headerFits(width: number, top: number, bottomLimit: number): boolean {
@@ -1632,73 +1646,53 @@ export const DailyStrip = {
   addAttached(list: RenderList, daily: DailyCard, frame: Rect, top: number, opacity: number, time: number, reduceMotion: boolean): void {
     const left = frame.minX;
     const right = frame.maxX - 14;
-    const x0 = left + 14;
+    const row = top + 25;
     // A hairline under the numbers, so the card reads as the bar and its Daily section, not one tall block.
     list.s(line(v(left + 12, top + 8), v(right, top + 8), 0.5), 'separator', 0.55 * opacity);
-
-    DailyStrip.streakBlock(list, daily, x0, top, opacity, reduceMotion, time);
-    const calendarX = x0 + 88;
-    DailyStrip.calendar(list, daily, calendarX, top, Math.min(right - calendarX - 100, 190), opacity, reduceMotion, time);
-    DailyStrip.challengeBlock(list, daily, right, top, opacity);
+    const end = DailyStrip.streakBlock(list, daily, left + 14, row, opacity, reduceMotion, time);
+    DailyStrip.challengeBlock(list, daily, right, row, end + 16, opacity);
   },
 
-  streakBlock(list: RenderList, daily: DailyCard, x: number, top: number, opacity: number, reduceMotion: boolean, time: number): void {
+  /** Flame, the days and what they need now, on one line; returns where it ends. */
+  streakBlock(list: RenderList, daily: DailyCard, x: number, y: number, opacity: number, reduceMotion: boolean, time: number): number {
     const streak = daily.streak;
-    const flameY = top + 25;
-    if (streak > 0) MenuKit.glow(list, v(x + 10, flameY), 30, 'fireOuter', (reduceMotion ? 0.16 : 0.16 + 0.06 * Math.sin(time * 2.6)) * opacity);
-    heatFlame(list, v(x + 10, flameY), streak > 0 ? 22 : 17, opacity * (streak > 0 ? 1 : 0.45), time, reduceMotion);
-    const numX = x + 24;
-    const num = String(streak);
-    drawText(list, num, v(numX, top + 32), 24, streak > 0 ? 'primary' : 'muted', { weight: 'bold', opacity });
-    const numW = textWidth(num, 24, true);
-    drawText(list, streak === 1 ? S.daily.stripDay : S.daily.stripDays, v(numX + numW + 4, top + 32), 10, 'muted', { opacity });
-    if (daily.endsIn !== null) drawText(list, S.daily.stripEndsIn(daily.endsIn), v(x, top + 45), 9, 'hazard', { weight: 'bold', opacity });
-    else drawText(list, streak > 0 ? S.daily.stripInARow : S.daily.stripStart, v(x, top + 45), 9, streak > 0 ? 'muted' : 'accent', { opacity });
+    const size = DailyStrip.textSize;
+    if (streak > 0) MenuKit.glow(list, v(x + 9, y - 2), 26, 'fireOuter', (reduceMotion ? 0.16 : 0.16 + 0.06 * Math.sin(time * 2.6)) * opacity);
+    heatFlame(list, v(x + 9, y - 2), streak > 0 ? 19 : 15, opacity * (streak > 0 ? 1 : 0.45), time, reduceMotion);
+    let at = x + 22;
+    if (streak > 0) {
+      const num = String(streak);
+      drawText(list, num, v(at, y + 1), 18, 'primary', { weight: 'bold', opacity });
+      at += textWidth(num, 18, true) + 5;
+    }
+    const [note, color, weight]: [string, ColorToken, Weight] =
+      daily.endsIn !== null ? [S.daily.stripEndsIn(daily.endsIn), 'hazard', 'bold']
+      : streak > 0 ? [`${streak === 1 ? S.daily.stripDay : S.daily.stripDays} ${S.daily.stripInARow}`, 'muted', 'regular']
+      : [S.daily.stripStart, 'accent', 'bold'];
+    drawText(list, note, v(at, y), size, color, { weight, opacity });
+    return at + textWidth(note, size, weight === 'bold');
   },
 
-  calendar(list: RenderList, daily: DailyCard, x: number, top: number, width: number, opacity: number, reduceMotion: boolean, time: number): void {
-    const cell = width / 7;
-    daily.calendar.forEach((c, i) => {
-      const cx = x + cell * i + cell / 2;
-      drawText(list, weekdayNarrow(c.day), v(cx, top + 16), 8, 'muted', { align: 'center', opacity });
-      const at = v(cx, top + 28);
-      if (c.state === 'done') {
-        list.s(circle(at, 4.6), 'hazard', opacity);
-        list.s(circle(at, 1.8), 'fireCore', opacity * 0.8);
-      } else if (c.state === 'frozen') {
-        list.s(circle(at, 4.6), 'lightBlue', opacity * 0.85);
-        list.s(circle(at, 2.2), 'background', opacity * 0.9);
-      } else if (c.state === 'open') {
-        const pulse = reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(time * 3);
-        list.s(arc(at, 6 + pulse * 1.6, 1.4, 0, TAU), 'hazard', opacity * (0.45 + 0.5 * pulse));
-        list.s(circle(at, 3.4), 'hazard', opacity * 0.45);
-      } else {
-        list.s(circle(at, 3.8), 'controlFill', opacity * (c.state === 'later' ? 0.4 : 0.75));
-      }
-    });
-  },
-
-  challengeBlock(list: RenderList, daily: DailyCard, right: number, top: number, opacity: number): void {
+  /** Today's goals on the right of the same line: the label goes first when the line runs out of room, then the count. */
+  challengeBlock(list: RenderList, daily: DailyCard, right: number, y: number, minX: number, opacity: number): void {
     const c = daily.challenges;
     if (c.total <= 0) return;
+    const size = DailyStrip.textSize;
     const all = c.done >= c.total;
-    drawText(list, `+${Fmt.number(c.reward)}`, v(right, top + 21), 11, 'accent', { align: 'trailing', weight: 'bold', opacity });
+    const reward = `+${Fmt.number(c.reward)}`;
     const count = `${c.done}/${c.total}`;
-    drawText(list, count, v(right, top + 34), 9, 'muted', { align: 'trailing', opacity });
-    drawText(list, all ? S.daily.challengesComplete : S.daily.challengesLabel, v(right - textWidth(count, 9) - 4, top + 34), 9, all ? 'accent' : 'muted', { align: 'trailing', opacity, weight: all ? 'bold' : 'regular' });
+    const label = all ? S.daily.challengesComplete : S.daily.challengesLabel;
+    const rewardW = textWidth(reward, size, true);
+    const countW = textWidth(count, size);
+    const labelW = textWidth(label, size, all);
+    let x = right - rewardW - 8;
+    if (x - countW < minX) return;
+    drawText(list, reward, v(right, y), size, 'accent', { align: 'trailing', weight: 'bold', opacity });
+    drawText(list, count, v(x, y), size, all ? 'accent' : 'muted', { align: 'trailing', opacity });
+    x -= countW + 4;
+    if (x - labelW >= minX) drawText(list, label, v(x, y), size, all ? 'accent' : 'muted', { align: 'trailing', opacity, weight: all ? 'bold' : 'regular' });
   },
 };
-
-/** Monday's M in the player's language, cached: seven of them are drawn on every ready frame. */
-const weekdayNames = new Map<number, string>();
-function weekdayNarrow(day: number): string {
-  const cached = weekdayNames.get(day);
-  if (cached !== undefined) return cached;
-  if (weekdayNames.size > 30) weekdayNames.clear();
-  const name = new Date(day * 86400000).toLocaleDateString(currentLanguage(), { weekday: 'narrow', timeZone: 'UTC' });
-  weekdayNames.set(day, name);
-  return name;
-}
 
 export const ReadyBanner = {
   splashDuration: 3,
@@ -2070,7 +2064,7 @@ export const ResultBanner = {
       // A lost shift's words stand still: no spring on the numbers, and FAIL makes way for the score before it comes in.
       const pop = reduceMotion || ResultBanner.breathes(summary) ? 1 : land(age / 0.4, 0.12);
       if (summary.mode === 'mayhem' && !run) {
-        list.s(text(title, v(R.center(cols.center).x, cols.center.minY + TopBar.captionRow), 10, 'center', 'bold'), titleColor, shown);
+        list.s(text(title, v(R.center(cols.center).x, cols.center.minY + TopBar.captionRow), 11, 'center', 'bold'), titleColor, shown);
         flameTag(list, Fmt.number(r.flames), v(R.center(cols.center).x, cols.center.minY + TopBar.valueRow), Metrics.timerSize * pop, 'center', 'primary', shown);
       } else if (mourning > 0) {
         // A swallowed tap: FAIL shakes its head like a wrong passcode; under Reduce Motion it blinks instead.
@@ -2086,7 +2080,10 @@ export const ResultBanner = {
         const [caption, value] = run.right;
         TopBar.addColumn(list, cols.right, 'trailing', caption, value, { valueSize: 16, opacity: shown });
       } else if (summary.isNewHighscore) {
-        TopBar.addColumn(list, cols.right, 'trailing', S.result.newBest, Fmt.number(summary.mode === 'mayhem' ? r.flames : r.score), { captionColor: 'accent', valueColor: 'accent', valueSize: 20 * landed, opacity: shown });
+        // The score already stands in the middle: the record column shows what it beat the old one by, as the live record column does.
+        const gain = (summary.mode === 'mayhem' ? r.flames : r.score) - summary.previousHighscore;
+        if (summary.previousHighscore > 0) TopBar.addColumn(list, cols.right, 'trailing', S.result.newBest, `+${Fmt.number(gain)}`, { captionColor: 'accent', valueColor: 'accent', valueSize: 20 * landed, opacity: shown });
+        else list.s(text(S.result.newBest, v(TopBar.anchor(cols.right, 'trailing'), cols.right.minY + TopBar.midRow), 12, 'trailing', 'bold'), 'accent', shown);
       } else {
         TopBar.addBest(list, cols.right, summary.previousHighscore > 0 ? Fmt.number(summary.previousHighscore) : '–', {
           valueColor: summary.previousHighscore > 0 ? 'primary' : 'muted',
