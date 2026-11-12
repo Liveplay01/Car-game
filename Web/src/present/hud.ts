@@ -534,7 +534,7 @@ export const HUD = {
     list.tag = 'topbarLabels';
     const numbers = list.items.length;
     if (!h.firstShift) {
-      TopBar.addMoneyColumn(list, cols.left, 'leading', Fmt.number(h.money), { valueSize: 20 * land(h.pops.money, 0.15), roll: { value: h.money, reduceMotion: h.reduceMotion ?? false } });
+      TopBar.addMoneyColumn(list, cols.left, 'leading', Fmt.number(h.money), { valueSize: 20, roll: { value: h.money, reduceMotion: h.reduceMotion ?? false } });
       // During a shift the score leads (Leo, 11.11.2026): money and the best step back, full again on the result.
       TopBar.quiet(list, numbers, h.pops.money);
     }

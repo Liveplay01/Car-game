@@ -251,7 +251,7 @@ export const ShopPage = {
   /** The reveal card's buttons, in card points from its middle (`addRevealCard`, `targets`). */
   revealWearY: 150,
   revealWearSize: v(188, 44),
-  revealCloseSize: v(140, 36),
+  revealCloseSize: v(188, 36),
   revealGrow: (wearable: boolean): number => (wearable ? 80 : 28),
   revealCloseY: (wearable: boolean): number => (wearable ? 204 : 150),
   /** A skin or map that can be put on and is not on yet. */

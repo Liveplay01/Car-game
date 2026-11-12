@@ -270,7 +270,8 @@ export class GameSession {
   /** A shift has run since the game opened: before that the Daily's pill names the streak, not its pay bonus. */
   private shiftRan = false;
   private shownMoney = 0;
-  private sinceMoney = Infinity;
+  /** 0–1: how lit the top card's money is; it rises fast while money comes in and fades slowly, so many small payouts never flicker. */
+  private moneyGlow = 0;
   private resultBank = { before: 0, after: 0 };
   /** The result on screen is a Daily Shift that was lost: an ad can give it a second try (`Careers.adRetryOpen`). */
   private dailyLost = false;
@@ -1811,8 +1812,8 @@ export class GameSession {
     const recedeTarget = this.isPage('upgrades') ? 1 : 0;
     this.recede += (recedeTarget - this.recede) * (1 - Math.exp(-realDelta / 0.25));
     const money = Math.max(0, this.shiftStartMoney + this.world.score.money);
-    if (money > this.shownMoney + 0.5) this.sinceMoney = Math.min(this.sinceMoney, 0);
-    this.sinceMoney += realDelta;
+    const glowTarget = money > this.shownMoney + 0.5 ? 1 : 0;
+    this.moneyGlow += (glowTarget - this.moneyGlow) * (1 - Math.exp(-realDelta / (glowTarget ? 0.06 : 0.45)));
     if (Math.abs(money - this.shownMoney) < 1 || this.reduceMotion) this.shownMoney = money;
     else this.shownMoney += (money - this.shownMoney) * (1 - Math.exp(-realDelta / GameSession.scoreCatchUp));
     this.sinceReady = this.screen.k === 'ready' ? this.sinceReady + realDelta : 0;
@@ -3278,7 +3279,7 @@ export class GameSession {
     this.museum.ready.shift();
     this.shiftStartMoney = this.save.career.money;
     this.shownMoney = this.shiftStartMoney;
-    this.sinceMoney = Infinity;
+    this.moneyGlow = 0;
     this.dailySplash = null;
     this.resultBurst = null;
     this.museumBefore = new Set(this.save.career.museumSeen);
@@ -3912,7 +3913,7 @@ export class GameSession {
               cars: Ease.clamp01(this.sinceCarSent / 0.35),
               rushHour: since === null ? 1 : Ease.clamp01((world.time - since) / 0.5),
               strike: Ease.clamp01(this.sinceStrike / 0.5),
-              money: Ease.clamp01(this.sinceMoney / 0.35),
+              money: 1 - this.moneyGlow,
               policeCrash: Ease.clamp01(this.sincePoliceCrash / 0.5),
             },
         flames: Math.round(this.shownFlames),
