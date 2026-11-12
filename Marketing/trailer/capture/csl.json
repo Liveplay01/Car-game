@@ -1,0 +1,80 @@
+{
+"timing": [
+ ["p-neon-24","One tap.\nPure timing.","Tap when the gap opens. That's the game.","amber",0,"c"],
+ ["p-hunt-38","Read the gap.\nTap once.","Every car on the ring is a decision.","night",-4,"r"],
+ ["p-tropic-24","Chain perfect\ninputs.","Combos multiply your score.","mint",4,"l"],
+ ["p-snow-18","One thumb.\nAny place.","Built for quick rounds on your phone.","violet",-3,"c"]
+],
+"police": [
+ ["p-hunt-38","Outrun\nthe police.","Wanted levels rise with every near miss.","night",-4,"r"],
+ ["p-tropic-24","Near misses\npay big.","Squeeze through. Score the save.","amber",3,"l"],
+ ["p-boss-06","Armoured\nconvoys.","It takes three cars lined up to stop one.","mint",4,"l"],
+ ["m-upgrades","Call in\nbackup.","Faster radios. Longer pursuits.","violet",-3,"c"]
+],
+"bosses": [
+ ["p-boss-06","Take down\nthe bosses.","Armoured convoys need three cars lined up.","mint",4,"l"],
+ ["p-boss-08","Line up\nthe shot.","Time the ring. Trap the boss.","amber",-3,"r"],
+ ["m-museum","Every bust\ngets logged.","Bosses, rides and weather in the museum.","night",-4,"c"],
+ ["p-hunt-38","Then outrun\nthe police.","Wanted levels never sleep.","violet",3,"l"]
+],
+"crash": [
+ ["p-crash-02","Real crash\nphysics.","Impact, tyre grip, bent metal. Nothing scripted.","violet",-3,"c"],
+ ["p-mayhem-06","Watch it\nall go wrong.","Every pile-up plays out differently.","amber",4,"r"],
+ ["p-mayhem-08","Traffic that\nreacts.","Cars swerve, skid and spin.","night",-4,"l"],
+ ["p-neon-24","Or merge\nperfectly.","Same ring. Your timing decides.","mint",3,"c"]
+],
+"mayhem": [
+ ["p-mayhem-06","Cause\nmayhem.","A mode where crashing is the point.","violet",-3,"c"],
+ ["p-mayhem-08","Real physics.\nReal wrecks.","Stoppers, spinouts, chain reactions.","amber",4,"r"],
+ ["p-crash-02","Break it\nbeautifully.","Every crash is unique.","night",-4,"l"],
+ ["m-collection","Wreck it in\nyour own ride.","Collect skins for every taste.","mint",3,"c"]
+],
+"seasons": [
+ ["p-snow-18","Every season,\nnew roads.","Snow, sakura, tropics and more.","amber",3,"r"],
+ ["p-sakura-24","Sakura\nnights.","Pink petals. Same tight timing.","night",-4,"l"],
+ ["p-tropic-24","Palm trees.\nSame chaos.","A fresh map to master.","mint",4,"c"],
+ ["p-boss-06","Desert\nconvoys.","Harder roads, bigger bosses.","violet",-3,"r"]
+],
+"collection": [
+ ["m-collection","Collect\nevery ride.","Skins, maps and more to find.","mint",4,"c"],
+ ["m-chests","Open chests,\nwin skins.","Odds always shown.","night",-4,"l"],
+ ["p-neon-24","Drive them\nall.","Your skins stay on the road.","amber",0,"c"],
+ ["m-museum","Complete\nthe museum.","Track what you found and what's left.","violet",3,"r"]
+],
+"builder": [
+ ["m-builder","Build your\nown streets.","Toll booths, cameras, detour signs.","violet",-3,"r"],
+ ["m-upgrades","Upgrade\nyour patrol.","Faster radios, more backup.","amber",3,"l"],
+ ["p-tropic-24","Then watch\nthem work.","Your city. Your traffic.","mint",4,"c"],
+ ["m-chests","Earn more.\nBuild more.","Every shift pays into your city.","night",-4,"r"]
+],
+"upgrades": [
+ ["m-upgrades","Upgrade\nyour patrol.","Faster radios, more backup.","amber",3,"l"],
+ ["m-builder","Then build\nthe city.","Toll booths, cameras, detour signs.","violet",-3,"r"],
+ ["p-hunt-38","Put it to\nthe test.","Longer pursuits. Tighter saves.","night",-4,"r"],
+ ["m-goals","Always a\nnext goal.","Trials and goals keep you moving.","mint",4,"c"]
+],
+"mafia": [
+ ["m-mafia","Borrow from\nthe Family.","Time the pointer. Pay it back.","night",-4,"c"],
+ ["p-boss-08","Then hit\nthe streets.","Earn it back one shift at a time.","amber",3,"r"],
+ ["m-chests","Spend it\non chests.","Odds always shown.","violet",-3,"l"],
+ ["m-club","Big money,\nbig auctions.","The Club opens at the top.","mint",4,"c"]
+],
+"arcade": [
+ ["m-casino","The Arcade\nis open.","Crash, slots and more. Play money only.","violet",-3,"c"],
+ ["m-chests","Open chests,\nwin skins.","Odds always shown.","night",-4,"l"],
+ ["m-club","The Club\nauction.","Spend big. Win rare skins.","amber",3,"r"],
+ ["p-neon-24","Back to\nthe ring.","Earn your stake driving.","mint",0,"c"]
+],
+"daily": [
+ ["m-daily","One shift\na day.","Keep your streak alive.","amber",3,"c"],
+ ["m-goals","Goals, trials,\nweekly runs.","There is always something new.","night",-4,"r"],
+ ["m-chests","Free chest\ntomorrow.","Come back, collect, climb.","mint",4,"l"],
+ ["p-snow-18","Play in\nminutes.","Perfect for a quick break.","violet",-3,"c"]
+],
+"offline": [
+ ["p-neon-24","Play anywhere.\nEven offline.","No signal needed after the first launch.","amber",0,"c"],
+ ["p-snow-18","One thumb.\nNo setup.","Open it. Tap. You're driving.","night",-4,"r"],
+ ["p-tropic-24","Ads only\nif you want.","Optional rewards. Never forced.","mint",4,"l"],
+ ["m-ready","Free to play.\nFor real.","No pay-to-win. Skill decides.","violet",-3,"c"]
+]
+}

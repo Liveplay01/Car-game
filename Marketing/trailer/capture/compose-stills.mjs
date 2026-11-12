@@ -7,8 +7,7 @@ import { ROOT } from './lib.mjs';
 
 const FONT = resolve(ROOT, '../../Web/node_modules/@fontsource-variable/overpass/files/overpass-latin-wght-italic.woff2');
 const FONT_URL = pathToFileURL(FONT).href;
-const OUT =resolve(ROOT, '../store-screenshots');
-mkdirSync(OUT, { recursive: true });
+const OUT = resolve(ROOT, '../store-screenshots');
 
 const THEMES = {
   amber: { bg: '#ffb703', ink: '#0e1013', sub: 'rgba(14,16,19,.72)', ring: 'rgba(14,16,19,.12)', ring2: 'rgba(14,16,19,.07)' },
@@ -20,7 +19,7 @@ const THEMES = {
 // still, headline, subline, theme, tilt (deg), shift (px right of centre)
 export const SLIDES = JSON.parse(readFileSync(join(ROOT, 'capture/slides.json'), 'utf8'));
 
-const page = ({ still, title, sub, theme, tilt = 0, dx = 0, drop = 0, ring = 'c' }) => {
+export const page = ({ still, title, sub, theme, tilt = 0, dx = 0, drop = 0, ring = 'c' }) => {
   const t = THEMES[theme];
   const img = `data:image/png;base64,${readFileSync(join(ROOT, 'stills', `${still}.png`)).toString('base64')}`;
   const ringPos = { c: 'left:50%;top:1060px', l: 'left:-120px;top:1300px', r: 'left:1180px;top:900px' }[ring];
@@ -38,16 +37,21 @@ p{position:absolute;left:72px;right:72px;top:${title.includes('\n') ? 360 : 250}
 </style><div class=ring></div><h1>${title.replace(/\n/g, '<br>')}</h1><p>${sub}</p><div class=phone><img src="${img}"></div>`;
 };
 
-const only = process.argv.slice(2);
-const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 1080, height: 1920 } });
-const tab = await ctx.newPage();
-for (const [i, s] of SLIDES.entries()) {
-  if (only.length && !only.includes(String(i + 1))) continue;
-  await tab.setContent(page(s), { waitUntil: 'load' });
-  await tab.evaluate(() => document.fonts.ready);
-  const file = join(OUT, `roundabout-timing-store-${i + 1}-${s.name}.png`);
-  await tab.screenshot({ path: file });
-  console.log(file);
+const main = process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url;
+if (main) {
+  mkdirSync(OUT, { recursive: true });
+  const only = process.argv.slice(2);
+  const browser = await chromium.launch();
+  const ctx = await browser.newContext({ viewport: { width: 1080, height: 1920 } });
+  const tab = await ctx.newPage();
+  for (const [i, s] of SLIDES.entries()) {
+    if (only.length && !only.includes(String(i + 1))) continue;
+    await tab.setContent(page(s), { waitUntil: 'load' });
+    await tab.evaluate(() => document.fonts.ready);
+    const file = join(OUT, `roundabout-timing-store-${i + 1}-${s.name}.png`);
+    await tab.screenshot({ path: file });
+    console.log(file);
+  }
+  await browser.close();
+
 }
-await browser.close();
