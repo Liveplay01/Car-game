@@ -113,6 +113,8 @@ export type ScreenAction =
   /** Big Screen: choose the picture or video behind the roundabout (the shell's sheet). */
   | { k: 'editBackdrop' }
   | { k: 'startTrial'; id: string }
+  /** Play the goal whose sheet is open (Progress). */
+  | { k: 'playGoal' }
   | { k: 'wearTitle'; id: TitleId }
   | { k: 'showElite' }
   | { k: 'showTitles' }

@@ -27,6 +27,13 @@ export default (S: Strings): Words<Strings> => ({
     locked: (beaten, total) => `ボス8体をすべて倒すと解放 · ${beaten}/${total}`,
   },
 
+  goalSheet: {
+    kind: 'トライアル',
+    trial: '独自のルールがあるシフトです。シフトが終わる前に目標を達成すればクリア。報酬は一度だけですが、何度でも遊べます。',
+    rush: 'シンジケートのボス8体と連続で戦い、タイムを競います。1ラウンドでも負けると最初のボスからやり直し。初クリアで報酬は一度だけ、ベストタイムは残ります。',
+    tour: 'ツアーの1ステージ、独自のルールつき。クリアすると報酬がもらえ、カードは次のステージへ進みます。',
+  },
+
   trials: {
     name(id) {
       const boss = rematchKind(id);

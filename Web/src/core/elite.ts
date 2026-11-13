@@ -409,10 +409,10 @@ export const Elite = {
     );
   },
 
-  /** What the Elite track multiplies a shift's XP by: the level's growth past `eliteXpFlatFrom`, and the Prestige ranks. */
+  /** What the Elite track multiplies a shift's XP by: part of the level's growth past `eliteXpFlatFrom`, and the Prestige ranks. */
   boost(c: Career, config: Config = baseConfig): number {
     const level = Math.max(1, Elite.level(c, config));
-    const late = Elite.need(level, config) / Elite.need(Math.min(level, config.eliteXpFlatFrom), config);
+    const late = (Elite.need(level, config) / Elite.need(Math.min(level, config.eliteXpFlatFrom), config)) ** config.eliteXpLateGrowth;
     return late * (1 + Math.min(config.eliteXpPrestigeMax, c.prestige * config.eliteXpPerPrestige));
   },
 

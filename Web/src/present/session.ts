@@ -40,7 +40,7 @@ import { inPortal, inPlayStore, isInstalled } from '../storage/device';
 import { Tutorial } from './tutorial';
 import { POLICE, PROOF_RULES, ProofLog, REVIVE, TAP, setupOf, type Proof } from '../core/proof';
 import { keepProof } from '../storage/proof';
-import { NoticeQueue, TipQueue, type Tip } from './notices';
+import { NoticeQueue, TipQueue, type Tip, type AchievementCard } from './notices';
 import { bookShift } from './booking';
 import { type Screen, type Tab, type SwipeMode, SWIPE_MODES, type ScreenAction, type ProgressSection, type ShopSection, type SocialSection, PROGRESS, SOCIAL, TAB_BAR, BUILD_PAGES, barTab, screenTab, showsTabBar, BuildLayout } from './flow';
 import { SocialPage, SocialState } from './social';
@@ -380,6 +380,8 @@ export class GameSession {
   private lastCamera: Camera | null = null;
   private lastInset = 0;
   private readonly notices = new NoticeQueue();
+  /** The achievement card the chime already rang for. */
+  private achievementHeard: AchievementCard | null = null;
   private readonly tips = new TipQueue();
   /** Something new on the road takes the top card for a while, with what to do (`Briefings`). */
   private readonly briefings = new Briefings();
@@ -966,6 +968,17 @@ export class GameSession {
       case 'startTrial':
         this.startTrial(action.id);
         break;
+      case 'playGoal': {
+        const goal = this.progressPage.goal;
+        if (!goal) break;
+        this.closeDetail();
+        if (goal.k === 'weekly') this.startSpecial({ k: 'trial', trial: weeklyTrial(weekNumber(this.today)) });
+        // It waits, ready to play, on the Game tab.
+        else if (goal.k === 'trial') this.startTrial(goal.id);
+        else if (goal.k === 'rush') this.startRush();
+        else this.startTour(goal.stop);
+        break;
+      }
       case 'wearTitle':
         if (Careers.wearTitle(career, action.id, this.config)) {
           this.tick();
@@ -1904,6 +1917,9 @@ export class GameSession {
     }
     this.notices.held = this.screen.k === 'playing';
     this.notices.advance(realDelta);
+    const card = this.notices.shown?.achievement ?? null;
+    if (card && card !== this.achievementHeard) this.playReel('shimmer', 1.25, ['earned']);
+    this.achievementHeard = card;
     this.musicMix = this.screen.k === 'playing' && runs ? Music.playing(this.world, this.flowLevel, this.recordStage === 'far' ? null : { near: this.recordNear, beatAt: this.recordBeatAt }) : Music.silent;
     this.hearSky();
     return this.renderList(viewport, realDelta);
@@ -2333,6 +2349,7 @@ export class GameSession {
         break;
       case 'pass':
         p.feat = null;
+        p.goal = null;
         this.perform({ k: 'showPass' });
         break;
       case 'stats':
@@ -2340,27 +2357,27 @@ export class GameSession {
         p.statsOpen = !p.statsOpen;
         break;
       case 'weekly':
-        this.startSpecial({ k: 'trial', trial: weeklyTrial(weekNumber(this.today)) });
+      case 'trial':
+      case 'rush':
+      case 'tour':
+        if (JSON.stringify(p.goal) !== JSON.stringify(target)) this.tick();
+        p.goal = target;
+        p.feat = null;
+        p.streak = false;
+        this.detailOpen = true;
+        this.revealProgress = target;
         break;
       case 'streak':
         if (!p.streak) this.tick();
         p.streak = true;
+        p.goal = null;
         this.detailOpen = true;
         this.revealProgress = target;
-        break;
-      case 'trial':
-        // It waits, ready to play, on the Game tab.
-        this.startTrial(target.id);
-        break;
-      case 'rush':
-        this.startRush();
-        break;
-      case 'tour':
-        this.startTour(target.stop);
         break;
       case 'feat':
         if (p.feat !== target.id) this.tick();
         p.feat = target.id;
+        p.goal = null;
         this.detailOpen = true;
         this.revealProgress = target;
         break;
@@ -2783,6 +2800,7 @@ export class GameSession {
     this.progressPage.museum.selected = null;
     this.progressPage.feat = null;
     this.progressPage.streak = false;
+    this.progressPage.goal = null;
     this.upgradePage.selected = null;
     this.shopPage.selectedItem = null;
     this.builderPage.selected = null;
@@ -2824,6 +2842,8 @@ export class GameSession {
         return part ? Details.part(part, b.pending !== null, career, this.config) : null;
       }
       case 'progress': {
+        const goal = this.progressPage.goal;
+        if (goal && this.progressPage.section !== PROGRESS.stats) return Details.goal(goal, career, this.today);
         if (this.progressPage.section === PROGRESS.today) return this.progressPage.streak ? Details.streak(career, this.config, this.today) : null;
         const feat = this.progressPage.feat;
         if (this.progressPage.section === PROGRESS.goals) return feat ? Details.feat(feat, career, this.config) : Details.pass(career, this.config, this.today);

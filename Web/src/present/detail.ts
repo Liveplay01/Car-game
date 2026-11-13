@@ -21,10 +21,15 @@ import { MenuKit } from './menukit';
 import { MuseumPage } from './museum';
 import { type SignalDetail, signalDetail } from './museumSignal';
 import { museumEntry, firstLevel, firstPlace } from '../core/museum';
-import { rematch } from '../core/trials';
+import { type Trial, rematch, trial as trialById, RUSH_ID, RUSH_REWARD } from '../core/trials';
+import { weekNumber, weekDaysLeft, weeklyTrial } from '../core/weekly';
+import { tourOn, tourTrial, tourStopCount, stopDoneKey } from '../core/tours';
 import { Feats } from '../core/feats';
 import { type Intro } from './intros';
+import type { GoalTarget } from './progress';
 import { IntroArt } from './introArt';
+
+/** The Progress cards that start a shift; their sheet explains it first. */
 
 /**
  * What the detail sheet shows (`ui/detailSheet.ts`): the explanation of the card that was
@@ -224,6 +229,71 @@ export const Details = {
       rows,
       notes: owned ? [{ text: S.feats.earned, color: 'accent' }] : [],
       actions,
+    };
+  },
+
+  /**
+   * A goal to play from Progress (a trial, the Weekly Shift, Boss Rush, a tour stop): what it
+   * asks for and what it pays, with Play (Leo, 13.11.2026: a tap no longer starts it blind).
+   */
+  goal(target: GoalTarget, career: Career, today: number): Detail | null {
+    let trial: Trial | null = null;
+    let eyebrow: string;
+    let title: string;
+    let body: string;
+    let done: boolean;
+    let reward: number;
+    switch (target.k) {
+      case 'rush':
+        eyebrow = S.rush.name;
+        title = S.rush.rowTitle;
+        body = S.goalSheet.rush;
+        done = career.trialsDone.includes(RUSH_ID);
+        reward = RUSH_REWARD;
+        break;
+      case 'weekly': {
+        const week = weekNumber(today);
+        trial = weeklyTrial(week);
+        eyebrow = `${S.weekly.title} · ${S.weekly.daysLeft(weekDaysLeft(today))}`;
+        title = S.weekly.elite(trial.elite ?? 'flawless');
+        body = S.weekly.hint;
+        done = Careers.isWeeklyDone(career, week);
+        reward = trial.reward;
+        break;
+      }
+      case 'tour': {
+        const run = tourOn(today);
+        trial = run && tourTrial(run, target.stop, career);
+        if (!run || !trial) return null;
+        eyebrow = `${S.tours.stop(target.stop, tourStopCount(run.tour, career))} · ${S.tours.left(run.daysLeft)}`;
+        title = S.tours.name(run.tour.id);
+        body = S.goalSheet.tour;
+        done = career.toursDone.includes(stopDoneKey(run.key, target.stop));
+        reward = trial.reward;
+        break;
+      }
+      case 'trial':
+        trial = trialById(target.id) ?? null;
+        if (!trial) return null;
+        eyebrow = `${S.goalSheet.kind} · ${S.trials.level(trial.level)}`;
+        title = S.trials.name(trial.id);
+        body = S.goalSheet.trial;
+        done = career.trialsDone.includes(trial.id);
+        reward = trial.reward;
+        break;
+    }
+    const howTo = trial && S.trials.howTo(trial);
+    return {
+      key: `goal:${JSON.stringify(target)}`,
+      art: { k: 'intro', id: 'trials' },
+      eyebrow: { text: eyebrow, color: 'coin' },
+      title,
+      price: done ? { text: `${S.daily.done} ✓`, color: 'accent' } : { text: money(Fmt.number(reward)), color: 'primary' },
+      steps: null,
+      body: howTo ? [body, howTo.text] : [body],
+      rows: [{ label: S.feats.rowGoal, value: trial ? S.trials.goal(trial) : S.rush.line }],
+      notes: [],
+      actions: [{ label: S.trials.play, action: { k: 'playGoal' }, prominent: true, enabled: true }],
     };
   },
 

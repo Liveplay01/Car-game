@@ -1133,7 +1133,9 @@ export class AudioPlayer {
     for (const layer of MUSIC_LAYERS) {
       const target = enabled ? (mix.volumes[layer] ?? 0) : 0;
       const current = this.volumes.get(layer) ?? 0;
-      const next = current + (target - current) * Math.min(1, delta / AudioPlayer.fade);
+      const moved = current + (target - current) * Math.min(1, delta / AudioPlayer.fade);
+      // Safari throws on a non-finite target (errors, 13.11.2026), and a NaN kept here would stay for good.
+      const next = Number.isFinite(moved) ? moved : Number.isFinite(target) ? target : 0;
       this.volumes.set(layer, Math.abs(next) < 0.0005 ? 0 : next);
       this.glide(music.gains.get(layer)!.gain, next * AudioPlayer.musicMaster, ctx.currentTime, 0.02);
     }
@@ -1145,6 +1147,7 @@ export class AudioPlayer {
   /** `setTargetAtTime` for what is called every frame: a value that has not moved (0.1 %) adds no event to the param's timeline. Zero always arrives. */
   private glide(param: AudioParam, to: number, at: number, settle: number): void {
     const was = this.glided.get(param);
+    if (!Number.isFinite(to) || !Number.isFinite(at)) return;
     if (was !== undefined && (to === was || (to !== 0 && Math.abs(to - was) < 0.001 * Math.max(1, Math.abs(was))))) return;
     this.glided.set(param, to);
     param.setTargetAtTime(to, at, settle);

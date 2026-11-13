@@ -8,6 +8,7 @@ import { tierOf, UNLIMITED_MARKS } from '../core/tiers';
 import { heatXp } from '../core/heat';
 import { Mafia } from '../core/mafia';
 import { Achievements } from '../core/achievements';
+import { missedEntries, museumEntry } from '../core/museum';
 import { S, Fmt } from './strings';
 import type { Tip } from './notices';
 import { touchFirst } from '../storage/device';
@@ -81,10 +82,16 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
   const eliteBefore = Elite.isOpen(career, ctx.config);
   const levelBefore = career.level;
   Careers.record(career, result, ctx.level);
+  // A round level hands out one exhibit the career drove past before it was in the game.
+  const missed = Math.floor(career.level / 10) > Math.floor(levelBefore / 10) ? missedEntries(career.museumSeen, career.level, career.prestige, ctx.config) : [];
+  const giftId = missed.length > 0 ? missed[Math.abs(result.seed) % missed.length] : null;
+  const gift = giftId ? museumEntry(giftId) : null;
+  if (giftId) Careers.discover(career, [giftId]);
   if (ctx.mode === 'shift') Careers.noteShift(career, result.outcome === 'completed');
   Achievements.record(career, result, ctx.shiftConfig, ctx.mode);
   const records: string[] = [];
   const news: string[] = milestones.map((id) => S.modes.milestone(id));
+  if (gift) news.push(S.museum.found(S.museum.name(gift)));
   // A late loan takes its share of the pay before anything else is booked against it.
   const garnished = Mafia.garnish(career, career.money - bankBefore, Date.now(), ctx.config);
   if (garnished > 0) news.push(S.mafia.garnished(Fmt.number(garnished), career.loan === null));

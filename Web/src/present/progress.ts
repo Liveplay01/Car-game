@@ -46,6 +46,8 @@ export class ProgressState extends Scroller {
   feat: string | null = null;
   /** The streak's sheet is open (Today). */
   streak = false;
+  /** A playable goal's sheet: what it asks, and its Play button (Today, Goals). */
+  goal: GoalTarget | null = null;
   /** Records: the long list of every stat, folded away until asked for. */
   statsOpen = false;
   /** Quests finished since the page was last seen, and how long each has been ticking on screen (shared with the session, which outlives this page). */
@@ -85,6 +87,9 @@ export type ProgressTarget =
   | { k: 'tour'; stop: number }
   | { k: 'feat'; id: string }
   | { k: 'museum'; id: string };
+
+/** A card that starts a shift: its sheet explains the goal first. */
+export type GoalTarget = Extract<ProgressTarget, { k: 'weekly' | 'trial' | 'rush' | 'tour' }>;
 
 type Stat = { label: string; value: string };
 

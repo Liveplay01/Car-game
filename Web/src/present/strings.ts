@@ -414,6 +414,14 @@ export const S = {
     locked: (beaten: number, total: number): string => `Take down all eight bosses to open it · ${beaten}/${total}`,
   },
 
+  /** The sheet of a goal to play on Progress, before it starts (Weekly uses `weekly.hint`). */
+  goalSheet: {
+    kind: 'Trial',
+    trial: 'One shift with its own rules. Reach the goal before the shift ends to pass. The reward pays once; you can play it again any time.',
+    rush: 'All eight syndicate bosses, one after the other, against one clock. Lose a round and the rush starts over at the first boss. A first clear pays once; your best time stays.',
+    tour: 'One stop of the tour, with its own rules. Pass it to win its reward; the card then takes you to the next stop.',
+  },
+
   trials: {
     name(id: RunId): string {
       const boss = rematchKind(id);
@@ -996,6 +1004,8 @@ export const S = {
         roadBuilder: 'Road Builder',
         foreman: 'Foreman',
         tuner: 'Tuner',
+        maxedOut: 'Maxed Out',
+        curator: 'Curator',
         chestOpener: 'Chest Opener',
         collector: 'Collector',
         climber: 'Climber',
@@ -1032,6 +1042,8 @@ export const S = {
           roadBuilder: `Build ${N} extra ${n === 1 ? 'road' : 'roads'}`,
           foreman: `Have ${N} ${n === 1 ? 'module' : 'modules'} standing`,
           tuner: `Own ${N} upgrade steps`,
+          maxedOut: `Max out ${N} ${n === 1 ? 'upgrade' : 'upgrades'}`,
+          curator: `Have ${N} ${n === 1 ? 'exhibit' : 'exhibits'} on show in the Museum`,
           chestOpener: `Open ${N} chests`,
           collector: `Collect ${N} items`,
           climber: `Reach level ${N}`,
@@ -1222,6 +1234,8 @@ export const S = {
     /** A Museum shelf filled on this shift (`GameSession.museumBurst`). */
     shelfDoneTitle: 'Shelf complete',
     shelfDoneLine: (shelf: string): string => `${shelf} · every entry on show`,
+    /** A round level handed out an exhibit the player drove past before it was in the game (`missedEntries`). */
+    found: (name: string): string => `New in the Museum: ${name}`,
     museumDoneTitle: 'Museum complete',
     museumDoneLine: 'Every exhibit is on show',
     met: 'Met, still at large',

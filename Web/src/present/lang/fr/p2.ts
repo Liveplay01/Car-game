@@ -27,6 +27,13 @@ export default (S: Strings): Words<Strings> => ({
     locked: (beaten, total) => `Battez les huit boss pour débloquer · ${beaten}/${total}`,
   },
 
+  goalSheet: {
+    kind: 'Épreuve',
+    trial: 'Un service avec ses propres règles. Atteins l’objectif avant la fin du service pour la réussir. La récompense n’est payée qu’une fois ; tu peux la rejouer quand tu veux.',
+    rush: 'Les huit boss du syndicat, l’un après l’autre, contre un seul chrono. Perds une manche et le rush repart du premier boss. La première victoire paie une fois ; ton meilleur temps reste.',
+    tour: 'Une étape de la tournée, avec ses propres règles. Réussis-la pour gagner sa récompense ; la carte t’emmène ensuite à l’étape suivante.',
+  },
+
   trials: {
     name(id) {
       const boss = rematchKind(id);

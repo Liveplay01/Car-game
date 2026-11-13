@@ -27,6 +27,13 @@ export default (S: Strings): Words<Strings> => ({
     locked: (beaten, total) => `Derrota a los ocho jefes para desbloquearlo · ${beaten}/${total}`,
   },
 
+  goalSheet: {
+    kind: 'Prueba',
+    trial: 'Un turno con reglas propias. Cumple el objetivo antes de que termine el turno para superarla. La recompensa se paga una vez; puedes volver a jugarla cuando quieras.',
+    rush: 'Los ocho jefes del sindicato, uno tras otro, contra un solo reloj. Si pierdes una ronda, el rush vuelve a empezar desde el primer jefe. La primera victoria paga una vez; tu mejor tiempo se queda.',
+    tour: 'Una parada del tour, con reglas propias. Supérala para ganar su recompensa; después la tarjeta te lleva a la siguiente parada.',
+  },
+
   trials: {
     name(id) {
       const boss = rematchKind(id);

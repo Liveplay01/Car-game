@@ -2,8 +2,8 @@ import type { Career } from '../core/career';
 import type { Config } from '../core/config';
 import { Goals } from '../core/goals';
 import { type ConditionEntry, type MuseumEntry, museumId, conditionsOf } from '../core/museum';
-import { type Vec2, v, add } from '../core/vec2';
-import { type RenderList, type Rect, R, Ease, text, drawText, circle, Metrics } from './render';
+import { type Vec2, TAU, v, add, mul, fromAngle } from '../core/vec2';
+import { type RenderList, type Rect, R, Ease, text, drawText, circle, line, polygon, Metrics } from './render';
 import { MenuKit } from './menukit';
 import { FAIL_CHIP_SIZE, TopBar } from './hud';
 import { MuseumPage } from './museum';
@@ -231,9 +231,17 @@ function addAchievementCard(list: RenderList, card: AchievementCard, center: Vec
   achievementContent(list, card, frame, o);
 }
 
-/** The medal, the family's name and what it paid, laid out across `frame`. */
+/** Sparks thrown off by the medal as it lands. */
+const SPARKS = 10;
+
+/**
+ * The medal, the family's name and what it paid, laid out across `frame`. It plays like a reward,
+ * not a line of news (players, 13.11.2026): the medal pops in on a spring and throws a ring of
+ * sparks, the words rise in after it, a glint crosses the medal and the money lands last.
+ */
 function achievementContent(list: RenderList, card: AchievementCard, frame: Rect, o: { age: number; opacity: number; scale: number; reduceMotion: boolean }): void {
   const { age, opacity, scale } = o;
+  const rm = o.reduceMotion;
   const pad = 14 * scale;
   const medal = 18 * scale;
   const gap = 12 * scale;
@@ -243,14 +251,42 @@ function achievementContent(list: RenderList, card: AchievementCard, frame: Rect
   const center = R.center(frame);
   const height = R.height(frame);
   const medalAt = v(frame.minX + pad + medal, center.y);
-  const pulse = o.reduceMotion ? 1 : Ease.clamp01((age - 0.15) / 0.9);
+  /** 0 → 1 from `at` over `span` seconds; 1 at once with Reduce Motion. */
+  const step = (at: number, span: number): number => (rm ? 1 : Ease.clamp01((age - at) / span));
+
+  const pulse = step(0.15, 0.9);
   if (pulse < 1) list.s(circle(medalAt, medal * (1 + 0.9 * Ease.outCubic(pulse))), 'coin', 0.4 * (1 - pulse) * opacity);
-  list.s(circle(medalAt, medal), 'coin', opacity);
-  list.s(circle(medalAt, medal - 3 * scale), 'coin', opacity * 0.35);
-  drawText(list, card.tier, medalAt, 15 * scale, 'background', { opacity, weight: 'bold', align: 'center' });
+  const burst = step(0.08, 0.7);
+  if (burst > 0 && burst < 1) {
+    const reach = medal * (1.1 + 0.8 * Ease.outCubic(burst));
+    const tail = medal * 0.5 * (1 - burst) + scale;
+    for (let i = 0; i < SPARKS; i++) {
+      const dir = fromAngle((i / SPARKS) * TAU + 0.3);
+      list.s(line(add(medalAt, mul(dir, reach - tail)), add(medalAt, mul(dir, reach)), 2 * scale, true), 'coin', opacity * (1 - burst));
+    }
+  }
+
+  const pop = rm ? 1 : Ease.springy(age / 0.5);
+  const shown = opacity * Ease.clamp01(pop * 2);
+  list.s(circle(medalAt, medal * pop), 'coin', shown);
+  list.s(circle(medalAt, (medal - 3 * scale) * pop), 'coin', shown * 0.35);
+  if (pop > 0.05) drawText(list, card.tier, medalAt, 15 * scale * pop, 'background', { opacity: shown, weight: 'bold', align: 'center' });
+  const glint = step(0.55, 0.5);
+  if (glint > 0 && glint < 1) {
+    const at = add(medalAt, v(medal * 0.5, -medal * 0.5));
+    const r = 6 * scale * Math.sin(Math.PI * glint);
+    const turn = glint * 1.2;
+    const star = Array.from({ length: 8 }, (_, i) => add(at, mul(fromAngle(turn + (i * TAU) / 8), i % 2 ? r * 0.22 : r)));
+    list.s(polygon(star), 'primary', opacity);
+  }
+
   const textLeft = frame.minX + pad + medal * 2 + gap;
   const textRoom = frame.maxX - pad - textWidth(card.reward, rewardSize) - gap - textLeft;
-  drawText(list, S.ach.caption, v(textLeft, center.y - height * 0.2), captionSize, 'coin', { opacity, weight: 'bold' });
-  drawFitted(list, card.title, v(textLeft, center.y + height * 0.14), titleSize, textRoom, 'primary', { opacity, weight: 'bold' });
-  drawText(list, card.reward, v(frame.maxX - pad, center.y), rewardSize, 'coin', { opacity, weight: 'bold', align: 'trailing' });
+  const caption = step(0.12, 0.4);
+  const title = step(0.2, 0.4);
+  const rise = (p: number): number => (1 - Ease.outCubic(p)) * 8 * scale;
+  drawText(list, S.ach.caption, v(textLeft, center.y - height * 0.2 + rise(caption)), captionSize, 'coin', { opacity: opacity * caption, weight: 'bold' });
+  drawFitted(list, card.title, v(textLeft, center.y + height * 0.14 + rise(title)), titleSize, textRoom, 'primary', { opacity: opacity * title, weight: 'bold' });
+  const coin = rm ? 1 : Ease.springy((age - 0.35) / 0.5);
+  if (coin > 0.05) drawText(list, card.reward, v(frame.maxX - pad, center.y), rewardSize * (0.6 + 0.4 * coin), 'coin', { opacity: opacity * Ease.clamp01(coin * 2), weight: 'bold', align: 'trailing' });
 }

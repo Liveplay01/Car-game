@@ -777,6 +777,11 @@ export const baseConfig = {
    * takes about as many shifts as this one; every Prestige rank adds `eliteXpPerPrestige`, at most `eliteXpPrestigeMax`.
    */
   eliteXpFlatFrom: 50,
+  /**
+   * How much of that growth the XP follows (players, 13.11.2026): 1 kept every late level as quick as Elite 50, and one
+   * Prestige rank climbed 60+ Elite levels (260 → 327). At 0.5 late levels slowly take more shifts.
+   */
+  eliteXpLateGrowth: 0.5,
   eliteXpPerPrestige: 0.1,
   eliteXpPrestigeMax: 1,
   /** Per completed shift; every Perfect Input and Tight Fit adds 1. */

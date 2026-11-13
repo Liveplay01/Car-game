@@ -27,6 +27,13 @@ export default (S: Strings): Words<Strings> => ({
     locked: (beaten, total) => `Sconfiggi tutti gli otto boss per sbloccare · ${beaten}/${total}`,
   },
 
+  goalSheet: {
+    kind: 'Prova',
+    trial: 'Un turno con regole proprie. Raggiungi l’obiettivo prima che il turno finisca per superarla. La ricompensa si paga una volta; puoi rigiocarla quando vuoi.',
+    rush: 'Tutti gli otto boss del sindacato, uno dopo l’altro, contro un solo cronometro. Perdi un round e il rush riparte dal primo boss. La prima vittoria paga una volta; il tuo tempo migliore resta.',
+    tour: 'Una tappa del tour, con regole proprie. Superala per vincere la sua ricompensa; poi la scheda ti porta alla tappa successiva.',
+  },
+
   trials: {
     name(id) {
       const boss = rematchKind(id);

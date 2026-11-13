@@ -30,6 +30,11 @@ export const chestPrice = (k: ChestKind, config: Config): number | null =>
 export const DUPLICATE_MONEY: Record<Rarity, number> = { common: 250, rare: 600, epic: 1500, legendary: 4000 };
 
 export const PITY_CHESTS = 10;
+/**
+ * Within the drawn rarity, an item the collection lacks is this many times as likely as one it has
+ * (players, 13.11.2026: duplicates came far too often). The published rarity odds stay as they are.
+ */
+export const NEW_ITEM_WEIGHT = 3;
 /** Spätestens die 40. Truhe in Folge ohne Legendary ist eine. */
 export const PITY_LEGENDARY_CHESTS = 40;
 export const MAX_CAR_SKINS = 8;
@@ -450,14 +455,11 @@ export function rollChest(
   else if (chestsSinceEpic >= PITY_CHESTS - 1 && rarityRank(rarity) < 2) rarity = 'epic';
   const since = rarityRank(rarity) >= 2 ? 0 : chestsSinceEpic + 1;
   const pool = COSMETICS.filter((x) => x.rarity === rarity && x.source.kind === 'chest');
-  // A small collection-size bonus makes chest drops a little more likely to
-  // add something new, without changing the published rarity odds.
-  const newSkinBonus = Math.min(0.1, collection.length * 0.001);
-  const totalWeight = pool.reduce((sum, candidate) => sum + (collection.includes(candidate.id) ? 1 : 1 + newSkinBonus), 0);
-  let draw = rng.unit() * totalWeight;
+  const weight = (c: Cosmetic): number => (collection.includes(c.id) ? 1 : NEW_ITEM_WEIGHT);
+  let draw = rng.unit() * pool.reduce((sum, c) => sum + weight(c), 0);
   let item = pool[pool.length - 1];
   for (const candidate of pool) {
-    draw -= collection.includes(candidate.id) ? 1 : 1 + newSkinBonus;
+    draw -= weight(candidate);
     if (draw < 0) {
       item = candidate;
       break;

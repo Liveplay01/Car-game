@@ -42,7 +42,7 @@ const { bookShift } = await load('/src/present/booking.ts');
 const { newPlayerMoment } = await load('/src/present/moments.ts');
 const { S, Fmt } = await load('/src/present/strings.ts');
 const { Unlocks } = await load('/src/core/unlocks.ts');
-const { sightings, inferredSightings, shelfEntries, museumId, shelfComplete, completedShelves } = await load('/src/core/museum.ts');
+const { sightings, inferredSightings, shelfEntries, museumId, shelfComplete, completedShelves, missedEntries, MUSEUM_IDS } = await load('/src/core/museum.ts');
 const { FAIL_CAUSES } = await load('/src/core/events.ts');
 const { tapOffset, noteTap, averageOffset } = await load('/src/core/timing.ts');
 const { forLegendary } = await load('/src/core/levels.ts');
@@ -1231,7 +1231,7 @@ test('from Prestige ★2 a Legendary Shift can bring more rules, all five at ★
   assert.deepEqual(decodeChallenge(encodeChallenge(spec)).legendaryExtra, ['heavyLoad', 'zeroTolerance']);
 });
 
-test('late Elite levels take about as many shifts as Elite 50, and every Prestige rank adds 10 % XP', () => {
+test('late Elite levels take slowly more shifts than Elite 50, and every Prestige rank adds 10 % XP', () => {
   const c = newCareer();
   c.prestige = 1;
   c.eliteXp = Elite.xpTo(10);
@@ -1241,7 +1241,8 @@ test('late Elite levels take about as many shifts as Elite 50, and every Prestig
   c.prestige = 0;
   c.level = 50;
   c.eliteXp = Elite.xpTo(121);
-  assert.ok(Math.abs(Elite.boost(c) * Elite.need(50) - Elite.need(121)) < 1e-9);
+  assert.ok(Math.abs(Elite.boost(c) - Math.sqrt(Elite.need(121) / Elite.need(50))) < 1e-9);
+  assert.ok(Elite.need(121) / Elite.boost(c) > Elite.need(50), 'a late level takes more shifts than Elite 50');
 });
 
 // MARK: Multiplayer
@@ -2532,6 +2533,22 @@ test('a save keeps its Streak Freezes and the pity counter, old saves start with
   assert.deepEqual([old.streakFreezes, old.chestsSinceLegendary], [0, 0]);
 });
 
+test('a chest favours what the collection lacks, and the rarity odds stay as published (players, 13.11.2026)', () => {
+  const commons = COSMETICS.filter((x) => x.rarity === 'common' && x.source.kind === 'chest').map((x) => x.id);
+  const half = commons.slice(0, Math.floor(commons.length / 2));
+  let commonDraws = 0, dupes = 0;
+  for (let seed = 0; seed < 20_000; seed++) {
+    const { item } = rollChest('standard', half, 0, seed, null);
+    assert.equal(item.rarity, rollChest('standard', [], 0, seed, null).item.rarity, 'same rarity with any collection');
+    if (item.rarity !== 'common') continue;
+    commonDraws++;
+    if (half.includes(item.id)) dupes++;
+  }
+  const share = half.length / commons.length;
+  const expected = share / (share + 3 * (1 - share));
+  assert.ok(Math.abs(dupes / commonDraws - expected) < 0.03, `duplicates ${dupes / commonDraws} ≈ ${expected}`);
+});
+
 test('the Legendary pity guarantees one by the last chest and leaves the old draws alone', () => {
   for (let seed = 0; seed < 2000; seed++) {
     for (const kind of ['standard', 'premium', 'event']) {
@@ -2971,6 +2988,22 @@ test('from Prestige 3 a tour has a second, harder round that pays coins and a ch
   assert.ok(completeStop(c, run, 8));
   assert.equal(c.money, before + 4000);
   assert.equal(completeStop(c, run, 8), null, 'pays once');
+});
+
+test('a career that maxed every upgrade or filled the Museum is paid for it (players, 13.11.2026)', () => {
+  const save = newSave();
+  for (const u of UPGRADES) save.career.upgrades[u] = upgradeMaxSteps[u];
+  save.career.museumSeen = [...MUSEUM_IDS];
+  const paid = Achievements.sync(save).map((x) => `${x.family}.${x.tier}`);
+  for (const id of ['maxedOut', 'curator']) {
+    const f = FAMILIES.find((x) => x.id === id);
+    assert.equal(new Set(f.tiers).size, f.tiers.length, `${id} tiers are distinct`);
+    assert.ok(paid.includes(`${id}.${f.tiers.length}`), `${id} pays its last tier`);
+  }
+  save.career.upgrades[UPGRADES[0]] -= 1;
+  const short = newSave();
+  short.career.upgrades = save.career.upgrades;
+  assert.ok(!Achievements.sync(short).some((x) => x.family === 'maxedOut' && x.tier === 4), 'one step short is not all');
 });
 
 test('achievements pay each tier once, count what the shift did, and survive the save', () => {
@@ -4412,6 +4445,16 @@ test('a passed Landmark is discovered for the Museum, and a migrated save does n
   assert.ok(!inferredSightings(99, 9, [], { takedowns: 0, transporters: 0, ambulances: 0 }, baseConfig).includes(id));
   Careers.discover(c, [id]);
   assert.ok(c.museumSeen.includes(id));
+});
+
+test('a Museum entry added after its level was passed comes back on a round level, never a failure or a landmark', () => {
+  const tanker = museumId({ k: 'special', kind: 'tanker' });
+  const missed = missedEntries([], 99, 0, baseConfig);
+  assert.ok(missed.includes(tanker), 'every level below 99 was driven past');
+  assert.ok(!missedEntries([tanker], 99, 0, baseConfig).includes(tanker), 'seen entries stay out');
+  assert.ok(!missedEntries([], 1, 0, baseConfig).includes(tanker), 'a level ahead still comes on the road');
+  assert.ok(missed.every((id) => !id.startsWith('fail.') && !id.startsWith('landmark.')));
+  assert.ok(missedEntries([], 1, 9, baseConfig).length > missed.length, 'later ranks add their own entries');
 });
 
 test('replay proof: a recorded bot run replays to the same points', () => {

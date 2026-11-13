@@ -27,6 +27,13 @@ export default (S: Strings): Words<Strings> => ({
     locked: (beaten, total) => `보스 여덟 명을 모두 잡으면 열려요 · ${beaten}/${total}`,
   },
 
+  goalSheet: {
+    kind: '트라이얼',
+    trial: '자체 규칙이 있는 근무예요. 근무가 끝나기 전에 목표를 달성하면 통과해요. 보상은 한 번만 받지만, 언제든 다시 플레이할 수 있어요.',
+    rush: '신디케이트 보스 여덟 명을 하나의 시계로 연달아 상대해요. 한 라운드라도 지면 첫 번째 보스부터 다시 시작해요. 첫 클리어 보상은 한 번만, 최고 기록은 남아요.',
+    tour: '투어의 한 정거장, 자체 규칙이 있어요. 통과하면 보상을 받고, 카드가 다음 정거장으로 안내해요.',
+  },
+
   trials: {
     name(id) {
       const boss = rematchKind(id);

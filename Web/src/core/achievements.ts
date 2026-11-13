@@ -2,7 +2,8 @@ import { type Config } from './config';
 import { type Career, type GameMode, type SaveGame } from './career';
 import type { ShiftResult } from './events';
 import { COSMETICS } from './loot';
-import { UPGRADES } from './levels';
+import { UPGRADES, upgradeMaxSteps } from './levels';
+import { MUSEUM_IDS } from './museum';
 
 /**
  * Achievements (Leo, 07.10.2026): small goals all along the way, in families of three to four
@@ -44,6 +45,8 @@ export const FAMILIES: Family[] = [
   { id: 'roadBuilder', tiers: [1, 2, 3, 4], value: (s) => Math.max(0, s.career.armSlots.length - 4) },
   { id: 'foreman', tiers: [1, 3, 5, 6], value: (s) => Object.keys(s.career.modules).length },
   { id: 'tuner', tiers: [10, 30, 60, 86], value: (s) => UPGRADES.reduce((n, u) => n + (s.career.upgrades[u] ?? 0), 0) },
+  /** Every upgrade bought to its end (players, 13.11.2026): the last tier is all of them. */
+  { id: 'maxedOut', tiers: [3, 8, 14, UPGRADES.length], value: (s) => UPGRADES.filter((u) => (s.career.upgrades[u] ?? 0) >= upgradeMaxSteps[u]).length },
   { id: 'chestOpener', tiers: [5, 25, 100, 400], value: (s) => s.career.chestsOpened },
   { id: 'collector', tiers: [10, 30, 60, 100], value: (s) => COSMETICS.filter((x) => s.career.collection.includes(x.id)).length },
   { id: 'climber', tiers: [15, 30, 60, 100], value: (s) => Math.max(s.career.stats.levelBest ?? 0, s.career.level) },
@@ -51,6 +54,7 @@ export const FAMILIES: Family[] = [
   { id: 'reborn', tiers: [1, 3, 5, 10], value: (s) => s.career.prestige },
   { id: 'heatSeeker', tiers: [1, 3, 5, 8], value: (s) => s.career.heatCleared },
   { id: 'gambler', tiers: [10, 50, 200, 1000], value: (s) => s.career.casinoRounds },
+  { id: 'curator', tiers: [10, 25, 45, MUSEUM_IDS.length], value: (s) => MUSEUM_IDS.filter((id) => s.career.museumSeen.includes(id)).length },
   { id: 'tourist', tiers: [1, 5, 15, 40], value: (s) => s.career.toursDone.length },
 ];
 

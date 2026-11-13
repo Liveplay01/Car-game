@@ -51,6 +51,27 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-11-13',
+    date: '13 November 2026',
+    title: 'Fewer duplicates, more to earn',
+    impact: 'major',
+    summary: [
+      { text: 'Chests favour what you are missing: a duplicate now comes far less often.', from: null },
+      { text: 'New achievements for maxing every upgrade and filling the Museum, with a livelier card.', from: null },
+      { text: 'Museum entries you drove past before they existed now turn up on round levels.', from: null },
+      { text: 'Late Elite levels take longer to climb, so one Prestige rank no longer races past 60 of them.', from: null },
+    ],
+    items: [
+      { text: 'Chests: within the rarity a chest draws, an item you do not own yet is three times as likely as one you already have. The published rarity odds stay exactly as they were. With half of a rarity collected, a duplicate drops from one in two to one in four.', from: null },
+      { text: 'Two new achievement families: Maxed Out, for upgrades taken to their last step (the last tier needs every upgrade), and Curator, for entries on show in the Museum (the last tier needs all of them).', from: null },
+      { text: 'Achievement cards now arrive with a chime: the medal springs in, sparks fly off it, a glint crosses it and the title and reward rise after it. With Reduce Motion on, the card simply appears.', from: null },
+      { text: 'Museum entries that came in an update after your career had already passed their level used to stay grey for good. Every tenth level now hands you one of them, at random, with a short note.', from: null },
+      { text: 'Elite levels: a long Prestige rank can bring up to 60 of them, and the last ones were far too quick. Past Elite level 50, each level now takes a few more shifts than the one before it.', from: null },
+      'Goals on the Progress tab open a short drawer first that explains the goal, with a Play button that starts it.',
+      'Fixed a crash on Safari where the music could stop the game on late levels.',
+    ],
+  },
+  {
     id: '2026-11-11',
     date: '11 November 2026',
     title: 'A gentler start and sharper hits',

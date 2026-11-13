@@ -27,6 +27,13 @@ export default (S: Strings): Words<Strings> => ({
     locked: (beaten, total) => `Erledige alle acht Bosse, um es zu öffnen · ${beaten}/${total}`,
   },
 
+  goalSheet: {
+    kind: 'Prüfung',
+    trial: 'Eine Schicht mit eigenen Regeln. Erreiche das Ziel, bevor die Schicht endet, dann hast du bestanden. Die Belohnung gibt es einmal; spielen kannst du sie jederzeit wieder.',
+    rush: 'Alle acht Syndikatsbosse nacheinander, gegen eine Uhr. Verlierst du eine Runde, beginnt der Rush wieder beim ersten Boss. Der erste Sieg zahlt einmal; deine Bestzeit bleibt.',
+    tour: 'Eine Station der Tour, mit eigenen Regeln. Schaff sie, dann gehört dir ihre Belohnung; die Karte bringt dich danach zur nächsten Station.',
+  },
+
   trials: {
     name(id) {
       const boss = rematchKind(id);

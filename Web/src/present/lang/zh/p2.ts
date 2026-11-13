@@ -27,6 +27,13 @@ export default (S: Strings): Words<Strings> => ({
     locked: (beaten, total) => `击败全部八名首领后解锁 · ${beaten}/${total}`,
   },
 
+  goalSheet: {
+    kind: '试炼',
+    trial: '一局有专属规则的班次。在班次结束前达成目标即为通过。奖励只发一次，但可以随时再玩。',
+    rush: '辛迪加的八名首领接连登场，共用一个计时。输掉一轮，冲刺就从第一名首领重新开始。首次通关奖励只发一次，最佳时间会保留。',
+    tour: '巡回赛的一站，有专属规则。通过即可获得奖励，之后卡片会带你前往下一站。',
+  },
+
   trials: {
     name(id) {
       const boss = rematchKind(id);
