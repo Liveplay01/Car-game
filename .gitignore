@@ -26,3 +26,6 @@ Desktop.ini
 
 # ─── Server ─────────────────────────────────────────────────────────
 Server/proof/
+
+# ─── Marketing-Videos: nur lokal, nicht in GitHub (Clone-Größe, Coolify-Deploy) ───
+Marketing/videos/

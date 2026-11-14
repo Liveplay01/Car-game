@@ -1,10 +1,15 @@
-// Packs every file of a wrapper folder into its zip: `node scripts/pack-zip.mjs itch roundabout-timing-itch.zip`.
+// Packs a folder, subfolders included, into a zip: `node scripts/pack-zip.mjs itch itch/roundabout-timing-itch.zip`.
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { crc32, deflateRawSync } from 'node:zlib';
 
 const [folder, zip] = process.argv.slice(2);
 const root = new URL(`../${folder}/`, import.meta.url);
-const files = readdirSync(root).filter((file) => !file.endsWith('.zip'));
+const files = readdirSync(root, { recursive: true, withFileTypes: true })
+  .filter((entry) => entry.isFile() && !/\.(zip|map)$/.test(entry.name))
+  .map((entry) => relative(fileURLToPath(root), join(entry.parentPath, entry.name)).replaceAll('\\', '/'))
+  .sort();
 
 const entries = [];
 const dir = [];
@@ -51,7 +56,6 @@ end.writeUInt16LE(files.length, 10);
 end.writeUInt32LE(dirBytes.length, 12);
 end.writeUInt32LE(offset, 16);
 
-const out = new URL(zip, root);
 const bytes = Buffer.concat([...entries, dirBytes, end]);
-writeFileSync(out, bytes);
-console.log(`${folder}/${zip} (${bytes.length} bytes, ${files.join(', ')})`);
+writeFileSync(new URL(`../${zip}`, import.meta.url), bytes);
+console.log(`${zip} (${bytes.length} bytes, ${files.length} files)`);

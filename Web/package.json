@@ -19,8 +19,8 @@
     "sim:casino": "node scripts/casino-sim.mjs",
     "sim:auction": "node scripts/auction-sim.mjs",
     "sim:career": "node scripts/career-sim.mjs",
-    "itch": "node scripts/pack-zip.mjs itch roundabout-timing-itch.zip",
-    "playgama": "node scripts/pack-zip.mjs playgama roundabout-timing-playgama.zip"
+    "itch": "node scripts/pack-zip.mjs itch itch/roundabout-timing-itch.zip",
+    "playgama": "vite build --mode playgama --outDir playgama/game --emptyOutDir && node scripts/pack-zip.mjs playgama/game playgama/roundabout-timing-playgama.zip"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",

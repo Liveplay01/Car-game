@@ -5,11 +5,12 @@
  */
 
 /**
- * Opened by Playgama: their wrapper page (`playgama/index.html`) frames the normal address with
- * `?playgama` added (`https://…/?playgama`). Then the game runs inside their page, cannot be
- * installed, and their SDK keeps the save (`ui/playgama.ts`). Every other visit is the plain browser game.
+ * Played on Playgama: they host the zip from `npm run playgama` (`vite build --mode playgama`), a build of
+ * the game itself, since their page lets no other address be framed. Then the game cannot be installed
+ * and their SDK keeps the save (`ui/playgama.ts`). `?playgama` does the same on any build, to try it.
+ * Every other visit is the plain browser game.
  */
-export const inPortal = typeof location !== 'undefined' && new URLSearchParams(location.search).has('playgama');
+export const inPortal = import.meta.env?.MODE === 'playgama' || (typeof location !== 'undefined' && new URLSearchParams(location.search).has('playgama'));
 /** `?werbung`: logs each Applixir ad step to the console, to test the ad process on the live site. */
 export const testAds = typeof location !== 'undefined' && new URLSearchParams(location.search).has('werbung');
 

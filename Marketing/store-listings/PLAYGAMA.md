@@ -1,7 +1,7 @@
 # Playgama submission: Roundabout Timing
 
 Upload: `Web/playgama/roundabout-timing-playgama.zip` (rebuild with `cd Web; npm run playgama`).
-It holds `index.html` (loads and initialises the Bridge, and shows a full-screen iframe on `https://game.timing.love/?playgama`) and `playgama-bridge-config.json`. The game itself is served from our site, so every deploy reaches Playgama at once; the zip only changes if the address or the ad placements change.
+It is a full build of the game (`index.html` at the root, `assets/`, `audio/`, `icons/`, `playgama-bridge-config.json`). Playgama's page forbids framing other addresses, so the game itself is inside the zip; a game update needs a new zip.
 
 The field names below follow what portals usually ask. Playgama's form may name or group them differently; copy the matching text.
 
@@ -77,7 +77,7 @@ Check the sizes against the form; the files below are the closest we have.
 
 ## Technical notes for the reviewer
 
-- Bridge SDK 2 (`https://bridge.playgama.com/v2/stable/playgama-bridge.js`) is loaded and initialised by the wrapper page (`index.html` in the archive); the game inside its iframe reaches Bridge through that page, and waits for it before it reads its save; `game_ready` is sent when the game is on screen and takes taps.
+- Bridge SDK 2 (`https://bridge.playgama.com/v2/stable/playgama-bridge.js`) is the first script in `index.html` and is initialised before the game reads its save; `game_ready` is sent when the game is on screen and takes taps.
 - Rewarded ads pay only on the `rewarded` state, never on `closed`.
 - The game pauses on the platform's pause event and follows the platform's audio state.
-- The game page is `https://game.timing.love/?playgama`; only that query loads the SDK, so the normal website is unaffected.
+- The zip is a separate build (`--mode playgama`); the normal website is unaffected.

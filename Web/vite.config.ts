@@ -298,15 +298,28 @@ function bootSky(): Plugin {
   };
 }
 
-export default defineConfig({
+/** Playgama's Bridge SDK, the first script in `<head>` and not async, as their docs ask. */
+function playgamaBridge(): Plugin {
+  return {
+    name: 'car-game-playgama-bridge',
+    transformIndexHtml: () => [{ tag: 'script', attrs: { src: 'https://bridge.playgama.com/v2/stable/playgama-bridge.js' }, injectTo: 'head-prepend' }],
+  };
+}
+
+export default defineConfig(({ mode }) => {
+  // `--mode playgama` (`npm run playgama`): the game inside Playgama's zip, with no site files and no service worker.
+  const playgama = mode === 'playgama';
+  return {
   define: { __BUILD__: JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC') },
+  // Relative, as the zip is served from a folder of Playgama's choosing.
+  base: playgama ? './' : '/',
   // The legal pages first: the service worker precaches everything the bundle holds by then.
-  plugins: [bootSky(), legalPages(), changelogApi(), siteDataApi(), serviceWorker()],
+  plugins: playgama ? [bootSky(), playgamaBridge()] : [bootSky(), legalPages(), changelogApi(), siteDataApi(), serviceWorker()],
   build: {
     target: 'es2022',
     assetsInlineLimit: 0,
     // Hidden: the maps sit beside the files for `npm run unmap`, but nothing points the browser at them.
-    sourcemap: 'hidden',
+    sourcemap: playgama ? false : 'hidden',
     // The game is one bundle on purpose (it all runs at once, and gzip keeps it near 180 kB);
     // only PeerJS and the casino load on demand. Warn when it grows well past today's size.
     chunkSizeWarningLimit: 640,
@@ -323,4 +336,5 @@ export default defineConfig({
     strictPort: true,
     headers: contentSecurityPolicy(),
   },
+  };
 });

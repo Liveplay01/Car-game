@@ -427,23 +427,23 @@ HTTPS matters: the service worker (offline play, install prompt) only works on
 
 ## Playgama
 
-Playgama embeds the game through a wrapper page (`playgama/index.html`, packed by `npm run playgama`
-into `playgama/roundabout-timing-playgama.zip` with `playgama-bridge-config.json`): a full-screen iframe on
-`https://<domain>/?playgama`. Their upload check wants the Bridge initialised in the archive's own page
-("Playgama Bridge never initialized in this archive"), so the **wrapper holds the Bridge SDK** and the game talks
-to it with `postMessage` (`src/ui/playgama.ts`; messages `{ pg: 1, op, id }` up, `hello`/`done`/`fail`/`event` down).
-Only `?playgama` does that, and nginx gives it the same Content-Security-Policy as `?itch` (the game page loads
-nothing from Playgama).
-The save goes through `bridge.storage` (`storage/store.ts` is switched before the save is read): read once up front,
-written back in batches; a save already in that browser is copied over once. `game_ready` is sent when the game is
-on screen. The platform's pause and audio events stop the game and the sound. No service worker, no install or
-export hints, no analytics, no crews or Mafia there. Without the wrapper's answer (6 s timeout) the game saves in
-`localStorage` as usual. Every other visit is the plain browser game.
-- **Rewarded ad** (`advertisement.showRewarded('free_chest')` in the wrapper) for the Shop's free Standard Chest,
-  still three a day: paid only on the `rewarded` state, never on `closed`. Everywhere else without a real ad there
-  is no offer and no reward. No midgame ads: the shifts flow into each other without a break (IDEA.md principle 11).
-Submission texts: `Marketing/store-listings/PLAYGAMA.md`. A change to the wrapper or the config needs a new zip.
-Outside Playgama (the page opened directly) the game has no parent frame and skips all of this.
+Playgama hosts the game itself: their page sets `default-src 'self' data: blob:` plus their own domains, so no other
+address can be framed ("This content is blocked") and a wrapper iframe cannot work. `npm run playgama` builds the
+game with `vite build --mode playgama` into `playgama/game/` (relative paths, no service worker, no site files,
+no source maps, Bridge script first in `<head>`, `public/playgama-bridge-config.json` at the root) and zips it to
+`playgama/roundabout-timing-playgama.zip` (about 4 MB; their limit is 300 MB). That mode sets `inPortal`
+(`storage/device.ts`; `?playgama` does the same on any build, to try it).
+The game starts the Bridge itself (`src/ui/playgama.ts`): the save goes through `bridge.storage` (`storage/store.ts` is
+switched before the save is read; read once up front, written back in batches; a save already in that browser is copied
+over once), `game_ready` is sent when the game is on screen, and the platform's pause and audio events stop the game
+and the sound. No install or export hints, no analytics, no crews or Mafia there. Without the SDK (6 s timeout) the game
+saves in `localStorage` as usual.
+- **Rewarded ad** (`advertisement.showRewarded('free_chest')`) for the Shop's free Standard Chest, still three a
+  day: paid only on the `rewarded` state, never on `closed`. Everywhere else without a real ad there is no
+  offer and no reward. No midgame ads: the shifts flow into each other without a break (IDEA.md principle 11).
+- **Their policy blocks** the leaderboard service, PeerJS and Umami (not in `default-src`): those stay offline there,
+  and inline `style` attributes and `<style>` elements are refused (the game renders; check the look in a Playgama test).
+Submission texts: `Marketing/store-listings/PLAYGAMA.md`. A change to the game needs a new zip (`npm run playgama`).
 
 ## itch.io
 
