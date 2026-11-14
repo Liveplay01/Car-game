@@ -545,6 +545,9 @@ the dial; it is used up by one round, won or lost, and the dial shows the chance
   (31.10.2026): every offer, on every channel, shows only with `?werbung` in the address** (`testAds`,
   gated in `ui/shell.ts`: `adReady`, `adOffers`). That flag also logs each Applixir step to the console.
   Remove the `testAds &&` there to release them.
+- **Google Play app** (since 14.11.2026, `Android/`): AdMob's rewarded ad (`ui/admob.ts`). The app is a WebView that hands
+  the page `window.AndroidAds`; its presence turns the offers on without `?werbung`. Policy: reward only after the ad ends,
+  closing pays nothing, debug builds use Google's test unit. See NEW-PLAYSTORE-BUILD.md, item 6.
 - Where the chance of an ad is limited (`frequencyCapped`), the game says "try again in a few minutes".
 - **Streak ads and the Doubled pay** (16.10.2026): three more offers, one pill under the top card of the Game tab
   (`present/adPill.ts`, `GameSession.gameAd`), shown only once an ad is ready: the broken Daily streak back (3 days or

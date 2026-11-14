@@ -19,6 +19,7 @@ App-Store-Arbeit mehr vorschlagen.
 | [FOUNDATION.md](FOUNDATION.md) | Regeln mit Startwerten, Motion-Regeln, Architektur |
 | [LOOT.md](LOOT.md) | Was in den Truhen steckt: Skins, Fahrzeugtypen, Odds |
 | [IDEA.md](IDEA.md) | Offene Ideen (Umgesetztes und Gestrichenes wird entfernt) |
+| [Android/README.md](Android/README.md) | Die Play-Store-App (WebView + AdMob): Zusammenspiel mit dem Spiel, Anleitung bis zum Release |
 | [NEW-PLAYSTORE-BUILD.md](NEW-PLAYSTORE-BUILD.md) | Sammelliste für den nächsten Build der Android-App, mit Anleitung |
 
 ## Feste Entscheidungen – nicht neu vorschlagen

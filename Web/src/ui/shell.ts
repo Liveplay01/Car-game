@@ -20,6 +20,7 @@ import { legalDoc } from '../present/legal';
 import { PATCH_NOTES } from '../present/patchNotes';
 import { PhotoView } from './photo';
 import { celebrate, invitedRoom, offerLogin, onAdAudio, reportGameplay, reportProgress, rewardedAd, rewardedAdsReady } from './crazygames';
+import { admobOn, admobReady, admobRewardedAd } from './admob';
 import { applixirReady, applixirRewardedAd } from './applixir';
 import { track, visitSource } from './analytics';
 
@@ -237,11 +238,11 @@ export class Shell {
       sound: (id, pitch, pan) => this.audio.play(id, pitch, pan),
       haptic: (id, softness) => this.haptics.play(id, softness),
       celebrate: () => celebrate(),
-      rewardedAd: (done) => (inPortal ? rewardedAd(done) : applixirRewardedAd(done)),
-      // Ads are still in testing (Leo, 31.10.2026): they show only on `/?werbung`, nowhere else.
-      adReady: () => testAds && (inPortal ? rewardedAdsReady() : applixirReady()),
+      rewardedAd: (done) => (inPortal ? rewardedAd(done) : admobOn ? admobRewardedAd(done) : applixirRewardedAd(done)),
+      // Ads are still in testing (Leo, 31.10.2026): they show only on `/?werbung`, nowhere else. The Play app's AdMob ads (`ui/admob.ts`) need no flag: only the new app has them.
+      adReady: () => (admobOn ? admobReady() : testAds && (inPortal ? rewardedAdsReady() : applixirReady())),
       // A free upgrade step and the Skin Upgrade's boost are for the normal site and the Play app, not CrazyGames or itch.io.
-      adOffers: testAds && !inPortal && !inItch,
+      adOffers: admobOn || (testAds && !inPortal && !inItch),
       feelsHaptics: this.haptics.supported,
     };
     const quietForAd = (on: boolean): void => this.audio.setSuspended(on || document.hidden);

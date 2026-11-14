@@ -75,6 +75,28 @@ liegt dort schon (gleiche Fingerabdrücke). Folgen, die kein Code lösen kann:
 - Umami: Website-Domain prüfen, falls dort eine Domain eingetragen ist.
 - Die alte Adresse nicht abschalten, sondern auf `game.timing.love` weiterleiten (Pfad und Query behalten).
 
+### 6. AdMob-Anzeigen: App wird eine WebView-Hülle (seit 14.11.2026)
+
+Ausführliche Anleitung: [Android/README.md](Android/README.md).
+
+AdMob ist ein natives SDK, eine Trusted Web Activity kann es nicht laden. Deshalb liegt in `Android/` eine eigene App
+(Paket `dev.gustaff.roundabout`, WebView um `https://game.timing.love/?googleplaystore`, AdMob Rewarded + UMP-Einwilligung).
+Das Spiel erkennt sie an `window.AndroidAds` (`Web/src/ui/admob.ts`) und zeigt dann die Anzeigen-Angebote ohne `?werbung`.
+IDs: App `ca-app-pub-8814590710596560~8823532214` (im Manifest), Block `ca-app-pub-8814590710596560/9161251590`
+(Release-Build; Debug nutzt Googles Test-Block, nie eigene echte Anzeigen anklicken).
+**Ersetzt PWABuilder/Bubblewrap**: Build mit Android Studio (`Android/` öffnen, Build → Generate Signed Bundle, **derselbe
+Upload-Schlüssel**), `versionCode` in `Android/app/build.gradle.kts` über den Wert in der Play Console setzen.
+Folgen, die kein Code löst:
+
+- **Spielstand:** WebView-Speicher ist ein anderer als Chrome. Wer von der alten App kommt, startet bei null: vorher Cloud-Sync + Restore (wie Punkt 5).
+- **Benachrichtigungen (Punkt 1) entfallen:** Web Push läuft in einer WebView nicht. Punkt 1 streichen, bis es eine native Lösung gibt.
+- **Datenschutz:** `present/legal.ts`: Abschnitt „Advertising“ (AdMob statt Applixir in der App, Google erhält Geräte-/Werbe-ID) und „The Google Play app“ (öffnet nicht mehr Chrome) anpassen, `LEGAL_UPDATED` setzen, erst mit dem App-Release deployen.
+- **Play Console:** Datensicherheit (Werbe-ID, Gerätekennungen, Zweck Werbung), Werbe-ID-Erklärung („Anzeigen enthalten“ = ja), App-ads.txt prüfen (`Web/public/app-ads.txt` hat die Zeile schon).
+- **AdMob:** App in AdMob mit dem Play-Eintrag verknüpfen; neue Apps zeigen erst nach Prüfung Anzeigen.
+- **Offen:** UMP-Datenschutzoptionen (EWR-Nutzer müssen ihre Wahl ändern können) brauchen noch einen Eintrag in den Settings.
+- [ ] Testen: Debug-Build auf dem Handy, Schicht verlieren oder Truhen-Anzeige antippen: Test-Anzeige läuft, Belohnung erst nach dem Ende, Schließen zahlt nichts.
+- [ ] Zurück-Taste, Crew-Link (`/k/`), Vollbild, Kamera-Ausschnitt prüfen.
+
 ### Texte für den Release (Vorschlag)
 
 Versionshinweise (Play Console, kurz):
