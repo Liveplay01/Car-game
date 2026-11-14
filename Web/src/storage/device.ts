@@ -5,11 +5,11 @@
  */
 
 /**
- * Opened by CrazyGames: their embed points at the normal address with `?crazygames` added
- * (`https://…/?crazygames`). Then the game runs inside their page, cannot be installed, and
- * their SDK keeps the save (`ui/crazygames.ts`). Every other visit is the plain browser game.
+ * Opened by Playgama: their wrapper page (`playgama/index.html`) frames the normal address with
+ * `?playgama` added (`https://…/?playgama`). Then the game runs inside their page, cannot be
+ * installed, and their SDK keeps the save (`ui/playgama.ts`). Every other visit is the plain browser game.
  */
-export const inPortal = typeof location !== 'undefined' && new URLSearchParams(location.search).has('crazygames');
+export const inPortal = typeof location !== 'undefined' && new URLSearchParams(location.search).has('playgama');
 /** `?werbung`: logs each Applixir ad step to the console, to test the ad process on the live site. */
 export const testAds = typeof location !== 'undefined' && new URLSearchParams(location.search).has('werbung');
 

@@ -731,8 +731,6 @@ export const baseConfig = {
    * one name opens Ranks, Friends, multiplayer and Cloud sync together (`ui/accountSheet.ts`). Declining asks twice and stops it.
    */
   accountPromptAfterLevel: 5,
-  /** Level cleared after which a CrazyGames guest is offered their login, once (research of 08.10.2026: after a success). */
-  portalLoginAfterLevel: 5,
   // Unlocks (Leo, 29.09.2026, `core/unlocks.ts`): a new player meets the systems one at a time.
   // Spread out the same day (`npm run sim:career -- 12 --story=20`): five systems came in the
   // first three minutes; now about one every one to four (Daily ~1 min, modes ~2, Trials ~4,

@@ -73,7 +73,7 @@ export function visitSource(): Record<string, string> {
     }
     if (!host || host === location.hostname) return 'direct';
     if (host.endsWith('timing.love')) return 'site';
-    if (host.includes('crazygames')) return 'portal';
+    if (host.includes('crazygames') || host.includes('playgama')) return 'portal';
     return SEARCH.test(host) ? 'search' : 'other';
   })();
   return utm ? { src: from, utm } : { src: from };

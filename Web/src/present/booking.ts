@@ -118,7 +118,7 @@ export function bookShift(save: SaveGame, result: ShiftResult, ctx: ShiftContext
     tips.push(touchFirst ? S.modes.tryUnlimited : S.modes.tryUnlimitedKeys);
   }
   // What this shift opened says nothing here: the place gets a dot and introduces itself (`Intros`).
-  const due: Hint[] = !save.hints.includes('portalLogin') && career.level > ctx.config.portalLoginAfterLevel ? ['portalLogin'] : [];
+  const due: Hint[] = [];
   // Notifications after the way back was asked for (`tomorrow`) as installing: on a later visit, the one tip each has.
   // Asked again at a streak of two days (08.10.2026), when a reminder before it breaks is worth something.
   if (save.hints.includes('tomorrow') && !save.hints.includes('notifications')) due.push('notifications');

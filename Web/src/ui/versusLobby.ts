@@ -2,7 +2,6 @@ import { h, animatedIcon } from './dom';
 import { canPaste, pasteClipboard, peekClipboard } from './clipboard';
 import { openSheet, swapView } from './sheets';
 import { share } from './share';
-import { inviteLink } from './crazygames';
 import { Room, NAME_MAX, cleanName, type RoomError, type HostMessage, type Member, type Reaction } from '../net/room';
 import { VersusMatch, type MatchFeel } from '../present/versus';
 import type { SessionOutput } from '../present/session';
@@ -459,9 +458,9 @@ export class VersusLobby {
     return slot;
   }
 
-  /** The link that opens the game and joins this room. On CrazyGames the friend must land in their page around the game, not on our address. */
+  /** The link that opens the game and joins this room. */
   private inviteUrl(code: string): string {
-    return inviteLink(code) ?? `${location.origin}${location.pathname}#join=${code}`;
+    return `${location.origin}${location.pathname}#join=${code}`;
   }
 
   /** One row per lane: its colour and number, who drives it, and what the host can do with it. */

@@ -605,18 +605,6 @@ test('a save remembers the day it was first played, old saves have none', () => 
   assert.equal(loadSave().firstDay, -1);
 });
 
-test('a CrazyGames guest is offered the login once, after clearing its level', () => {
-  const save = newSave();
-  save.hints = ['install', 'notifications', 'tomorrow'];
-  const at = baseConfig.portalLoginAfterLevel;
-  save.career.level = at - 1;
-  assert.deepEqual(bookShift(save, completed(at - 1), context(at - 1)).due, []);
-  save.career.level = at;
-  assert.deepEqual(bookShift(save, completed(at), context(at)).due, ['portalLogin']);
-  save.career.level = at;
-  assert.deepEqual(bookShift(save, completed(at), context(at)).due, []);
-});
-
 test('Mayhem keeps its own best and leaves the career alone', () => {
   const save = newSave();
   save.career.level = 7;

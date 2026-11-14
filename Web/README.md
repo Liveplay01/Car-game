@@ -425,34 +425,25 @@ HTTPS matters: the service worker (offline play, install prompt) only works on
 - Not covered: a first visit while the container is down. Then Coolify's proxy answers before
   nginx does (its own error page, configurable in Coolify).
 
-## CrazyGames
+## Playgama
 
-CrazyGames embeds the normal address with `?crazygames` added: `https://<domain>/?crazygames`.
-Only that address loads the CrazyGames SDK v3 (`src/ui/crazygames.ts`), and only for it nginx
-sends a Content-Security-Policy that allows their domains (`map $args $csp` in `nginx.conf`).
-There the save goes through the SDK's Data Module (`storage/store.ts` is switched before the save
-is read): in the cloud for a logged-in player, in the browser for a guest; a save already in
-that browser is copied over once. The SDK also hears `loadingStop` and `gameplayStart/Stop`
-(not `gameplayStop` for a hidden tab: their docs say not to send it when focus moves).
-No service worker, no install or export hints there. Without the SDK (ad blocker, 6 s timeout)
-the game saves in `localStorage` as usual. Every other visit is the plain browser game.
-Since 02.10.2026 the game also uses (`src/ui/crazygames.ts`, names checked against the SDK v3 docs):
-- **Rewarded ad** (`ad.requestAd('rewarded')`) for the Shop's free Standard Chest, still three a
-  day: the chest only on `adFinished`, the sound suspended from `adStarted` until it ends; a cooldown,
-  an ad blocker or no ad says so and pays nothing, also in CrazyGames' Basic Launch (no ads yet).
-  Everywhere else without a real ad there is no offer and no reward. No
-  midgame ads: the shifts flow into each other without a break (IDEA.md principle 11).
-- **`happytime()`** for a boss busted, a completed Legendary Shift, a new Unlimited or Mayhem
-  record and a Prestige, at most once every 90 s ("use sparingly").
-- **Invite links** (`game.inviteLink({ room })`): a multiplayer invite opens the game on CrazyGames,
-  and `getInviteParam('room')` joins the room on arrival, like `#join=` elsewhere.
-- **Login after a success** (08.10.2026, `user.showAuthPrompt`): after Level 5, once, a guest is
-  offered CrazyGames' login (never someone logged in, never during a shift); the Data Module then
-  keeps the save on every device. **`reportGameCompletedPercentage`**: the levels up to Prestige
-  as 0–100, 100 after one.
-In the submission form, Progress Save must be "Yes, using the Data Module".
-Test locally: `npm run build`, serve `dist/` without the CSP and open `/?crazygames`
-(on localhost the SDK runs in its `local` mode).
+Playgama embeds the game through a wrapper page (`playgama/index.html`, packed by `npm run playgama`
+into `playgama/roundabout-timing-playgama.zip` with `playgama-bridge-config.json`): a full-screen iframe on
+`https://<domain>/?playgama`. Their upload check wants the Bridge initialised in the archive's own page
+("Playgama Bridge never initialized in this archive"), so the **wrapper holds the Bridge SDK** and the game talks
+to it with `postMessage` (`src/ui/playgama.ts`; messages `{ pg: 1, op, id }` up, `hello`/`done`/`fail`/`event` down).
+Only `?playgama` does that, and nginx gives it the same Content-Security-Policy as `?itch` (the game page loads
+nothing from Playgama).
+The save goes through `bridge.storage` (`storage/store.ts` is switched before the save is read): read once up front,
+written back in batches; a save already in that browser is copied over once. `game_ready` is sent when the game is
+on screen. The platform's pause and audio events stop the game and the sound. No service worker, no install or
+export hints, no analytics, no crews or Mafia there. Without the wrapper's answer (6 s timeout) the game saves in
+`localStorage` as usual. Every other visit is the plain browser game.
+- **Rewarded ad** (`advertisement.showRewarded('free_chest')` in the wrapper) for the Shop's free Standard Chest,
+  still three a day: paid only on the `rewarded` state, never on `closed`. Everywhere else without a real ad there
+  is no offer and no reward. No midgame ads: the shifts flow into each other without a break (IDEA.md principle 11).
+Submission texts: `Marketing/store-listings/PLAYGAMA.md`. A change to the wrapper or the config needs a new zip.
+Outside Playgama (the page opened directly) the game has no parent frame and skips all of this.
 
 ## itch.io
 
@@ -537,7 +528,7 @@ the dial; it is used up by one round, won or lost, and the dial shows the chance
 `present/adFlow.ts` is the one place all three go through; the rules are `Careers.rewardAd*` and
 `Casino.upgradeChance` in `core/`. The reward is paid only when the ad was watched to the end.
 
-- **CrazyGames** (`?crazygames`): their rewarded ad, for the chest only. The other two are not offered there.
+- **Playgama** (`?playgama`): their rewarded ad, for the chest only. The other two are not offered there.
 - **Normal site and Google Play app** (the app opens the same page): Applixir (`ui/applixir.ts`). The
   offers show only once the SDK is ready (`applixirReady`); sound is off while the ad plays. The reward
   is paid on `complete` followed by the end of the ad (`allAdsCompleted`, `skipped`, `manuallyEnded`).

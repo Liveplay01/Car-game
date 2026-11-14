@@ -19,7 +19,8 @@
     "sim:casino": "node scripts/casino-sim.mjs",
     "sim:auction": "node scripts/auction-sim.mjs",
     "sim:career": "node scripts/career-sim.mjs",
-    "itch": "node scripts/itch-zip.mjs"
+    "itch": "node scripts/pack-zip.mjs itch roundabout-timing-itch.zip",
+    "playgama": "node scripts/pack-zip.mjs playgama roundabout-timing-playgama.zip"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",

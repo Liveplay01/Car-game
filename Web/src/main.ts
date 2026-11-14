@@ -1,7 +1,7 @@
 import { Shell } from './ui/shell';
 import { inItch, inPortal } from './storage/device';
 import { adoptMoved, leaveOldHost } from './storage/move';
-import { gameLoaded, startCrazyGames } from './ui/crazygames';
+import { gameLoaded, startPlaygama } from './ui/playgama';
 import { startCloud } from './net/cloud';
 import { startTuning } from './net/tuning';
 import { S } from './present/strings';
@@ -144,9 +144,9 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has('demo')) {
   history.replaceState(null, '', location.pathname);
 }
 
-// Opened by CrazyGames (`?crazygames`): the save lives in their SDK, which has to be ready
+// Opened by Playgama (`?playgama`): the save lives in their SDK, which has to be ready
 // before the game reads it.
-if (inPortal) await startCrazyGames();
+if (inPortal) await startPlaygama();
 
 // `npm run dev` only, to look at the boot screen: `?boot=wait` keeps it (hovering over the map, as on a start that
 // hangs), `?boot=fail` lands on the failed start, `?boot=learn` keeps the first visit's lesson.

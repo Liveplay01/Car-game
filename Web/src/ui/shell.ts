@@ -19,7 +19,7 @@ import { openCrewLink, readCrewLink, watchCrewLaunches } from '../net/crews';
 import { legalDoc } from '../present/legal';
 import { PATCH_NOTES } from '../present/patchNotes';
 import { PhotoView } from './photo';
-import { celebrate, invitedRoom, offerLogin, onAdAudio, reportGameplay, reportProgress, rewardedAd, rewardedAdsReady } from './crazygames';
+import { onAdAudio, onPlatformPause, rewardedAd, rewardedAdsReady } from './playgama';
 import { applixirReady, applixirRewardedAd } from './applixir';
 import { track, visitSource } from './analytics';
 
@@ -218,8 +218,6 @@ export class Shell {
   private readonly reactBar: HTMLElement;
   /** A `#join=` link that arrived mid-shift: it opens once the shift is over. */
   private pendingJoin: string | null = null;
-  /** A CrazyGames invite is read once, on the first look. */
-  private portalInviteRead = false;
   private readonly live: LiveRegion;
   /** Big Screen: the player's picture or video behind the canvas. */
   private readonly backdrop: BackdropLayer;
@@ -236,7 +234,6 @@ export class Shell {
     const output: SessionOutput = {
       sound: (id, pitch, pan) => this.audio.play(id, pitch, pan),
       haptic: (id, softness) => this.haptics.play(id, softness),
-      celebrate: () => celebrate(),
       rewardedAd: (done) => (inPortal ? rewardedAd(done) : applixirRewardedAd(done)),
       // Ads are still in testing (Leo, 31.10.2026): they show only on `/?werbung`, nowhere else.
       adReady: () => testAds && (inPortal ? rewardedAdsReady() : applixirReady()),
@@ -451,7 +448,6 @@ export class Shell {
     };
     this.session.onStep = (step, data) => {
       track(step, step === 'visit' ? { ...data, ...visitSource() } : data);
-      this.reportProgress();
     };
     this.session.flushVisit();
     this.session.onAwayNews = (notes) => {
@@ -460,7 +456,6 @@ export class Shell {
       patchNotesSheet(this.layers, notes, () => this.pageClosed(), S.settings.awayNews);
     };
     this.session.flushAwayNews();
-    this.reportProgress();
     this.bindInput(canvas);
     if (!inPortal) installBackGesture(() => this.stepBack());
     this.resize();
@@ -557,13 +552,6 @@ export class Shell {
   private readBrowserText(): void {
     const root = document.documentElement;
     this.session.browserText = parseFloat(getComputedStyle(root).fontSize) / (root.classList.contains('large-text') ? 18 : 16) || 1;
-  }
-
-  /** CrazyGames hears how far the career is: the levels up to Prestige, all of it after one. */
-  private reportProgress(): void {
-    const c = this.session.save.career;
-    const top = this.session.config.prestigeLevel;
-    reportProgress(c.prestige > 0 ? 100 : ((c.level - 1) / Math.max(1, top - 1)) * 100);
   }
 
   /** Hands in an invite this device came with (`net/invite.ts`), then picks up whatever is waiting. */
@@ -888,7 +876,6 @@ export class Shell {
     if (!force && key === this.chromeKey) return;
     this.chromeKey = key;
     this.social.sync(onSocial, s.socialPage.section, SocialPage.column(this.size));
-    reportGameplay(screen.k === 'playing' && (inPortal || !document.hidden));
     this.app.dataset.versus = match ? 'on' : 'off';
     this.app.dataset.hand = s.save.settings.leftHanded ? 'left' : 'right';
     this.app.dataset.dispatch = String(s.save.settings.dispatchSize);
@@ -1100,16 +1087,13 @@ export class Shell {
   }
 
   /**
-   * `#join=1234` in the address, or a CrazyGames invite link: a friend's multiplayer game.
-   * Read once, then cleared.
+   * `#join=1234` in the address: a friend's multiplayer game. Read once, then cleared.
    */
   private readJoinLink(): void {
     const match = /^#join=(\d{4})$/.exec(location.hash);
-    if (match) history.replaceState(null, '', location.pathname + location.search);
-    const code = match?.[1] ?? (this.portalInviteRead ? null : invitedRoom());
-    this.portalInviteRead = true;
-    if (!code) return;
-    this.pendingJoin = code;
+    if (!match) return;
+    history.replaceState(null, '', location.pathname + location.search);
+    this.pendingJoin = match[1];
     this.openPendingJoin();
   }
 
@@ -1155,14 +1139,6 @@ export class Shell {
     if (hint === 'tomorrow') {
       void keepStorage();
       this.askWayBack();
-    } else if (hint === 'portalLogin') {
-      if (!inPortal) return;
-      if (!this.session.takeTip()) return this.session.deferHint(hint);
-      // After the result has come up, not over the shift's last moment, and never over the next shift.
-      window.setTimeout(() => {
-        if (this.session.screen.k === 'playing') this.session.deferHint(hint);
-        else void offerLogin();
-      }, 2000);
     } else if (hint === 'notifications' || hint === 'notificationsStreak') {
       const state = pushState();
       // Not on the Home Screen yet (iPhone): offered again with a later shift, once it can be turned on.
@@ -1278,7 +1254,6 @@ export class Shell {
       changed: () => s.clubChanged(),
       intro: () => s.introduce('gamefund'),
       celebrate: () => {
-        celebrate();
         if (s.save.settings.sound) this.audio.play('shiftComplete', 1);
         if (s.save.settings.haptics) this.haptics.play('shiftComplete', 0);
       },
@@ -1298,7 +1273,6 @@ export class Shell {
       reduceMotion: () => s.reduceMotion,
       lite: () => s.save.settings.batterySaver,
       celebrate: () => {
-        celebrate();
         if (s.save.settings.sound) this.audio.play('shiftComplete', 1);
         if (s.save.settings.haptics) this.haptics.play('shiftComplete', 0);
       },
@@ -1679,10 +1653,11 @@ export class Shell {
       }
     });
 
-    // An interruption freezes the world; coming back counts in. Not on CrazyGames (Leo,
+    // An interruption freezes the world; coming back counts in. Not in a portal (Leo,
     // 01.10.2026): in their iframe the page around the game takes the focus, and the focus did
     // not always come back, so the game hung on the count-in. There a hidden tab stops the
-    // frames by itself, and coming back carries on without a jump (`last` starts over).
+    // frames by itself, and coming back carries on without a jump (`last` starts over); the
+    // portal's own pause (an ad, another tab) arrives as `onPlatformPause`.
     const away = (): void => {
       if (!inPortal) this.push({ k: 'focusLost' });
       this.audio.setSuspended(true);
@@ -1706,10 +1681,11 @@ export class Shell {
         this.session.cameBack();
         this.collectRewards();
       }
-      // CrazyGames: "don't call gameplayStop when the user switches focus"; their page knows the tab is hidden.
-      if (!inPortal) reportGameplay(this.session.screen.k === 'playing' && !document.hidden);
     });
-    if (inPortal) return;
+    if (inPortal) {
+      onPlatformPause((paused) => this.push({ k: paused ? 'focusLost' : 'focusGained' }));
+      return;
+    }
     window.addEventListener('blur', () => {
       if (this.session.screen.k === 'playing') this.push({ k: 'focusLost' });
     });

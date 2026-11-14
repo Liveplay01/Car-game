@@ -117,7 +117,7 @@ docker build -t car-game . ; docker run -p 5050:5050 car-game   # Container wie 
   liest `patchNotes.ts`, `strings.ts`, `core/museum.ts`, nichts wird hier geschrieben). Nach einem
   neuen Patch-Notes-Eintrag, Boss oder Wetter dort einmal ausführen und die JSON-Dateien committen.
 - **Name (Leo, 30.09.2026):** Das Spiel heißt **Roundabout Timing** (kurz RAT); „Car Game“ ist nur noch der Ordner- und Repo-Name.
-- **CrazyGames (Leo, 30.09.2026):** Eingebettet über die normale URL mit `?crazygames`, kein eigener Build, kein Upload. Nur dann lädt das SDK und speichert über das Data Module (Web/README.md, CrazyGames).
+- **Playgama (Leo, 14.11.2026, ersetzt CrazyGames):** Ein Wrapper (`Web/playgama/index.html`, `npm run playgama` packt das ZIP) rahmt die normale URL mit `?playgama`, kein eigener Build. Nur dann lädt das Bridge SDK und speichert über `bridge.storage` (Web/README.md, Playgama). Texte zum Einreichen: `Marketing/store-listings/PLAYGAMA.md`.
 - **Google Play (Leo, 02.10.2026):** Trusted Web Activity auf `/?googleplaystore`, kein eigener Build. `inPlayStore` (`storage/device.ts`) blendet Installieren und den CrazyGames-Link aus; `public/.well-known/assetlinks.json` verknüpft App und Seite (Web/README.md, Google Play).
   **Neuer App-Build gesammelt (Leo, 08.10.2026):** Braucht eine Änderung einen neuen Build der Android-Hülle (Wrapper-Option, Name, Icon, Manifest-`shortcuts`, Berechtigung), kommt sie als Punkt in [NEW-PLAYSTORE-BUILD.md](NEW-PLAYSTORE-BUILD.md); Leo baut, wenn genug zusammen ist.
 - **Rechtliches:** Datenschutz und Impressum in `Web/src/present/legal.ts` (Settings → Legal, `/privacy`, `/imprint`). Neuer Dienst, der Daten bekommt (Werbung, Analyse, Server) = Absatz dort und neues `LEGAL_UPDATED`.
