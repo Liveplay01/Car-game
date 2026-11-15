@@ -18,8 +18,10 @@ export const testAds = typeof location !== 'undefined' && new URLSearchParams(lo
  * Opened from itch.io (Leo, 05.10.2026): the page there is a one-file wrapper (`itch/index.html`)
  * whose iframe points at the normal address with `?itch`. The game, the server and the save work
  * as on the website; what needs a top-level site is left out (ads, service worker, installing).
+ * GamePix (Leo, 15.11.2026) frames the address with `?gamepix` and gets the same rules.
  */
-export const inItch = typeof location !== 'undefined' && new URLSearchParams(location.search).has('itch');
+export const inItch =
+  typeof location !== 'undefined' && ['itch', 'gamepix'].some((flag) => new URLSearchParams(location.search).has(flag));
 
 const PLAY_KEY = 'carGame.googlePlay';
 

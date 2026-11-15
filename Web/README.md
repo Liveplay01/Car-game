@@ -460,6 +460,11 @@ site: ads (and the free upgrade step and boost that only exist with them), the s
 nginx gives `?itch` its own policy, with no ad hosts. The save lives in `localStorage` of the
 nested frame (partitioned per itch.io; Safari may clear it), which is what cloud sync is for.
 
+## GamePix
+
+GamePix frames `https://game.timing.love/?gamepix`. No build, no wrapper: `inItch` and the nginx policy treat
+`?gamepix` exactly like `?itch` (see above), so every deploy reaches GamePix at once.
+
 ## Google Play
 
 The Play Store app is a Trusted Web Activity (made with PWABuilder or Bubblewrap): a small
