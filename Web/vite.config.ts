@@ -307,19 +307,21 @@ function playgamaBridge(): Plugin {
 }
 
 export default defineConfig(({ mode }) => {
-  // `--mode playgama` (`npm run playgama`): the game inside Playgama's zip, with no site files and no service worker.
+  // `--mode playgama` / `--mode gamedistribution` (`npm run playgama`, `npm run gamedistribution`): the game inside a
+  // portal's zip, with no site files and no service worker. GameDistribution's SDK is loaded by the game itself.
   const playgama = mode === 'playgama';
+  const portal = playgama || mode === 'gamedistribution';
   return {
   define: { __BUILD__: JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC') },
-  // Relative, as the zip is served from a folder of Playgama's choosing.
-  base: playgama ? './' : '/',
+  // Relative, as the zip is served from a folder of the portal's choosing.
+  base: portal ? './' : '/',
   // The legal pages first: the service worker precaches everything the bundle holds by then.
-  plugins: playgama ? [bootSky(), playgamaBridge()] : [bootSky(), legalPages(), changelogApi(), siteDataApi(), serviceWorker()],
+  plugins: portal ? [bootSky(), ...(playgama ? [playgamaBridge()] : [])] : [bootSky(), legalPages(), changelogApi(), siteDataApi(), serviceWorker()],
   build: {
     target: 'es2022',
     assetsInlineLimit: 0,
     // Hidden: the maps sit beside the files for `npm run unmap`, but nothing points the browser at them.
-    sourcemap: playgama ? false : 'hidden',
+    sourcemap: portal ? false : 'hidden',
     // The game is one bundle on purpose (it all runs at once, and gzip keeps it near 180 kB);
     // only PeerJS and the casino load on demand. Warn when it grows well past today's size.
     chunkSizeWarningLimit: 640,

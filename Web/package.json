@@ -20,7 +20,8 @@
     "sim:auction": "node scripts/auction-sim.mjs",
     "sim:career": "node scripts/career-sim.mjs",
     "itch": "node scripts/pack-zip.mjs itch itch/roundabout-timing-itch.zip",
-    "playgama": "vite build --mode playgama --outDir playgama/game --emptyOutDir && node scripts/pack-zip.mjs playgama/game playgama/roundabout-timing-playgama.zip"
+    "playgama": "vite build --mode playgama --outDir playgama/game --emptyOutDir && node scripts/pack-zip.mjs playgama/game playgama/roundabout-timing-playgama.zip",
+    "gamedistribution": "vite build --mode gamedistribution --outDir gamedistribution/game --emptyOutDir && node scripts/pack-zip.mjs gamedistribution/game gamedistribution/roundabout-timing-gamedistribution.zip"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",

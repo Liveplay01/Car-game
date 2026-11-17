@@ -445,6 +445,17 @@ saves in `localStorage` as usual.
   and inline `style` attributes and `<style>` elements are refused (the game renders; check the look in a Playgama test).
 Submission texts: `Marketing/store-listings/PLAYGAMA.md`. A change to the game needs a new zip (`npm run playgama`).
 
+## GameDistribution
+
+`npm run gamedistribution` builds `--mode gamedistribution` into `gamedistribution/game/` (same build as Playgama, without
+the Bridge) and zips it to `gamedistribution/roundabout-timing-gamedistribution.zip` (about 4 MB; their limit is 500 MB;
+`index.html` at the zip root). `inGameDistribution` (`storage/device.ts`) also counts as `inPortal`; `/?gamedistribution` does the
+same on any build, with its own policy line in `nginx.conf`. The SDK (`ui/gamedistribution.ts`, game id inside) is loaded by the
+game at start, never awaited. Their pause and start events stop and resume the game and its sound. Only the free chest's rewarded
+ad is offered, and unlike everywhere else it is live without `?werbung` (their check needs one ad watched to the end in their
+iframe); it pays on `SDK_REWARDED_WATCH_COMPLETE`. The "Rewarded ads" flag must be on for the game in their developer
+dashboard. A change to the game needs a new zip.
+
 ## itch.io
 
 The itch.io page holds one file: `itch/index.html`, a full-screen iframe on

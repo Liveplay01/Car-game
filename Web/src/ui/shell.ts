@@ -20,11 +20,12 @@ import { legalDoc } from '../present/legal';
 import { PATCH_NOTES } from '../present/patchNotes';
 import { PhotoView } from './photo';
 import { onAdAudio, onPlatformPause, rewardedAd, rewardedAdsReady } from './playgama';
+import { onAdAudio as onGdAudio, onPlatformPause as onGdPause, rewardedAd as gdRewardedAd, rewardedAdsReady as gdReady } from './gamedistribution';
 import { applixirReady, applixirRewardedAd } from './applixir';
 import { track, visitSource } from './analytics';
 
 const PERF_FRAMES = 1800;
-import { inItch, inPlayStore, inPortal, isInstalled, isIos, isIpad, keepStorage, renewStorage, testAds, touchFirst } from '../storage/device';
+import { inGameDistribution, inItch, inPlayStore, inPortal, isInstalled, isIos, isIpad, keepStorage, renewStorage, testAds, touchFirst } from '../storage/device';
 import type { Hint } from '../core/career';
 import { decodeChallenge, type ChallengeSpec } from '../core/challenge';
 import { knownShortLink, shortLink } from '../net/challengeLink';
@@ -234,15 +235,17 @@ export class Shell {
     const output: SessionOutput = {
       sound: (id, pitch, pan) => this.audio.play(id, pitch, pan),
       haptic: (id, softness) => this.haptics.play(id, softness),
-      rewardedAd: (done) => (inPortal ? rewardedAd(done) : applixirRewardedAd(done)),
-      // Ads are still in testing (Leo, 31.10.2026): they show only on `/?werbung`, nowhere else.
-      adReady: () => testAds && (inPortal ? rewardedAdsReady() : applixirReady()),
+      rewardedAd: (done) => (inGameDistribution ? gdRewardedAd(done) : inPortal ? rewardedAd(done) : applixirRewardedAd(done)),
+      // Ads are still in testing (Leo, 31.10.2026): they show only on `/?werbung`, nowhere else. GameDistribution's
+      // check needs a real ad to be watched in the game (17.11.2026), so there the chest's ad is live.
+      adReady: () => (inGameDistribution ? gdReady() : testAds && (inPortal ? rewardedAdsReady() : applixirReady())),
       // A free upgrade step and the Skin Upgrade's boost are for the normal site and the Play app, not CrazyGames or itch.io.
       adOffers: testAds && !inPortal && !inItch,
       feelsHaptics: this.haptics.supported,
     };
     const quietForAd = (on: boolean): void => this.audio.setSuspended(on || document.hidden);
     onAdAudio(quietForAd);
+    onGdAudio(quietForAd);
     this.session = new GameSession(output);
     this.readBrowserText();
     this.session.nightPreview = import.meta.env.DEV && new URLSearchParams(location.search).has('night-preview');
@@ -1683,7 +1686,9 @@ export class Shell {
       }
     });
     if (inPortal) {
-      onPlatformPause((paused) => this.push({ k: paused ? 'focusLost' : 'focusGained' }));
+      const pause = (paused: boolean): void => this.push({ k: paused ? 'focusLost' : 'focusGained' });
+      onPlatformPause(pause);
+      onGdPause(pause);
       return;
     }
     window.addEventListener('blur', () => {
