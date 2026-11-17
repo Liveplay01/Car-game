@@ -177,6 +177,8 @@ export class Shell {
   private pageOpen = false;
   /** Adaptive resolution: the device pixel ratio in use, and how the frames have been going. */
   private dprCap = 2;
+  /** A portal's ad is on screen: its player slows the page, which says nothing about the device. */
+  private platformPaused = false;
   private frameAvg = 1 / 60;
   /** The frame rate is told once per visit, after this many frames (about half a minute): what devices really manage. */
   private perfFrames = 0;
@@ -999,7 +1001,7 @@ export class Shell {
    * is kept (Settings → Low detail). A steady 30 fps (a phone saving power) is left alone.
    */
   private adaptQuality(delta: number): void {
-    if (delta <= 0 || delta > 0.25 || document.hidden) return;
+    if (delta <= 0 || delta > 0.25 || document.hidden || this.platformPaused) return;
     this.frameAvg += (delta - this.frameAvg) * 0.05;
     this.frameJitter += (Math.abs(delta - this.frameAvg) - this.frameJitter) * 0.05;
     if (!this.perfSent && ++this.perfFrames >= PERF_FRAMES) {
@@ -1686,7 +1688,11 @@ export class Shell {
       }
     });
     if (inPortal) {
-      const pause = (paused: boolean): void => this.push({ k: paused ? 'focusLost' : 'focusGained' });
+      const pause = (paused: boolean): void => {
+        this.platformPaused = paused;
+        this.slowFor = 0;
+        this.push({ k: paused ? 'focusLost' : 'focusGained' });
+      };
       onPlatformPause(pause);
       onGdPause(pause);
       return;
