@@ -67,6 +67,9 @@ export class CrashEffects {
   private shakeStrength = 0;
   /** Which way the wrecks fly, on screen: the shake kicks along it (research of 08.10.2026), only a little across. */
   private shakeDir = v(1, 0);
+  /** Per crash: pitch of the shake (±10%) and a phase, so two crashes never wobble alike. */
+  private shakeRate = 1;
+  private shakePhase = 0;
   private rng: Rng;
   private smokeTimer = 0;
 
@@ -78,8 +81,8 @@ export class CrashEffects {
     if (this.shakeAge >= CrashEffects.shakeDuration) return v(0, 0);
     const t = this.shakeAge;
     const strength = this.shakeStrength * Math.exp(-t / CrashEffects.shakeDecay);
-    const along = Math.cos(t * 55) * strength;
-    const across = Math.sin(t * 89) * strength * 0.35;
+    const along = Math.cos(t * 55 * this.shakeRate + this.shakePhase) * strength;
+    const across = Math.sin(t * 89 * this.shakeRate) * strength * 0.35;
     const d = this.shakeDir;
     return v(d.x * along - d.y * across, d.y * along + d.x * across);
   }
@@ -120,9 +123,12 @@ export class CrashEffects {
     // A second crash while the first still shakes adds to it, up to what the baked ground can take.
     const shaking = this.shakeAge < CrashEffects.shakeDuration ? this.shakeStrength * Math.exp(-this.shakeAge / CrashEffects.shakeDecay) : 0;
     this.shakeAge = 0;
-    this.shakeStrength = Math.min(CrashEffects.shakeMax, Math.max(shaking, CrashEffects.shakeAmplitude * severity));
+    this.shakeStrength = Math.min(CrashEffects.shakeMax, Math.max(shaking, CrashEffects.shakeAmplitude * severity * rng.range(0.9, 1.1)));
+    this.shakeRate = rng.range(0.9, 1.1);
+    this.shakePhase = rng.range(-0.5, 0.5);
     const speed = length(average);
     this.shakeDir = speed > 1 ? v(average.x / speed, -average.y / speed) : fromAngle(rng.unit() * TAU);
+    this.shakeDir = fromAngle(angleOf(this.shakeDir) + rng.range(-0.17, 0.17));
     const pieces = Math.floor(6 + 8 * severity);
     for (let i = 0; i < pieces; i++) {
       const color: ColorToken = i % 3 === 2 ? 'vehicleGlass' : 'vehicleCar';

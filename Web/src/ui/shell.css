@@ -2467,6 +2467,7 @@ a.row-link {
 }
 
 .code-input:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
   outline: none;
   border-color: var(--accent);
 }
@@ -3287,6 +3288,7 @@ button.mod:active {
 .text-input:focus-visible {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .text-input[aria-invalid='true'] {

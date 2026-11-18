@@ -236,7 +236,8 @@ export class Shell {
     });
     const output: SessionOutput = {
       sound: (id, pitch, pan) => this.audio.play(id, pitch, pan),
-      haptic: (id, softness) => this.haptics.play(id, softness),
+      // Felt a few ms after it is heard and seen, never on the same frame.
+      haptic: (id, softness) => void setTimeout(() => this.haptics.play(id, softness), 6 + Math.random() * 10),
       rewardedAd: (done) => (inGameDistribution ? gdRewardedAd(done) : inPortal ? rewardedAd(done) : applixirRewardedAd(done)),
       // Ads are still in testing (Leo, 31.10.2026): they show only on `/?werbung`, nowhere else. GameDistribution's
       // check needs a real ad to be watched in the game (17.11.2026), so there the chest's ad is live.
@@ -1652,7 +1653,7 @@ export class Shell {
         this.push({ k: 'dispatch' });
       } else if (key === 'r' || key === 'R') {
         this.push({ k: 'restart' });
-      } else if (key === 'Tab' && !e.shiftKey && !onControl) {
+      } else if (key === ']' && !ownsKeys) {
         e.preventDefault();
         this.push({ k: 'nextTab' });
       }
@@ -1687,6 +1688,9 @@ export class Shell {
         this.collectRewards();
       }
     });
+    // iOS app switches and the back/forward cache do not always fire visibilitychange.
+    window.addEventListener('pagehide', () => this.audio.setSuspended(true));
+    window.addEventListener('pageshow', (e) => { if (e.persisted) this.audio.setSuspended(false); });
     if (inPortal) {
       const pause = (paused: boolean): void => {
         this.adaptAfter = paused ? Infinity : performance.now() + 4000;

@@ -51,6 +51,30 @@ export const itemCredit = (item: PatchItem): string | null => {
 
 export const PATCH_NOTES: PatchNote[] = [
   {
+    id: '2026-11-18',
+    date: '18 November 2026',
+    title: 'Quicker back on the road',
+    impact: 'minor',
+    summary: [
+      'Sound comes back after a call or Siri on iPhone, and the first tap is no longer silent.',
+      'Crashes, sounds and vibration now vary a little every time, so nothing repeats exactly.',
+      'A tap while the camera still flies in no longer gets lost: it plays once you land.',
+      'Declining "keep driving" shows your result at once instead of after another pause.',
+    ],
+    items: [
+      'Sound resumes after a call, Siri or an alarm on iPhone, and the very first tap after coming back is heard.',
+      'The game mixes with your music or podcast and follows the silent switch.',
+      'Stacked hits no longer clip or pump: a harder limiter, more headroom, and repeats of one sound get quieter.',
+      'Warnings for learner, wide load, wedding and race, plus a towed car, a blocked ambulance and a criminal now vibrate too.',
+      'The ringing after a heavy crash is skipped when the device asks for reduced motion.',
+      'Sounds that failed to load offline are fetched again on your next tap.',
+      'Every crash shakes the screen a little differently: strength, speed and direction vary each time.',
+      'Repeated sounds change pitch and volume slightly, and the vibration lands a few milliseconds after the sound.',
+      'A tap during the opening flight over the map is kept and plays as soon as the game has landed.',
+      'After you decline the offer to keep driving, the result shows right away: the crash already had its moment.',
+    ],
+  },
+  {
     id: '2026-11-13',
     date: '13 November 2026',
     title: 'Fewer duplicates, more to earn',

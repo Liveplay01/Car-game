@@ -6,6 +6,9 @@ declare global {
   interface Window {
     webkitAudioContext?: typeof AudioContext;
   }
+  interface Navigator {
+    audioSession?: { type: string };
+  }
 }
 
 const base = import.meta.env.BASE_URL;
@@ -13,6 +16,7 @@ const base = import.meta.env.BASE_URL;
 interface Voice {
   priority: number;
   at: number;
+  id: SoundID;
   src: AudioBufferSourceNode;
   gain: GainNode;
 }
@@ -63,7 +67,7 @@ interface RainVoice {
  * breathe in. Browsers only start audio after a gesture: `unlock()` on the first press.
  */
 export class AudioPlayer {
-  static readonly sfxVolume = 0.8;
+  static readonly sfxVolume = 0.7;
   static readonly musicMaster = 0.35;
   static readonly trafficVolume = 0.2;
   static readonly fade = 0.8;
@@ -81,7 +85,7 @@ export class AudioPlayer {
 
   /** How far the pitch of a sound that comes again and again wanders (fraction of the pitch), so no two hits are identical. */
   private static readonly spread: Partial<Record<SoundID, number>> = {
-    merge: 0.004, tightFit: 0.012, perfect: 0.012, cutOff: 0.015, takedown: 0.012, paid: 0.01, screech: 0.015, clang: 0.012,
+    merge: 0.004, comboUp: 0.004, tightFit: 0.012, perfect: 0.012, cutOff: 0.015, takedown: 0.012, paid: 0.01, screech: 0.015, clang: 0.012,
   };
 
   /** Horns and sirens that can sound together, and how loud a later one is while an earlier one still rings (two never beat at full level). */
@@ -149,8 +153,13 @@ export class AudioPlayer {
   /** Call from a user gesture; later calls only resume a suspended context. */
   unlock(): void {
     this.warm();
-    // Refused outside a gesture the browser accepts: the next tap asks again.
-    if (this.ctx?.state === 'suspended') this.ctx.resume().catch(() => undefined);
+    // A sound that failed twice (offline at the start) gets another go on a tap.
+    if (this.ctx && this.loadDone && SOUND_IDS.some((id) => !this.buffers.has(id) && !AudioPlayer.synthIds.includes(id))) {
+      this.loadDone = false;
+      this.loading = this.load(this.ctx);
+    }
+    // Refused outside a gesture the browser accepts: the next tap asks again. iOS says 'interrupted' after a call or Siri.
+    if (this.ctx && (this.ctx.state === 'suspended' || (this.ctx.state as string) === 'interrupted')) this.ctx.resume().catch(() => undefined);
   }
 
   /**
@@ -169,9 +178,12 @@ export class AudioPlayer {
       return;
     }
     const limiter = ctx.createDynamicsCompressor();
-    limiter.threshold.value = -6;
-    limiter.ratio.value = 8;
-    limiter.release.value = 0.12;
+    // A brick wall, not a soft squeeze: hard knee, fast attack, so stacked hits never clip.
+    limiter.threshold.value = -3;
+    limiter.knee.value = 0;
+    limiter.ratio.value = 20;
+    limiter.attack.value = 0.002;
+    limiter.release.value = 0.15;
     // After the limiter, so the volume never changes how hard the limiter works.
     const master = ctx.createGain();
     master.gain.value = this.level ** 2;
@@ -227,14 +239,21 @@ export class AudioPlayer {
       }
       gains.set(layer, g);
     }
+    // Mixes with other apps' audio and follows the silent switch; iOS interrupts (call, Siri) are resumed in `unlock`/`play`.
+    if (navigator.audioSession) navigator.audioSession.type = 'ambient';
+    ctx.onstatechange = () => {
+      if ((ctx.state as string) === 'interrupted') this.pausedByUs = true;
+    };
     this.ctx = ctx;
     this.sfx = sfx;
     this.music = { filter, gains, started: false };
     this.loading = this.load(ctx);
   }
 
+  private loadDone = false;
+
   private async load(ctx: AudioContext): Promise<void> {
-    const fetchBuffer = async (path: string): Promise<AudioBuffer | null> => {
+    const fetchOnce = async (path: string): Promise<AudioBuffer | null> => {
       try {
         const res = await fetch(base + path);
         if (!res.ok) return null;
@@ -243,22 +262,28 @@ export class AudioPlayer {
         return null;
       }
     };
+    // One retry for a dropped connection; what still fails is tried again on the next `unlock`.
+    const fetchBuffer = async (path: string): Promise<AudioBuffer | null> =>
+      (await fetchOnce(path)) ?? (await new Promise((r) => setTimeout(r, 1500)), await fetchOnce(path));
+    // The music loads alongside the first sounds, not after fifty of them.
+    const music = Promise.all(
+      MUSIC_LAYERS.filter((layer) => !this.stemBuffers.has(layer)).map(async (layer) => {
+        const b = await fetchBuffer(`audio/music/${layer}.m4a`);
+        if (b) this.stemBuffers.set(layer, b);
+      }),
+    ).then(() => this.startStems());
     // In small groups: fifty fetches and decodes at once would stall the page.
-    for (let i = 0; i < SOUND_IDS.length; i += AudioPlayer.loadBatch) {
+    const missing = SOUND_IDS.filter((id) => !this.buffers.has(id) && !AudioPlayer.synthIds.includes(id));
+    for (let i = 0; i < missing.length; i += AudioPlayer.loadBatch) {
       await Promise.all(
-        SOUND_IDS.slice(i, i + AudioPlayer.loadBatch).map(async (id) => {
+        missing.slice(i, i + AudioPlayer.loadBatch).map(async (id) => {
           const b = await fetchBuffer(`audio/sounds/${id}.m4a`);
           if (b) this.buffers.set(id, b);
         }),
       );
     }
-    await Promise.all(
-      MUSIC_LAYERS.map(async (layer) => {
-        const b = await fetchBuffer(`audio/music/${layer}.m4a`);
-        if (b) this.stemBuffers.set(layer, b);
-      }),
-    );
-    this.startStems();
+    await music;
+    this.loadDone = true;
   }
 
   /** All stems start on the same clock tick, so the loops stay together. */
@@ -279,31 +304,44 @@ export class AudioPlayer {
     }
   }
 
+  /** Pitch wobble (±3%) for every sample not listed in `spread`; musical ones are listed with their own, smaller value. */
+  private static readonly defaultSpread = 0.03;
+
   play(id: SoundID, pitch: number, pan = 0): void {
     const ctx = this.ctx;
     const out = AudioPlayer.uiSounds.has(id) ? this.ui : this.sfx;
-    if (!ctx || !out || ctx.state !== 'running') return;
+    if (!ctx || !out) return;
+    if (ctx.state !== 'running') {
+      // The tap that wakes the context is the first sound: play it once awake, but never an old one.
+      const asked = performance.now();
+      if (ctx.state === 'suspended' && !this.pausedByUs) {
+        ctx.resume().then(() => { if (performance.now() - asked < 150) this.play(id, pitch, pan); }).catch(() => undefined);
+      }
+      return;
+    }
     if (id === 'note') {
       this.melody(pitch);
       return;
     }
     // A good merge is the melody's note; its sample only stands in while the music is off.
     if (AudioPlayer.noted.has(id) && this.melodyOn) return;
-    if (this.synth(id, ctx, out, pan, pitch)) return;
+    if (this.synth(id, ctx, out, pan, pitch * (1 + 0.01 * (Math.random() * 2 - 1)))) return;
     const buffer = this.buffers.get(id);
     if (!buffer) return;
     // The same sound twice within a few ms is one sound (a pile-up in one frame).
     const now = ctx.currentTime;
-    if (now - (this.lastStart.get(id) ?? -1) < 0.025) return;
+    if (now - (this.lastStart.get(id) ?? -1) < 0.012) return;
     const priority = AudioPlayer.priority[id] ?? 1;
     if (!this.claimVoice(priority, now)) return;
     this.lastStart.set(id, now);
     const src = ctx.createBufferSource();
     src.buffer = buffer;
-    src.playbackRate.value = pitch * (1 + (AudioPlayer.spread[id] ?? 0) * (Math.random() * 2 - 1));
+    src.playbackRate.value = pitch * (1 + (AudioPlayer.spread[id] ?? AudioPlayer.defaultSpread) * (Math.random() * 2 - 1));
     // About one dB either way, so a run of the same sound never repeats exactly.
     const gain = ctx.createGain();
     let level = 1 + 0.12 * (Math.random() * 2 - 1);
+    // Identical buffers stack in phase: each extra voice of the same sound is quieter (-3 dB, -5 dB, ...).
+    level /= 1 + 0.4 * this.voices.filter((v) => v.id === id).length;
     if (AudioPlayer.horns.has(id)) {
       if (now < this.hornUntil) level *= AudioPlayer.hornOverlap;
       this.hornUntil = Math.max(this.hornUntil, now + buffer.duration / pitch);
@@ -335,7 +373,7 @@ export class AudioPlayer {
     } else {
       tail.connect(sink);
     }
-    const voice: Voice = { priority, at: now, src, gain };
+    const voice: Voice = { priority, at: now, id, src, gain };
     src.onended = () => {
       src.disconnect();
       gain.disconnect();
@@ -379,6 +417,8 @@ export class AudioPlayer {
     muffle.frequency.cancelScheduledValues(now);
     muffle.frequency.setTargetAtTime(450 + 700 * (1 - strength), now, 0.015);
     muffle.frequency.setTargetAtTime(20000, now + 0.45 + 0.5 * strength, 0.4);
+    // The ringing is the harsh part for sensitive ears: reduced-motion users get the dulling only.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const level = 0.008 + 0.014 * strength;
     for (const hz of [4300, 4312]) {
       const osc = ctx.createOscillator();
@@ -435,12 +475,8 @@ export class AudioPlayer {
       dest = panner;
     }
     const noise = (at: number, length: number, from: number, to: number, level: number, rate = 0): void => {
-      const frames = Math.ceil(ctx.sampleRate * length);
-      const buffer = ctx.createBuffer(1, frames, ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
       const src = ctx.createBufferSource();
-      src.buffer = buffer;
+      src.buffer = this.noise(ctx);
       const band = ctx.createBiquadFilter();
       band.type = 'bandpass';
       band.Q.value = 1.2;
@@ -466,7 +502,8 @@ export class AudioPlayer {
         lfo.stop(now + at + length + 0.02);
       }
       gain.connect(dest);
-      src.start(now + at);
+      // A random spot in the shared noise: every hit differs, nothing is allocated.
+      src.start(now + at, Math.random() * Math.max(0, src.buffer!.duration - length - 0.05));
       src.stop(now + at + length + 0.02);
     };
     const tone = (type: OscillatorType, from: number, to: number, at: number, length: number, level: number): void => {
@@ -1167,7 +1204,7 @@ export class AudioPlayer {
     if (suspended && ctx.state === 'running') {
       this.pausedByUs = true;
       ctx.suspend().catch(() => undefined);
-    } else if (!suspended && this.pausedByUs && ctx.state === 'suspended') {
+    } else if (!suspended && this.pausedByUs && (ctx.state === 'suspended' || (ctx.state as string) === 'interrupted')) {
       // Only what we paused; a context the browser still holds back waits for `unlock` in a gesture.
       this.pausedByUs = false;
       ctx.resume().catch(() => undefined);
@@ -1240,7 +1277,7 @@ export class Haptics {
   play(id: HapticID, softness: number): void {
     if (!Haptics.available) return;
     const scale = 1 - 0.35 * clamp(softness, 0, 1);
-    const pattern = Haptics.patterns[id].map((ms, i) => (i % 2 === 0 ? Math.max(1, Math.round(ms * scale)) : ms));
+    const pattern = Haptics.patterns[id].map((ms, i) => (i % 2 === 0 ? Math.max(1, Math.round(ms * scale * (0.9 + 0.2 * Math.random()))) : ms));
     if (!this.supported) {
       let at = 0;
       pattern.forEach((ms, i) => {

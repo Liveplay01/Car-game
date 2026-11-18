@@ -319,7 +319,17 @@ export const Feedback = {
       case 'explosion':
         return 'explosion';
       case 'ambulanceWarning':
+      case 'learnerWarning':
+      case 'oversizeWarning':
+      case 'weddingWarning':
+      case 'raceWarning':
         return 'secured';
+      case 'criminalEntered':
+        return 'wanted';
+      case 'towed':
+        return 'seized';
+      case 'ambulanceBlocked':
+        return 'edge';
       case 'ambulanceCleared':
       case 'unlimitedStage':
         return 'paid';

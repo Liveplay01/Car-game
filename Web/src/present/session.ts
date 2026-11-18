@@ -224,6 +224,7 @@ export class GameSession {
   /** Lost shifts in a row, and a tap made during the breather: it starts the next shift when the breather ends. */
   private failStreak = 0;
   private startBuffered = false;
+  private bootTapped = false;
   /** First shift only: a tap while the cars still roll up is kept, not lost, and answered once they stand. */
   private arrivalTap = false;
   private moneyLanded = false;
@@ -1674,7 +1675,15 @@ export class GameSession {
     } else if (booting) this.sceneTime += simDelta;
     this.keepDailyInStep();
     this.keepMafiaInStep();
-    if (!booting) for (const a of actions) this.handle(a, simDelta);
+    // A tap while the eye still comes down is not lost: it plays once the world has landed.
+    if (booting) this.bootTapped ||= actions.some((a) => a.k === 'tap');
+    else {
+      if (this.bootTapped) {
+        this.bootTapped = false;
+        this.handle({ k: 'tap' }, simDelta);
+      }
+      for (const a of actions) this.handle(a, simDelta);
+    }
     this.frameDelta = realDelta;
     this.easeTopHover(realDelta);
     this.easeIntro(realDelta);
@@ -3464,6 +3473,8 @@ export class GameSession {
     if (!r) return;
     this.revive = null;
     this.finish(r.result);
+    // The crash has had its moment during the offer: the result comes at once.
+    this.resultCountdown = 0;
   }
 
   private finish(result: ShiftResult): void {
