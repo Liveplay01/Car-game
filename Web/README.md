@@ -190,7 +190,7 @@ wins. Every value below is in `core/config.ts` (`versus…`).
 
 ## Leaderboard
 
-Unlimited and Daily records go up with a replay proof (`core/proof.ts`, kept in `storage/proof.ts`, recorded by `present/session.ts`). The service replays it; `npm run build:proof` bundles the core for it into `Server/proof/`. Change `core/` so a run scores differently and `npm test` fails until `PROOF_RULES` is bumped and `node scripts/proof-check.mjs --golden` rewrites the fixture.
+Unlimited and Daily records go up with a replay proof (`core/proof.ts`, kept in `storage/proof.ts`, recorded by `present/session.ts`). The service replays it; `npm run build:proof` bundles the core for it into `Server/proof/`. `PROOF_RULES` is a hash of `core/` (`coreRules.ts`, injected at build), so a game and a service built from different rules report `stale` instead of flagging honest players: after a `core/` change, deploy the game and the service together. If the golden run scores differently, `npm test` fails until `node scripts/proof-check.mjs --golden` rewrites the fixture.
 
 Social → **Ranks** (the Rank chip beside the balance on Progress leads there too; it shows the Shift level rank once known) is
 `ui/ranksPanel.ts`: everyone or friends only, four boards (Shift level, Unlimited, Daily, Casino), the top 50 and your own place.

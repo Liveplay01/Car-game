@@ -4449,7 +4449,7 @@ test('replay proof: a recorded bot run replays to the same points', () => {
   execFileSync(process.execPath, ['scripts/proof-check.mjs'], { stdio: 'pipe' });
 });
 
-test('replay proof: the golden run still scores the same (else bump PROOF_RULES and run proof-check --golden)', async () => {
+test('replay proof: the golden run still scores the same (else run proof-check --golden)', async () => {
   const { replay } = await load('/src/core/proof.ts');
   const { proof, score } = JSON.parse(readFileSync(new URL('./proof-golden.json', import.meta.url), 'utf8'));
   assert.equal(replay(proof).score, score);

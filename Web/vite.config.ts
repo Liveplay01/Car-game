@@ -8,6 +8,7 @@ import { LEGAL_DOCS, type LegalDoc, GAME_NAME, missingLegal } from './src/presen
 import { skyLayers } from './src/present/sky.ts';
 import { DescentTuning } from './src/present/bootDescent.ts';
 import { css } from './src/present/theme.ts';
+import { coreRules } from './coreRules.ts';
 
 /** The sound effects, the music stems, the drift car's and the traffic's loops, so the game sounds right offline too. */
 function audioFiles(): string[] {
@@ -312,7 +313,7 @@ export default defineConfig(({ mode }) => {
   const playgama = mode === 'playgama';
   const portal = playgama || mode === 'gamedistribution';
   return {
-  define: { __BUILD__: JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC') },
+  define: { __CORE_RULES__: coreRules(), __BUILD__: JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC') },
   // Relative, as the zip is served from a folder of the portal's choosing.
   base: portal ? './' : '/',
   // The legal pages first: the service worker precaches everything the bundle holds by then.

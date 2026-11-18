@@ -30,6 +30,8 @@ function setup() {
 }
 
 const bundled = existsSync(PROOF_FILE);
+// The fixture's rules are the hash of `core/` when it was recorded; the bundle's are the current ones.
+if (bundled) golden.proof.rules = ((await import(PROOF_FILE.href)) as { PROOF_RULES: number }).PROOF_RULES;
 const skip = bundled ? false : 'run `npm run build:proof` in Web/ first';
 
 test('a proof that replays to the claimed score is not flagged', { skip }, async () => {

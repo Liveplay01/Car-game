@@ -12,8 +12,10 @@ import { World } from './world';
  * runs that start on a fresh world qualify (Unlimited and the Daily never carry traffic over).
  */
 
-/** Bump when a change to `core/` alters what a run scores; `scripts/test.mjs` replays a fixture and fails until then. */
-export const PROOF_RULES = 1;
+declare const __CORE_RULES__: number | undefined;
+
+/** Hash of `core/` at build time (`coreRules.ts`): a run replays only on the rules it was played on, else the service says `stale`. 0 in dev and tests. */
+export const PROOF_RULES = typeof __CORE_RULES__ === 'number' ? __CORE_RULES__ : 0;
 
 export type ProofMode = 'unlimited' | 'daily';
 
@@ -120,7 +122,7 @@ export function cleanProof(raw: unknown, maxEvents = 60_000): Proof | null {
   if (typeof raw !== 'object' || raw === null) return null;
   const p = raw as Record<string, unknown>;
   const set = p.setup as Record<string, unknown> | null;
-  if (!isInt(p.rules, 0, 1e6) || (p.mode !== 'unlimited' && p.mode !== 'daily') || !isInt(p.seed, 0, 0xffffffff) || !isInt(p.day, 0, 1e6)) return null;
+  if (!isInt(p.rules, 0, 0xffffffff) || (p.mode !== 'unlimited' && p.mode !== 'daily') || !isInt(p.seed, 0, 0xffffffff) || !isInt(p.day, 0, 1e6)) return null;
   if (typeof set !== 'object' || set === null || !isInt(set.level, 1, 300) || !isInt(set.prestige, 0, 100)) return null;
   const events = p.events;
   if (!Array.isArray(events) || events.length % 3 !== 0 || events.length > maxEvents * 3) return null;
